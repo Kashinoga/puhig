@@ -1,0 +1,1731 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PUHIG — Prototype</title>
+    <style>
+      /* ── Tokens ── */
+      :root {
+        --black: #0a0a0a;
+        --white: #f5f5f0;
+        --sub: #d4cfc8;
+        --orange: #e85d1a;
+        --teal: #a8d8cc;
+        --page: #edeef0;
+        --grain: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.70 0.75' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='200' height='200' filter='url(%23g)' opacity='0.055'/></svg>");
+        --border: rgba(0, 0, 0, 0.15);
+        --border-orange: var(--orange);
+        --border-rule: 1px solid var(--border);
+        --border-rule-orange: 2px solid var(--border-orange);
+        --font: "Futura PT", "Century Gothic", Futura, system-ui, sans-serif;
+        --mono: ui-monospace, monospace;
+
+        --track-wide: 0.18em;
+        --track-tight: -0.01em;
+
+        --fs-2xs: 8px;
+        --fs-xs: 10px;
+        --fs-sm: 12px;
+        --fs-base: 14px;
+        --fs-md: 16px;
+        --fs-lg: 18px;
+        --fs-xl: 20px;
+        --fs-2xl: 24px;
+        --fs-3xl: 28px;
+        --fs-4xl: 40px;
+        --fs-5xl: 64px;
+
+        --space: 1rem;
+        --margin: clamp(2rem, 6vw, 5rem);
+      }
+
+      /* ── Reset ── */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        font-size: var(--fs-base);
+      }
+      body {
+        background: var(--black);
+        color: var(--white);
+        font-family: var(--font);
+        line-height: 1.5;
+        min-height: 100vh;
+      }
+
+      /* ── Grid ── */
+      .wrap {
+        max-width: 900px;
+        margin-inline: auto;
+        padding-inline: var(--margin);
+      }
+
+      hr {
+        border: none;
+        border-top: var(--border-rule);
+        opacity: 0.2;
+      }
+      hr.orange {
+        border-color: var(--orange);
+        opacity: 1;
+      }
+
+      /* ── Header ── */
+      header {
+        padding-top: calc(var(--margin) * 1.5);
+        padding-bottom: calc(var(--margin) * 1.5);
+      }
+      .wordmark {
+        font-size: var(--fs-xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--sub);
+        margin-bottom: calc(var(--space) * 3);
+      }
+      .hero-author {
+        font-size: var(--fs-3xl);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        line-height: 1;
+        margin-bottom: calc(var(--space) * 0.75);
+      }
+      .hero-rule {
+        display: block;
+        width: 100%;
+        height: 2px;
+        background: var(--orange);
+        margin-bottom: calc(var(--space) * 0.75);
+      }
+      .hero-title {
+        font-size: var(--fs-5xl);
+        font-weight: 700;
+        letter-spacing: var(--track-tight);
+        line-height: 1;
+        text-transform: uppercase;
+        text-align: right;
+      }
+
+      /* ── Section ── */
+      section {
+        border-top: var(--border-rule-orange);
+        background-color: var(--page);
+        background-image: var(--grain);
+        background-size: 200px 200px;
+        color: var(--black);
+        --sub: #636568;
+        --border: rgba(0, 0, 0, 0.15);
+      }
+      .section-header > .wrap {
+        width: 100%;
+      }
+      .section-header {
+        height: 320px;
+        display: flex;
+        align-items: flex-end;
+        padding-bottom: calc(var(--space) * 2);
+        background-color: var(--page);
+        border-bottom: var(--border-rule);
+        position: relative;
+        overflow: hidden;
+      }
+      .section-header::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        backdrop-filter: blur(8px);
+        -webkit-mask-image: linear-gradient(to bottom, transparent 25%, rgba(0,0,0,0.33) 50%, rgba(0,0,0,0.66) 75%, black 100%);
+        mask-image: linear-gradient(to bottom, transparent 25%, rgba(0,0,0,0.33) 50%, rgba(0,0,0,0.66) 75%, black 100%);
+        background-image: linear-gradient(to top, color-mix(in srgb, var(--teal) 45%, transparent), transparent 55%), var(--grain);
+        background-size: auto, 200px 200px;
+        pointer-events: none;
+      }
+      .section-body {
+        padding-block: calc(var(--margin) * 1.5);
+      }
+      section hr {
+        opacity: 1;
+      }
+      section .btn {
+        border-color: var(--black);
+        color: var(--black);
+      }
+      section .btn:hover {
+        background: var(--black);
+        color: var(--page);
+      }
+      section .btn-accent {
+        background: var(--orange);
+        border-color: var(--orange);
+        color: var(--white);
+      }
+      section .btn-accent:hover {
+        background: var(--black);
+        border-color: var(--black);
+        color: var(--white);
+      }
+      .section-header .btn {
+        border-color: var(--white);
+        color: var(--white);
+      }
+      .section-header .btn:hover {
+        background: var(--black);
+        border-color: var(--black);
+        color: var(--white);
+      }
+      section .badge-accent {
+        border-color: var(--orange);
+        color: var(--orange);
+      }
+      section .input {
+        color: var(--black);
+        border-bottom-color: var(--border);
+      }
+      section .input::placeholder {
+        color: rgba(10, 10, 10, 0.28);
+      }
+      section .pull-quote p {
+        color: var(--black);
+      }
+      section .divider-label hr {
+        border-color: var(--border);
+        opacity: 1;
+      }
+      .section-label {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: var(--fs-5xl);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--white);
+        position: relative;
+        z-index: 2;
+      }
+
+      /* ── Type scale ── */
+      .t-caps {
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+      }
+      p {
+        color: var(--sub);
+        max-width: 60ch;
+        font-size: var(--fs-base);
+        line-height: 1.7;
+      }
+      p + p {
+        margin-top: var(--space);
+      }
+
+      /* ── Buttons ── */
+      .btn-row {
+        display: flex;
+        gap: calc(var(--space) * 1.5);
+        flex-wrap: wrap;
+        align-items: center;
+        margin-top: calc(var(--space) * 2);
+      }
+      .btn {
+        font-family: var(--font);
+        font-size: var(--fs-xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        padding: 0.65em 1.4em;
+        border: 1px solid var(--white);
+        background: transparent;
+        color: var(--white);
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5em;
+        border-radius: 9999px;
+        transition:
+          background 120ms ease,
+          color 120ms ease,
+          border-color 120ms ease;
+      }
+      .btn-icon {
+        padding: 0.65em;
+        aspect-ratio: 1;
+        justify-content: center;
+        letter-spacing: 0;
+      }
+      .btn:hover {
+        background: var(--white);
+        border-color: var(--black);
+        color: var(--black);
+      }
+      .btn-accent {
+        background: var(--orange);
+        border-color: var(--orange);
+        color: var(--white);
+      }
+      .btn-accent:hover {
+        background: var(--white);
+        border-color: var(--black);
+        color: var(--black);
+      }
+
+      /* ── Input ── */
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        max-width: 380px;
+      }
+      .label {
+        font-size: var(--fs-xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--sub);
+      }
+      .input {
+        font-family: var(--font);
+        font-size: var(--fs-base);
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid rgba(245, 245, 240, 0.3);
+        color: var(--white);
+        padding: 0.5em 0;
+        outline: none;
+        transition: border-color 120ms ease;
+      }
+      .input:focus {
+        border-bottom-color: var(--orange);
+      }
+      .input::placeholder {
+        color: rgba(245, 245, 240, 0.25);
+      }
+
+      /* ── Card / panel ── */
+      .panel {
+        border: 1px solid var(--border);
+        padding: calc(var(--space) * 2);
+      }
+      .panel-title {
+        font-size: var(--fs-xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--orange);
+        margin-bottom: calc(var(--space) * 1.5);
+      }
+
+      /* ── Badge ── */
+      .badge {
+        display: inline-block;
+        font-size: var(--fs-2xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        border: 1px solid var(--border);
+        padding: 0.25em 0.6em;
+        color: var(--sub);
+      }
+      .badge-accent {
+        border-color: var(--orange);
+        color: var(--orange);
+      }
+
+      /* ── Icons ── */
+      .icon-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: calc(var(--space) * 2);
+      }
+      .icon-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .icon-item svg {
+        width: 32px;
+        height: 32px;
+      }
+      .icon-name {
+        font-size: var(--fs-2xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--sub);
+        opacity: 0.6;
+      }
+
+      /* ── Mosaic image ── */
+      .mosaic {
+        position: relative;
+        display: inline-block;
+        overflow: hidden;
+        flex-shrink: 0;
+        box-sizing: border-box;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      .mosaic-bg {
+        position: absolute;
+        inset: 0;
+        filter: saturate(0.55) brightness(0.85);
+      }
+      .mosaic-overlay {
+        position: absolute;
+        inset: 0;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        pointer-events: none;
+      }
+
+      /* ── Mosaic title ── */
+      .mosaic-title {
+        position: absolute;
+        top: var(--margin);
+        left: var(--margin);
+        font-size: var(--fs-5xl);
+        font-weight: 700;
+        letter-spacing: var(--track-tight);
+        text-transform: uppercase;
+        line-height: 1;
+        color: var(--white);
+        z-index: 1;
+      }
+
+      /* ── Colour swatches ── */
+      .colour-row {
+        display: flex;
+        gap: calc(var(--space) * 2.5);
+        flex-wrap: wrap;
+        margin-top: calc(var(--space) * 2);
+      }
+      .colour-swatch {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+      .swatch-chip {
+        width: 64px;
+        height: 64px;
+        background-color: var(--swatch);
+        border: 1px solid var(--border);
+      }
+      .swatch-chip--grain {
+        background-image: var(--grain);
+        background-size: 200px 200px;
+      }
+      .swatch-chip--border-demo {
+        background-color: transparent;
+      }
+      .swatch-name {
+        font-size: var(--fs-2xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: inherit;
+      }
+      .swatch-hex {
+        font-family: var(--mono);
+        font-size: var(--fs-2xs);
+        color: var(--sub);
+        opacity: 0.7;
+      }
+
+      /* ── Pull quote ── */
+      .pull-quote {
+        border-left: 2px solid var(--orange);
+        padding-left: calc(var(--space) * 1.5);
+        max-width: 50ch;
+      }
+      .pull-quote p {
+        font-style: italic;
+        font-size: var(--fs-lg);
+        color: var(--white);
+        line-height: 1.65;
+        max-width: none;
+      }
+      .pull-quote cite {
+        display: block;
+        margin-top: var(--space);
+        font-size: var(--fs-2xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--sub);
+        font-style: normal;
+      }
+
+      /* ── Media card ── */
+      .media-card {
+        position: relative;
+        width: 200px;
+        aspect-ratio: 2 / 3;
+        overflow: hidden;
+        flex-shrink: 0;
+        box-sizing: border-box;
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      .media-card .mosaic-bg {
+        background: linear-gradient(
+          160deg,
+          #7a9e82 0%,
+          #4d7057 35%,
+          #8fa882 55%,
+          #3a5c42 80%,
+          #5b7a62 100%
+        );
+      }
+      .media-card-content {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding: calc(var(--space) * 1.25);
+      }
+      .media-card-top {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: calc(var(--space) * 2);
+      }
+      .media-card-series {
+        font-size: var(--fs-2xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--white);
+        opacity: 0.75;
+      }
+      .media-card-blurb {
+        font-style: italic;
+        font-size: var(--fs-xs);
+        line-height: 1.55;
+        color: var(--white);
+        opacity: 0.85;
+        margin-bottom: calc(var(--space) * 1.25);
+        max-width: none;
+      }
+      .media-card-author {
+        font-size: var(--fs-sm);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--white);
+        margin-bottom: calc(var(--space) * 0.5);
+      }
+      .media-card-rule {
+        display: block;
+        width: 100%;
+        height: 1.5px;
+        background: var(--orange);
+        margin-bottom: calc(var(--space) * 0.5);
+      }
+      .media-card-title {
+        font-size: var(--fs-2xl);
+        font-weight: 700;
+        letter-spacing: var(--track-tight);
+        text-transform: uppercase;
+        line-height: 1;
+        color: var(--white);
+      }
+      .media-card-pair {
+        display: flex;
+        gap: calc(var(--space) * 1.5);
+        flex-wrap: wrap;
+      }
+
+      /* ── Divider with label ── */
+      .divider-label {
+        display: flex;
+        align-items: center;
+        gap: var(--space);
+      }
+      .divider-label hr {
+        flex: 1;
+        opacity: 0.2;
+        border-color: var(--white);
+      }
+      .divider-label span {
+        font-size: var(--fs-2xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--sub);
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+      .divider-label.orange hr {
+        border-color: var(--orange);
+        opacity: 1;
+      }
+      .divider-label.orange span {
+        color: var(--orange);
+      }
+
+      /* ── Footer ── */
+      footer {
+        padding-block: calc(var(--margin) * 1.5);
+        border-top: var(--border-rule);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: calc(var(--space) * 1.5);
+      }
+      .penguin-mark {
+        width: 24px;
+        opacity: 0.4;
+      }
+      .footer-text {
+        font-size: var(--fs-2xs);
+        font-weight: 700;
+        letter-spacing: var(--track-wide);
+        text-transform: uppercase;
+        color: var(--sub);
+        opacity: 0.5;
+        text-align: center;
+      }
+      /* ── Mosaic tile animation ── */
+      @keyframes tile-shrink {
+        from { transform: scale(1);    opacity: 1; filter: blur(0px); }
+        to   { transform: scale(0.8);  opacity: 0; filter: blur(6px); }
+      }
+      @keyframes tile-grow {
+        0%   { transform: scale(0.8);  opacity: 0; filter: blur(6px); }
+        55%  { transform: scale(1.26); opacity: 1; filter: blur(4px); }
+        78%  { transform: scale(0.93);             filter: blur(1px); }
+        100% { transform: scale(1);                filter: blur(0px); }
+      }
+      .mosaic-tile {
+        transform-box: fill-box;
+        animation: tile-grow 320ms ease-out both;
+        animation-delay: var(--delay, 0ms);
+      }
+      .mosaic-tiles-svg {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header / Hero -->
+    <header>
+      <div class="wrap">
+        <div class="wordmark">Atelier Kashinoga</div>
+        <div class="hero-author t-caps">Pocket Universe</div>
+        <span class="hero-rule"></span>
+        <div class="hero-title">Human<br />Interface<br />Guidelines</div>
+      </div>
+    </header>
+
+    <!-- Colours -->
+    <section>
+      <div class="section-header">
+        <div id="colors-mosaic" class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">
+            Colors
+            <div style="display:flex;gap:0.75rem;">
+              <button id="palette-regen" class="btn">Regenerate</button>
+              <button id="palette-clear" class="btn">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div class="colour-row">
+          <div class="colour-swatch" style="--swatch: var(--black)">
+            <div class="swatch-chip"></div>
+            <div class="swatch-name">Black</div>
+            <div class="swatch-hex">#0a0a0a</div>
+          </div>
+          <div class="colour-swatch" style="--swatch: var(--white)">
+            <div class="swatch-chip"></div>
+            <div class="swatch-name">White</div>
+            <div class="swatch-hex">#f5f5f0</div>
+          </div>
+          <div class="colour-swatch" style="--swatch: var(--orange)">
+            <div class="swatch-chip"></div>
+            <div class="swatch-name">Orange</div>
+            <div class="swatch-hex">#e85d1a</div>
+          </div>
+          <div class="colour-swatch" style="--swatch: var(--teal)">
+            <div class="swatch-chip"></div>
+            <div class="swatch-name">Teal</div>
+            <div class="swatch-hex">#a8d8cc</div>
+          </div>
+          <div class="colour-swatch" style="--swatch: var(--sub)">
+            <div class="swatch-chip"></div>
+            <div class="swatch-name">Subtext</div>
+            <div class="swatch-hex">#d4cfc8</div>
+          </div>
+          <div class="colour-swatch" style="--swatch: var(--page)">
+            <div class="swatch-chip swatch-chip--grain"></div>
+            <div class="swatch-name">Page</div>
+            <div class="swatch-hex">#edeef0</div>
+          </div>
+          <div class="colour-swatch">
+            <div
+              class="swatch-chip swatch-chip--border-demo"
+              style="border: var(--border-rule)"
+            ></div>
+            <div class="swatch-name">Border</div>
+            <div class="swatch-hex">rgba(245,245,240,0.18)</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Buttons -->
+    <section>
+      <div class="section-header">
+        <div class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">Buttons</div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
+
+          <div>
+            <div style="font-size: var(--fs-2xs); color: var(--sub); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.75rem;">Text</div>
+            <div class="btn-row" style="margin-top: 0;">
+              <a href="#" class="btn">Default</a>
+              <a href="#" class="btn btn-accent">Accent</a>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: var(--fs-2xs); color: var(--sub); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.75rem;">Text + Icon</div>
+            <div class="btn-row" style="margin-top: 0;">
+              <a href="#" class="btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="3" y1="12" x2="10" y2="12"/><polyline points="13,6 20,12 13,18"/>
+                </svg>
+                Browse
+              </a>
+              <a href="#" class="btn btn-accent">
+                Add
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                  <line x1="12" y1="4" x2="12" y2="10.5"/><line x1="12" y1="13.5" x2="12" y2="20"/>
+                  <line x1="4" y1="12" x2="10.5" y2="12"/><line x1="13.5" y1="12" x2="20" y2="12"/>
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size: var(--fs-2xs); color: var(--sub); letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 0.75rem;">Icon only</div>
+            <div class="btn-row" style="margin-top: 0;">
+              <button class="btn btn-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                  <circle cx="10" cy="10" r="6"/><line x1="15" y1="15" x2="20" y2="20"/>
+                </svg>
+              </button>
+              <button class="btn btn-icon btn-accent">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                  <line x1="12" y1="4" x2="12" y2="10.5"/><line x1="12" y1="13.5" x2="12" y2="20"/>
+                  <line x1="4" y1="12" x2="10.5" y2="12"/><line x1="13.5" y1="12" x2="20" y2="12"/>
+                </svg>
+              </button>
+              <button class="btn btn-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                  <line x1="5" y1="5" x2="10.5" y2="10.5"/><line x1="13.5" y1="13.5" x2="19" y2="19"/>
+                  <line x1="19" y1="5" x2="13.5" y2="10.5"/><line x1="10.5" y1="13.5" x2="5" y2="19"/>
+                </svg>
+              </button>
+              <button class="btn btn-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M 5,2 L 19,2 L 19,22 L 12,16 L 5,22 Z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- Type -->
+    <section>
+      <div class="section-header">
+        <div class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">Typography</div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div style="display: flex; flex-direction: column; gap: 1.5rem">
+          <div>
+            <div
+              style="
+                font-size: var(--fs-xs);
+                color: var(--sub);
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 0.4rem;
+              "
+            >
+              Heading — caps tracked
+            </div>
+            <div class="t-caps" style="font-size: var(--fs-3xl)">
+              Section Title
+            </div>
+          </div>
+          <hr />
+          <div>
+            <div
+              style="
+                font-size: var(--fs-xs);
+                color: var(--sub);
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 0.4rem;
+              "
+            >
+              Body
+            </div>
+            <p>
+              Typography in the Penguin Classics tradition: precise, restrained,
+              nothing wasted. The page speaks before a word is read.
+            </p>
+          </div>
+          <hr />
+          <div>
+            <div
+              style="
+                font-size: var(--fs-xs);
+                color: var(--sub);
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 0.4rem;
+              "
+            >
+              Badges
+            </div>
+            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap">
+              <span class="badge">Default</span>
+              <span class="badge badge-accent">Accent</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Form -->
+    <section>
+      <div class="section-header">
+        <div class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">Form</div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            max-width: 380px;
+          "
+        >
+          <div class="field">
+            <label class="label">Name</label>
+            <input class="input" type="text" placeholder="Your name" />
+          </div>
+          <div class="field">
+            <label class="label">Message</label>
+            <input class="input" type="text" placeholder="Write something" />
+          </div>
+          <div>
+            <button class="btn btn-accent">Submit</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Panel -->
+    <section>
+      <div class="section-header">
+        <div class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">Panel</div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div class="panel" style="max-width: 420px">
+          <div class="panel-title">Note</div>
+          <p>
+            A contained surface. Border-only, no fill. Strict inner padding.
+            Orange label marks the category.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Icons -->
+    <section>
+      <div class="section-header">
+        <div class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">Icons</div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div class="icon-grid">
+          <!-- Arrow: shaft stops before head, 3-unit gap — no touching -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="3" y1="12" x2="10" y2="12" />
+              <polyline points="13,6 20,12 13,18" />
+            </svg>
+            <span class="icon-name">Arrow</span>
+          </div>
+
+          <!-- Back: mirrored arrow -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="21" y1="12" x2="14" y2="12" />
+              <polyline points="11,6 4,12 11,18" />
+            </svg>
+            <span class="icon-name">Back</span>
+          </div>
+
+          <!-- Close: 4 segments radiating from gap at center -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <line x1="5" y1="5" x2="10.5" y2="10.5" />
+              <line x1="13.5" y1="13.5" x2="19" y2="19" />
+              <line x1="19" y1="5" x2="13.5" y2="10.5" />
+              <line x1="10.5" y1="13.5" x2="5" y2="19" />
+            </svg>
+            <span class="icon-name">Close</span>
+          </div>
+
+          <!-- Menu: 3 parallel lines, nothing touches -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <line x1="3" y1="7" x2="21" y2="7" />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="17" x2="21" y2="17" />
+            </svg>
+            <span class="icon-name">Menu</span>
+          </div>
+
+          <!-- Add: 4 segments with gap at center, no crossing -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <line x1="12" y1="4" x2="12" y2="10.5" />
+              <line x1="12" y1="13.5" x2="12" y2="20" />
+              <line x1="4" y1="12" x2="10.5" y2="12" />
+              <line x1="13.5" y1="12" x2="20" y2="12" />
+            </svg>
+            <span class="icon-name">Add</span>
+          </div>
+
+          <!-- Remove: single line -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <line x1="4" y1="12" x2="20" y2="12" />
+            </svg>
+            <span class="icon-name">Remove</span>
+          </div>
+
+          <!-- Check: single continuous polyline -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="4,13 9,18 20,6" />
+            </svg>
+            <span class="icon-name">Check</span>
+          </div>
+
+          <!-- Search: tail starts at (15,15), ~1 unit clear of circle edge -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <circle cx="10" cy="10" r="6" />
+              <line x1="15" y1="15" x2="20" y2="20" />
+            </svg>
+            <span class="icon-name">Search</span>
+          </div>
+
+          <!-- Grid: 4 rects with 4-unit gaps between, nothing touches -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linejoin="round"
+            >
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+            <span class="icon-name">Grid</span>
+          </div>
+
+          <!-- List: circles at x=4 (edge x=5.5), lines start at x=9 — 3.5 unit gap -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <line x1="9" y1="7" x2="21" y2="7" />
+              <line x1="9" y1="12" x2="21" y2="12" />
+              <line x1="9" y1="17" x2="21" y2="17" />
+              <circle cx="4" cy="7" r="1.5" />
+              <circle cx="4" cy="12" r="1.5" />
+              <circle cx="4" cy="17" r="1.5" />
+            </svg>
+            <span class="icon-name">List</span>
+          </div>
+
+          <!-- Bookmark: single closed path -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M 5,2 L 19,2 L 19,22 L 12,16 L 5,22 Z" />
+            </svg>
+            <span class="icon-name">Bookmark</span>
+          </div>
+
+          <!-- Orbit: ry=5.5 gives 3-unit geometric gap from r=2.5 planet -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+              <circle cx="12" cy="12" r="2.5" />
+              <ellipse
+                cx="12"
+                cy="12"
+                rx="10"
+                ry="5.5"
+                transform="rotate(-30 12 12)"
+              />
+            </svg>
+            <span class="icon-name">Orbit</span>
+          </div>
+
+          <!-- Star: cardinal rays end at 7.5, diagonal rays end at 8.5 — all clear of r=2.5 circle -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <line x1="12" y1="2" x2="12" y2="7.5" />
+              <line x1="12" y1="16.5" x2="12" y2="22" />
+              <line x1="2" y1="12" x2="7.5" y2="12" />
+              <line x1="16.5" y1="12" x2="22" y2="12" />
+              <line x1="5" y1="5" x2="8.5" y2="8.5" />
+              <line x1="15.5" y1="15.5" x2="19" y2="19" />
+              <line x1="19" y1="5" x2="15.5" y2="8.5" />
+              <line x1="8.5" y1="15.5" x2="5" y2="19" />
+              <circle cx="12" cy="12" r="2.5" />
+            </svg>
+            <span class="icon-name">Star</span>
+          </div>
+
+          <!-- Pocket: single closed path, fold is the first segment -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M 15,3 L 21,9 L 21,21 L 3,21 L 3,3 Z" />
+            </svg>
+            <span class="icon-name">Pocket</span>
+          </div>
+
+          <!-- External: L-bracket + diagonal shaft, ~5 unit gap between them -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <polyline points="13,4 20,4 20,11" />
+              <line x1="5" y1="19" x2="16" y2="8" />
+            </svg>
+            <span class="icon-name">External</span>
+          </div>
+
+          <!-- Filter: lines split around knob circles, nothing crosses -->
+          <div class="icon-item">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <line x1="3" y1="7" x2="5.5" y2="7" />
+              <circle cx="8" cy="7" r="2.5" />
+              <line x1="10.5" y1="7" x2="21" y2="7" />
+              <line x1="3" y1="12" x2="13.5" y2="12" />
+              <circle cx="16" cy="12" r="2.5" />
+              <line x1="18.5" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="17" x2="7.5" y2="17" />
+              <circle cx="10" cy="17" r="2.5" />
+              <line x1="12.5" y1="17" x2="21" y2="17" />
+            </svg>
+            <span class="icon-name">Filter</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Mosaic Image -->
+    <section>
+      <div class="section-header">
+        <div class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">Mosaic Image</div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div
+          style="
+            display: flex;
+            gap: calc(var(--space) * 2);
+            flex-wrap: wrap;
+            align-items: flex-start;
+          "
+        >
+          <!-- 2:3 portrait -->
+          <div>
+            <div
+              style="
+                font-size: var(--fs-2xs);
+                color: var(--sub);
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 0.75rem;
+              "
+            >
+              Portrait 2:3
+            </div>
+            <div class="mosaic" style="width: 160px; aspect-ratio: 2/3">
+              <div
+                class="mosaic-bg"
+                style="
+                  position: absolute;
+                  inset: 0;
+                  background: linear-gradient(
+                    160deg,
+                    #7a9e82 0%,
+                    #4d7057 35%,
+                    #8fa882 55%,
+                    #3a5c42 80%,
+                    #5b7a62 100%
+                  );
+                "
+              ></div>
+              <div class="mosaic-overlay"></div>
+            </div>
+          </div>
+
+          <!-- 3:4 portrait -->
+          <div>
+            <div
+              style="
+                font-size: var(--fs-2xs);
+                color: var(--sub);
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 0.75rem;
+              "
+            >
+              Portrait 3:4
+            </div>
+            <div class="mosaic" style="width: 180px; aspect-ratio: 3/4">
+              <div
+                class="mosaic-bg"
+                style="
+                  position: absolute;
+                  inset: 0;
+                  background: linear-gradient(
+                    200deg,
+                    #6b7e8f 0%,
+                    #3d5266 40%,
+                    #8090a0 60%,
+                    #2c3f52 100%
+                  );
+                "
+              ></div>
+              <div class="mosaic-overlay"></div>
+            </div>
+          </div>
+
+          <!-- 16:9 landscape -->
+          <div>
+            <div
+              style="
+                font-size: var(--fs-2xs);
+                color: var(--sub);
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 0.75rem;
+              "
+            >
+              Landscape 16:9
+            </div>
+            <div class="mosaic" style="width: 320px; aspect-ratio: 16/9">
+              <div
+                class="mosaic-bg"
+                style="
+                  position: absolute;
+                  inset: 0;
+                  background: linear-gradient(
+                    110deg,
+                    #8a7a6a 0%,
+                    #5c4e40 40%,
+                    #9e8e7e 65%,
+                    #40342a 100%
+                  );
+                "
+              ></div>
+              <div class="mosaic-overlay"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pull Quote -->
+    <section>
+      <div class="section-header">
+        <div class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">Pull Quote</div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: calc(var(--space) * 2.5);
+          "
+        >
+          <blockquote class="pull-quote">
+            <p>
+              "Typography in the Penguin Classics tradition: precise,
+              restrained, nothing wasted. The page speaks before a word is
+              read."
+            </p>
+            <cite>— The New York Times</cite>
+          </blockquote>
+
+          <div class="divider-label" style="max-width: 420px">
+            <hr />
+            <span>Variant — no attribution</span>
+            <hr />
+          </div>
+
+          <blockquote
+            class="pull-quote"
+            style="border-color: rgba(10, 10, 10, 0.2)"
+          >
+            <p>"A perfect novel. Economical, piquant, beautiful, true."</p>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- Media Card -->
+    <section>
+      <div class="section-header">
+        <div class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">Media Card</div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div class="media-card-pair">
+          <div class="media-card">
+            <div
+              class="mosaic-bg"
+              style="
+                background: linear-gradient(
+                  160deg,
+                  #7a9e82 0%,
+                  #4d7057 35%,
+                  #8fa882 55%,
+                  #3a5c42 80%,
+                  #5b7a62 100%
+                );
+              "
+            ></div>
+            <div class="mosaic-overlay"></div>
+            <div class="media-card-content">
+              <div class="media-card-top">
+                <svg
+                  width="10"
+                  height="13"
+                  viewBox="0 0 24 32"
+                  fill="var(--white)"
+                  style="opacity: 0.7"
+                >
+                  <ellipse cx="12" cy="16" rx="9" ry="13" />
+                  <ellipse
+                    cx="12"
+                    cy="15"
+                    rx="5.5"
+                    ry="8.5"
+                    fill="var(--black)"
+                  />
+                  <circle cx="9.5" cy="11" r="1.2" fill="var(--white)" />
+                  <circle cx="14.5" cy="11" r="1.2" fill="var(--white)" />
+                </svg>
+                <span class="media-card-series">Pocket Universe Classics</span>
+              </div>
+              <p class="media-card-blurb">
+                "A perfect novel. Economical, piquant, beautiful, true."<br />—
+                The New York Times
+              </p>
+              <div class="media-card-author">Evan S. Connell</div>
+              <span class="media-card-rule"></span>
+              <div class="media-card-title">Mrs Bridge</div>
+            </div>
+          </div>
+
+          <div class="media-card">
+            <div
+              class="mosaic-bg"
+              style="
+                background: linear-gradient(
+                  160deg,
+                  #6b7e8f 0%,
+                  #3d5266 35%,
+                  #7a8fa0 55%,
+                  #2c3f52 80%,
+                  #4a6070 100%
+                );
+              "
+            ></div>
+            <div class="mosaic-overlay"></div>
+            <div class="media-card-content">
+              <div class="media-card-top">
+                <svg
+                  width="10"
+                  height="13"
+                  viewBox="0 0 24 32"
+                  fill="var(--white)"
+                  style="opacity: 0.7"
+                >
+                  <ellipse cx="12" cy="16" rx="9" ry="13" />
+                  <ellipse
+                    cx="12"
+                    cy="15"
+                    rx="5.5"
+                    ry="8.5"
+                    fill="var(--black)"
+                  />
+                  <circle cx="9.5" cy="11" r="1.2" fill="var(--white)" />
+                  <circle cx="14.5" cy="11" r="1.2" fill="var(--white)" />
+                </svg>
+                <span class="media-card-series">Pocket Universe Classics</span>
+              </div>
+              <p class="media-card-blurb">
+                "A tour-de-force of American realism, a beautiful work of
+                fiction."<br />— Life
+              </p>
+              <div class="media-card-author">Evan S. Connell</div>
+              <span class="media-card-rule"></span>
+              <div class="media-card-title">Mr Bridge</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Divider with Label -->
+    <section>
+      <div class="section-header">
+        <div class="mosaic--palette" data-target="64" style="position: absolute; inset: 0">
+          <div class="mosaic-overlay"></div>
+        </div>
+        <div class="wrap" style="position: relative; z-index: 2;">
+          <div class="section-label">Divider — with Label</div>
+        </div>
+      </div>
+      <div class="section-body wrap">
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: calc(var(--space) * 2);
+            max-width: 540px;
+          "
+        >
+          <div>
+            <div
+              style="
+                font-size: var(--fs-2xs);
+                color: var(--sub);
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 0.75rem;
+              "
+            >
+              Default
+            </div>
+            <div class="divider-label">
+              <hr />
+              <span>Chapter One</span>
+              <hr />
+            </div>
+          </div>
+
+          <div>
+            <div
+              style="
+                font-size: var(--fs-2xs);
+                color: var(--sub);
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 0.75rem;
+              "
+            >
+              Accent
+            </div>
+            <div class="divider-label orange">
+              <hr />
+              <span>New Release</span>
+              <hr />
+            </div>
+          </div>
+
+          <div>
+            <div
+              style="
+                font-size: var(--fs-2xs);
+                color: var(--sub);
+                letter-spacing: 0.12em;
+                text-transform: uppercase;
+                margin-bottom: 0.75rem;
+              "
+            >
+              Left-aligned
+            </div>
+            <div class="divider-label">
+              <span>Annotations</span>
+              <hr />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <svg
+        class="penguin-mark"
+        viewBox="0 0 24 32"
+        fill="var(--white)"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <ellipse cx="12" cy="16" rx="9" ry="13" />
+        <ellipse cx="12" cy="15" rx="5.5" ry="8.5" fill="var(--black)" />
+        <circle cx="9.5" cy="11" r="1.2" fill="var(--white)" />
+        <circle cx="14.5" cy="11" r="1.2" fill="var(--white)" />
+        <ellipse cx="8" cy="22" rx="3" ry="1.2" transform="rotate(-20 8 22)" />
+        <ellipse cx="16" cy="22" rx="3" ry="1.2" transform="rotate(20 16 22)" />
+      </svg>
+      <div class="footer-text">
+        Pocket Universe — Human Interface Guidelines
+      </div>
+    </footer>
+
+    <script>
+      var LINE = "rgba(245,245,240,0.18)";
+      var PALETTE = ["#0a0a0a", "#a8d8cc", "#e85d1a", "#f5f5f0"];
+      var paletteSeed = Math.floor(Math.random() * 10000);
+      var paletteOverride = null;
+
+      function tileRand(c, r, salt, seed) {
+        var n =
+          (c * 1664525 +
+            r * 1013904223 +
+            (salt || 0) * 22695477 +
+            (seed !== undefined ? seed : paletteSeed) * 1234567) &
+          0xffffffff;
+        n = (((n >>> 16) ^ n) * 0x45d9f3b) & 0xffffffff;
+        return (n >>> 0) / 4294967296;
+      }
+
+      var shrinkTimer = null;
+
+      function buildPaletteSVG(W, H, cols, rows, tw, th, seed) {
+        var ns = "http://www.w3.org/2000/svg";
+        var svg = document.createElementNS(ns, "svg");
+        svg.setAttribute("class", "mosaic-tiles-svg");
+        svg.setAttribute("width", W);
+        svg.setAttribute("height", H);
+
+        for (var r = 0; r < rows; r++) {
+          var dropChance = Math.min(0.85, Math.max(0, (r / (rows - 1) - 0.55) / 0.45));
+          for (var c = 0; c < cols; c++) {
+            if (tileRand(c, r, 0, seed) < dropChance) continue;
+            var color = paletteOverride || PALETTE[Math.floor(tileRand(c, r, 1, seed) * 4)];
+            var delay = Math.floor(tileRand(c, r, 4, seed) * 120);
+            var rect = document.createElementNS(ns, "rect");
+            rect.setAttribute("x", (c * tw).toFixed(2));
+            rect.setAttribute("y", (r * th).toFixed(2));
+            rect.setAttribute("width", tw.toFixed(2));
+            rect.setAttribute("height", th.toFixed(2));
+            rect.setAttribute("fill", color);
+            var ox = Math.round(20 + tileRand(c, r, 5, seed) * 60);
+            var oy = Math.round(20 + tileRand(c, r, 6, seed) * 60);
+            rect.setAttribute("data-delay", delay);
+            rect.style.setProperty("--delay", delay + "ms");
+            rect.style.transformOrigin = ox + "% " + oy + "%";
+            rect.setAttribute("class", "mosaic-tile");
+            svg.appendChild(rect);
+          }
+        }
+
+        var g = document.createElementNS(ns, "g");
+        g.setAttribute("stroke", "rgba(0,0,0,0.15)");
+        g.setAttribute("stroke-width", "1");
+        g.setAttribute("fill", "none");
+        for (var c2 = 1; c2 < cols; c2++) {
+          var lx = (c2 * tw).toFixed(2);
+          var ln = document.createElementNS(ns, "line");
+          ln.setAttribute("x1", lx); ln.setAttribute("y1", "0");
+          ln.setAttribute("x2", lx); ln.setAttribute("y2", H);
+          g.appendChild(ln);
+        }
+        for (var r2 = 1; r2 < rows; r2++) {
+          var ly = (r2 * th).toFixed(2);
+          var ln2 = document.createElementNS(ns, "line");
+          ln2.setAttribute("x1", "0"); ln2.setAttribute("y1", ly);
+          ln2.setAttribute("x2", W);  ln2.setAttribute("y2", ly);
+          g.appendChild(ln2);
+        }
+        svg.appendChild(g);
+        return svg;
+      }
+
+      function fitMosaics(animate) {
+        document.querySelectorAll(".mosaic-overlay").forEach(function (overlay) {
+          var p = overlay.parentElement;
+          var isPalette = p.classList.contains("mosaic--palette");
+          var target = parseInt(p.dataset.target) || 18;
+          var W = p.offsetWidth;
+          var H = p.offsetHeight;
+          var cols = Math.round(W / target) || 1;
+          var rows = Math.round(H / target) || 1;
+          var tw = W / cols;
+          var th = H / rows;
+
+          if (isPalette) {
+            var seed;
+            if (p.id === "colors-mosaic") {
+              seed = paletteSeed;
+            } else {
+              if (!p.dataset.mosaicSeed) {
+                p.dataset.mosaicSeed = Math.floor(Math.random() * 100000);
+              }
+              seed = parseInt(p.dataset.mosaicSeed);
+            }
+            var existing = p.querySelector(".mosaic-tiles-svg");
+            var newSvg = buildPaletteSVG(W, H, cols, rows, tw, th, seed);
+            overlay.style.backgroundImage = "";
+
+            if (animate && existing) {
+              if (shrinkTimer) clearTimeout(shrinkTimer);
+              // kick off per-tile shrink using stored delays (tighter stagger)
+              existing.querySelectorAll(".mosaic-tile").forEach(function (rect) {
+                var d = Math.round((parseInt(rect.getAttribute("data-delay")) || 0) / 3);
+                rect.style.animation = "tile-shrink 150ms ease-in " + d + "ms both";
+              });
+              shrinkTimer = setTimeout(function () {
+                shrinkTimer = null;
+                p.querySelectorAll(".mosaic-tiles-svg").forEach(function (s) { s.remove(); });
+                p.appendChild(newSvg);
+              }, 200);
+            } else {
+              if (existing) existing.remove();
+              p.appendChild(newSvg);
+            }
+            return;
+          }
+
+          var lines = "";
+          for (var c = 1; c < cols; c++) {
+            var x = (c * tw).toFixed(2);
+            lines += '<line x1="' + x + '" y1="0" x2="' + x + '" y2="' + H + '"/>';
+          }
+          for (var r = 1; r < rows; r++) {
+            var y = (r * th).toFixed(2);
+            lines += '<line x1="0" y1="' + y + '" x2="' + W + '" y2="' + y + '"/>';
+          }
+          var svgStr =
+            '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '">' +
+            '<g stroke="' + LINE + '" stroke-width="1">' + lines + "</g></svg>";
+          overlay.style.backgroundImage =
+            'url("data:image/svg+xml,' + encodeURIComponent(svgStr) + '")';
+        });
+      }
+
+      window.addEventListener("load", function () { fitMosaics(true); });
+      window.addEventListener("resize", function () { fitMosaics(false); });
+
+      document.addEventListener("DOMContentLoaded", function () {
+        function regenColorsMosaic(animate) {
+          var container = document.getElementById("colors-mosaic");
+          if (!container) return;
+          var overlay = container.querySelector(".mosaic-overlay");
+          if (!overlay) return;
+          var isPalette = true;
+          var target = parseInt(container.dataset.target) || 18;
+          var W = container.offsetWidth;
+          var H = container.offsetHeight;
+          var cols = Math.round(W / target) || 1;
+          var rows = Math.round(H / target) || 1;
+          var tw = W / cols;
+          var th = H / rows;
+          var existing = container.querySelector(".mosaic-tiles-svg");
+          var newSvg = buildPaletteSVG(W, H, cols, rows, tw, th, paletteSeed);
+          overlay.style.backgroundImage = "";
+          if (animate && existing) {
+            if (shrinkTimer) clearTimeout(shrinkTimer);
+            existing.querySelectorAll(".mosaic-tile").forEach(function (rect) {
+              var d = Math.round((parseInt(rect.getAttribute("data-delay")) || 0) / 3);
+              rect.style.animation = "tile-shrink 150ms ease-in " + d + "ms both";
+            });
+            shrinkTimer = setTimeout(function () {
+              shrinkTimer = null;
+              container.querySelectorAll(".mosaic-tiles-svg").forEach(function (s) { s.remove(); });
+              container.appendChild(newSvg);
+            }, 200);
+          } else {
+            if (existing) existing.remove();
+            container.appendChild(newSvg);
+          }
+        }
+
+        var btn = document.getElementById("palette-regen");
+        if (btn)
+          btn.addEventListener("click", function () {
+            paletteOverride = null;
+            paletteSeed = (paletteSeed + 1) % 10000;
+            regenColorsMosaic(true);
+          });
+        var btnClear = document.getElementById("palette-clear");
+        if (btnClear)
+          btnClear.addEventListener("click", function () {
+            paletteOverride = "#edeef0";
+            regenColorsMosaic(true);
+          });
+      });
+    </script>
+  </body>
+</html>
