@@ -1670,6 +1670,9 @@
           var target = parseInt(p.dataset.target) || 18;
           var W = p.offsetWidth;
           var H = p.offsetHeight;
+          var dimsKey = W + "x" + H;
+          if (!animate && p.dataset.mosaicDims === dimsKey) return;
+          p.dataset.mosaicDims = dimsKey;
           var cols = Math.round(W / target) || 1;
           var rows = Math.round(H / target) || 1;
           var tw = W / cols;
@@ -1726,7 +1729,11 @@
       }
 
       window.addEventListener("load", function () { fitMosaics(true); });
-      window.addEventListener("resize", function () { fitMosaics(false); });
+      var resizeTimer = null;
+      window.addEventListener("resize", function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () { fitMosaics(false); }, 100);
+      });
       document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
       document.addEventListener("touchmove", function (e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
