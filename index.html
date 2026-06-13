@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>PUHIG</title>
     <style>
       /* ── Tokens ── */
@@ -57,6 +57,7 @@
         font-family: var(--font);
         line-height: 1.5;
         min-height: 100vh;
+        touch-action: manipulation;
       }
 
       /* ── Grid ── */
@@ -1726,6 +1727,8 @@
 
       window.addEventListener("load", function () { fitMosaics(true); });
       window.addEventListener("resize", function () { fitMosaics(false); });
+      document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
+      document.addEventListener("touchmove", function (e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
       document.addEventListener("DOMContentLoaded", function () {
         function regenColorsMosaic(animate) {
