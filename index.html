@@ -644,14 +644,14 @@
 
       /* ── Mosaic tile animation ── */
       @keyframes tile-shrink {
-        from { transform: scale(1);   opacity: 1; }
-        to   { transform: scale(0.8); opacity: 0; }
+        from { transform: scale(1);    opacity: 1; filter: blur(0px); }
+        to   { transform: scale(0.8);  opacity: 0; filter: blur(6px); }
       }
       @keyframes tile-grow {
-        0%   { transform: scale(0.8);  opacity: 0; }
-        55%  { transform: scale(1.26); opacity: 1; }
-        78%  { transform: scale(0.93);             }
-        100% { transform: scale(1);                }
+        0%   { transform: scale(0.8);  opacity: 0; filter: blur(6px); }
+        55%  { transform: scale(1.26); opacity: 1; filter: blur(4px); }
+        78%  { transform: scale(0.93);             filter: blur(1px); }
+        100% { transform: scale(1);                filter: blur(0px); }
       }
       .mosaic-tile {
         transform-box: fill-box;
@@ -1701,10 +1701,7 @@
               });
               shrinkTimer = setTimeout(function () {
                 shrinkTimer = null;
-                p.querySelectorAll(".mosaic-tiles-svg").forEach(function (s) {
-                  s.querySelectorAll(".mosaic-tile").forEach(function (t) { t.style.animation = "none"; });
-                  s.remove();
-                });
+                p.querySelectorAll(".mosaic-tiles-svg").forEach(function (s) { s.remove(); });
                 p.appendChild(newSvg);
               }, 200);
             } else {
@@ -1737,14 +1734,6 @@
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function () { fitMosaics(false); }, 100);
       });
-      document.addEventListener("visibilitychange", function () {
-        if (!document.hidden) {
-          document.querySelectorAll(".mosaic--palette").forEach(function (p) {
-            delete p.dataset.mosaicDims;
-          });
-          fitMosaics(false);
-        }
-      });
       document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
       document.addEventListener("touchmove", function (e) { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
 
@@ -1773,10 +1762,7 @@
             });
             shrinkTimer = setTimeout(function () {
               shrinkTimer = null;
-              container.querySelectorAll(".mosaic-tiles-svg").forEach(function (s) {
-                s.querySelectorAll(".mosaic-tile").forEach(function (t) { t.style.animation = "none"; });
-                s.remove();
-              });
+              container.querySelectorAll(".mosaic-tiles-svg").forEach(function (s) { s.remove(); });
               container.appendChild(newSvg);
             }, 200);
           } else {
