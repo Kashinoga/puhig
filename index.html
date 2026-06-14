@@ -1701,12 +1701,13 @@
               });
               shrinkTimer = setTimeout(function () {
                 shrinkTimer = null;
-                p.querySelectorAll(".mosaic-tiles-svg").forEach(function (s) { s.remove(); });
+                var oldSvgs = Array.from(p.querySelectorAll(".mosaic-tiles-svg"));
                 p.appendChild(newSvg);
+                requestAnimationFrame(function () { oldSvgs.forEach(function (s) { s.remove(); }); });
               }, 200);
             } else {
-              if (existing) existing.remove();
               p.appendChild(newSvg);
+              if (existing) requestAnimationFrame(function () { existing.remove(); });
             }
             return;
           }
@@ -1762,12 +1763,13 @@
             });
             shrinkTimer = setTimeout(function () {
               shrinkTimer = null;
-              container.querySelectorAll(".mosaic-tiles-svg").forEach(function (s) { s.remove(); });
+              var oldSvgs = Array.from(container.querySelectorAll(".mosaic-tiles-svg"));
               container.appendChild(newSvg);
+              requestAnimationFrame(function () { oldSvgs.forEach(function (s) { s.remove(); }); });
             }, 200);
           } else {
-            if (existing) existing.remove();
             container.appendChild(newSvg);
+            if (existing) requestAnimationFrame(function () { existing.remove(); });
           }
         }
 
