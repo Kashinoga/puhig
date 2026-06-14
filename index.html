@@ -1702,6 +1702,9 @@
               shrinkTimer = setTimeout(function () {
                 shrinkTimer = null;
                 var oldSvgs = Array.from(p.querySelectorAll(".mosaic-tiles-svg"));
+                oldSvgs.forEach(function (s) {
+                  s.querySelectorAll(".mosaic-tile").forEach(function (t) { t.style.animation = "none"; });
+                });
                 p.appendChild(newSvg);
                 requestAnimationFrame(function () { oldSvgs.forEach(function (s) { s.remove(); }); });
               }, 200);
@@ -1764,6 +1767,9 @@
             shrinkTimer = setTimeout(function () {
               shrinkTimer = null;
               var oldSvgs = Array.from(container.querySelectorAll(".mosaic-tiles-svg"));
+              oldSvgs.forEach(function (s) {
+                s.querySelectorAll(".mosaic-tile").forEach(function (t) { t.style.animation = "none"; });
+              });
               container.appendChild(newSvg);
               requestAnimationFrame(function () { oldSvgs.forEach(function (s) { s.remove(); }); });
             }, 200);
