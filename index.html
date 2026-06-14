@@ -644,14 +644,14 @@
 
       /* ── Mosaic tile animation ── */
       @keyframes tile-shrink {
-        from { transform: scale(1);    opacity: 1; filter: blur(0px); }
-        to   { transform: scale(0.8);  opacity: 0; filter: blur(6px); }
+        from { transform: scale(1);   opacity: 1; }
+        to   { transform: scale(0.8); opacity: 0; }
       }
       @keyframes tile-grow {
-        0%   { transform: scale(0.8);  opacity: 0; filter: blur(6px); }
-        55%  { transform: scale(1.26); opacity: 1; filter: blur(4px); }
-        78%  { transform: scale(0.93);             filter: blur(1px); }
-        100% { transform: scale(1);                filter: blur(0px); }
+        0%   { transform: scale(0.8);  opacity: 0; }
+        55%  { transform: scale(1.26); opacity: 1; }
+        78%  { transform: scale(0.93);             }
+        100% { transform: scale(1);                }
       }
       .mosaic-tile {
         transform-box: fill-box;
@@ -1598,6 +1598,13 @@
       var PALETTE = ["#0a0a0a", "#a8d8cc", "#e85d1a", "#f5f5f0"];
       var paletteSeed = Math.floor(Math.random() * 10000);
       var paletteOverride = null;
+      var TEXTURE_PRESETS = [
+        { name: "ceramic", type: "fractalNoise", freq: "0.65", octaves: "3", scale: "1.5", elev: "72" },
+        { name: "stone",   type: "fractalNoise", freq: "0.35", octaves: "4", scale: "3",   elev: "48" },
+        { name: "paint",   type: "fractalNoise", freq: "1.1",  octaves: "2", scale: "1",   elev: "80" },
+        { name: "raw",     type: "turbulence",   freq: "0.28", octaves: "5", scale: "4",   elev: "38" }
+      ];
+      var palettePreset = 0;
 
       function tileRand(c, r, salt, seed) {
         var n =
@@ -1619,6 +1626,46 @@
         svg.setAttribute("width", W);
         svg.setAttribute("height", H);
 
+        var preset = TEXTURE_PRESETS[palettePreset];
+        var filterId = "tile-tex-" + seed;
+        var defs = document.createElementNS(ns, "defs");
+        var filter = document.createElementNS(ns, "filter");
+        filter.setAttribute("id", filterId);
+        filter.setAttribute("color-interpolation-filters", "sRGB");
+        var turb = document.createElementNS(ns, "feTurbulence");
+        turb.setAttribute("type", preset.type);
+        turb.setAttribute("baseFrequency", preset.freq);
+        turb.setAttribute("numOctaves", preset.octaves);
+        turb.setAttribute("seed", seed % 1000);
+        turb.setAttribute("result", "noise");
+        var light = document.createElementNS(ns, "feDiffuseLighting");
+        light.setAttribute("in", "noise");
+        light.setAttribute("lighting-color", "white");
+        light.setAttribute("surfaceScale", preset.scale);
+        light.setAttribute("result", "lit");
+        var distLight = document.createElementNS(ns, "feDistantLight");
+        distLight.setAttribute("azimuth", "45");
+        distLight.setAttribute("elevation", preset.elev);
+        light.appendChild(distLight);
+        var comp = document.createElementNS(ns, "feComposite");
+        comp.setAttribute("in", "lit");
+        comp.setAttribute("in2", "SourceGraphic");
+        comp.setAttribute("operator", "in");
+        comp.setAttribute("result", "masked");
+        var blend = document.createElementNS(ns, "feBlend");
+        blend.setAttribute("in", "SourceGraphic");
+        blend.setAttribute("in2", "masked");
+        blend.setAttribute("mode", "multiply");
+        filter.appendChild(turb);
+        filter.appendChild(light);
+        filter.appendChild(comp);
+        filter.appendChild(blend);
+        defs.appendChild(filter);
+        svg.appendChild(defs);
+
+        var tilesG = document.createElementNS(ns, "g");
+        tilesG.setAttribute("filter", "url(#" + filterId + ")");
+
         for (var r = 0; r < rows; r++) {
           var dropChance = Math.min(0.85, Math.max(0, (r / (rows - 1) - 0.55) / 0.45));
           for (var c = 0; c < cols; c++) {
@@ -1637,9 +1684,10 @@
             rect.style.setProperty("--delay", delay + "ms");
             rect.style.transformOrigin = ox + "% " + oy + "%";
             rect.setAttribute("class", "mosaic-tile");
-            svg.appendChild(rect);
+            tilesG.appendChild(rect);
           }
         }
+        svg.appendChild(tilesG);
 
         var g = document.createElementNS(ns, "g");
         g.setAttribute("stroke", "rgba(0,0,0,0.15)");
@@ -1794,6 +1842,8 @@
           btn.addEventListener("click", function () {
             paletteOverride = null;
             paletteSeed = (paletteSeed + 1) % 10000;
+            palettePreset = (palettePreset + 1) % TEXTURE_PRESETS.length;
+            console.log("texture preset:", TEXTURE_PRESETS[palettePreset].name);
             regenColorsMosaic(true);
           });
         var btnClear = document.getElementById("palette-clear");
