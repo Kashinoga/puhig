@@ -1,0 +1,10 @@
+# Ignore everything
+*
+
+# Un-ignore project files
+!index.html
+!puhig.css
+!puhig.js
+!fonts/
+!fonts/**
+!.gitignore
