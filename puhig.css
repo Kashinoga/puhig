@@ -26,6 +26,7 @@
 * {
   margin: 0;
   padding: 0;
+  touch-action: pan-x pan-y;
 }
 
 html {
@@ -38,7 +39,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
 }
 
 p {
@@ -136,10 +137,12 @@ h2 {
   display: flex;
   flex: 4;
   flex-direction: column;
+  min-width: 0;
 }
 
 .panel-mosaic {
   flex: 2;
+  min-width: 0;
   overflow: hidden;
   position: relative;
 }
@@ -275,6 +278,7 @@ h1 {
   column-gap: 24px;
   display: flex;
   justify-content: space-between;
+  min-width: 0;
   padding-block: 0;
 }
 

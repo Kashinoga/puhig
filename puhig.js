@@ -417,7 +417,9 @@ function fitMosaics(animate) {
     var seed = parseInt(p.dataset.mosaicSeed);
 
     var isCA = p.dataset.mosaicType === "ca";
-    var cols = (isCA ? Math.floor(W / target) : Math.round(W / target)) || 1;
+    var isMobile = window.innerWidth <= 768;
+    var mobileCols = parseInt(p.dataset.mobileCols);
+    var cols = (isMobile && mobileCols) ? mobileCols : ((isCA ? Math.floor(W / target) : Math.round(W / target)) || 1);
     var rows = (isCA ? Math.floor(H / target) : Math.round(H / target)) || 1;
     var tw = W / cols;
     var th = H / rows;
