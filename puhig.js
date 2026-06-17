@@ -366,10 +366,11 @@ function setupMosaicPress(container) {
     triggerRipple(svg);
 
     if (cleanupTimer) clearTimeout(cleanupTimer);
+    var savedCol = pressTileCol, savedRow = pressTileRow;
     cleanupTimer = setTimeout(function () {
       cleanupTimer = null;
       svg._tiles.forEach(function (tile) {
-        if (Math.abs(tile._col - pressTileCol) + Math.abs(tile._row - pressTileRow) > PRESS_RADIUS) return;
+        if (Math.abs(tile._col - savedCol) + Math.abs(tile._row - savedRow) > PRESS_RADIUS) return;
         tile.style.transform = "";
         tile.style.transition = "";
         tile.style.transformOrigin = "";
@@ -382,12 +383,15 @@ function setupMosaicPress(container) {
     var maxDist = svg._maxDist;
 
     svg._ripples.forEach(function (ripple) {
+      if (ripple._timers) { ripple._timers.forEach(clearTimeout); }
       var dc = ripple._col - col, dr = ripple._row - row;
       var dist = Math.sqrt(dc * dc + dr * dr);
       var delay = Math.round(dist * 35);
       var peak = (Math.max(0, 1 - dist / maxDist) * 0.90).toFixed(3);
-      setTimeout(function () { ripple.style.opacity = peak; }, delay);
-      setTimeout(function () { ripple.style.opacity = "0"; }, delay + 200);
+      ripple._timers = [
+        setTimeout(function () { ripple.style.opacity = peak; }, delay),
+        setTimeout(function () { ripple.style.opacity = "0"; }, delay + 200)
+      ];
     });
   }
 

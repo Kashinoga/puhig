@@ -295,6 +295,16 @@ h1 {
   grid-template-columns: auto 1fr;
 }
 
+.type-headings h1,
+.type-headings h2,
+.type-headings h3,
+.type-headings h4,
+.type-headings h5,
+.type-headings h6 {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 .type-weights {
   display: grid;
   grid-template-columns: 1fr 1fr;
