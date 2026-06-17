@@ -68,6 +68,74 @@ function buildGrid(ns, svg, W, H, cols, rows, tw, th) {
 }
 
 
+function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt) {
+  var colorOrder = PALETTE.map(function (_, i) { return i; });
+  for (var i = colorOrder.length - 1; i > 0; i--) {
+    var j = Math.floor(tileRand(i, 0, shuffleSalt, seed) * (i + 1));
+    var tmp = colorOrder[i]; colorOrder[i] = colorOrder[j]; colorOrder[j] = tmp;
+  }
+  for (var r = 0; r < rows; r++) {
+    for (var c = 0; c < cols; c++) {
+      if (!isAlive(c, r)) continue;
+      var colorIdx = Math.floor(tileRand(c, r, 1, seed) * PALETTE.length);
+      var color = PALETTE[colorIdx];
+      var delay = colorOrder[colorIdx] * 135 + Math.floor(tileRand(c, r, 4, seed) * 200);
+      var ox = Math.round(20 + tileRand(c, r, 5, seed) * 60);
+      var oy = Math.round(20 + tileRand(c, r, 6, seed) * 60);
+      var rect = document.createElementNS(ns, "rect");
+      rect.setAttribute("x", (c * tw).toFixed(2));
+      rect.setAttribute("y", (r * th).toFixed(2));
+      rect.setAttribute("width", tw.toFixed(2));
+      rect.setAttribute("height", th.toFixed(2));
+      rect.setAttribute("fill", color);
+      rect.setAttribute("class", "mosaic-tile");
+      rect.setAttribute("data-delay", delay);
+      rect.setAttribute("data-col", c);
+      rect.setAttribute("data-row", r);
+      rect.style.setProperty("--delay", delay + "ms");
+      rect.style.transformOrigin = ox + "% " + oy + "%";
+      rect._col = c; rect._row = r; svg._tiles.push(rect);
+      svg.appendChild(rect);
+      var hover = document.createElementNS(ns, "rect");
+      hover.setAttribute("x", (c * tw).toFixed(2));
+      hover.setAttribute("y", (r * th).toFixed(2));
+      hover.setAttribute("width", tw.toFixed(2));
+      hover.setAttribute("height", th.toFixed(2));
+      hover.setAttribute("fill", "#ffd8a8");
+      hover.setAttribute("class", "mosaic-hover");
+      hover.setAttribute("data-col", c);
+      hover.setAttribute("data-row", r);
+      hover.style.opacity = "0";
+      hover._col = c; hover._row = r; svg._hovers.push(hover);
+      svg.appendChild(hover);
+      var ripple = document.createElementNS(ns, "rect");
+      ripple.setAttribute("x", (c * tw).toFixed(2));
+      ripple.setAttribute("y", (r * th).toFixed(2));
+      ripple.setAttribute("width", tw.toFixed(2));
+      ripple.setAttribute("height", th.toFixed(2));
+      ripple.setAttribute("fill", "#ffd8a8");
+      ripple.setAttribute("class", "mosaic-ripple");
+      ripple.setAttribute("data-col", c);
+      ripple.setAttribute("data-row", r);
+      ripple.style.opacity = "0";
+      ripple._col = c; ripple._row = r; svg._ripples.push(ripple);
+      svg.appendChild(ripple);
+      var press = document.createElementNS(ns, "rect");
+      press.setAttribute("x", (c * tw).toFixed(2));
+      press.setAttribute("y", (r * th).toFixed(2));
+      press.setAttribute("width", tw.toFixed(2));
+      press.setAttribute("height", th.toFixed(2));
+      press.setAttribute("fill", "#0a0a0a");
+      press.setAttribute("class", "mosaic-press");
+      press.setAttribute("data-col", c);
+      press.setAttribute("data-row", r);
+      press.style.opacity = "0";
+      press._col = c; press._row = r; svg._presses.push(press);
+      svg.appendChild(press);
+    }
+  }
+}
+
 function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
   var r, c, dr, dc, nr, nc, alive, next;
 
@@ -79,7 +147,6 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
       grid[r][c] = isEdge ? 0 : (tileRand(c, r, 50, seed) < 0.45 ? 1 : 0);
     }
   }
-
   for (var iter = 0; iter < 4; iter++) {
     next = [];
     for (r = 0; r < rows; r++) {
@@ -110,74 +177,7 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
   buildGrid(ns, svg, W, H, cols, rows, tw, th);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
-
-  var colorOrder = PALETTE.map(function (_, i) { return i; });
-  for (var i = colorOrder.length - 1; i > 0; i--) {
-    var j = Math.floor(tileRand(i, 0, 201, seed) * (i + 1));
-    var tmp = colorOrder[i]; colorOrder[i] = colorOrder[j]; colorOrder[j] = tmp;
-  }
-
-  for (r = 0; r < rows; r++) {
-    for (c = 0; c < cols; c++) {
-      if (!grid[r][c]) continue;
-      var colorIdx = Math.floor(tileRand(c, r, 1, seed) * PALETTE.length);
-      var color = PALETTE[colorIdx];
-      var delay = colorOrder[colorIdx] * 135 + Math.floor(tileRand(c, r, 4, seed) * 200);
-      var ox = Math.round(20 + tileRand(c, r, 5, seed) * 60);
-      var oy = Math.round(20 + tileRand(c, r, 6, seed) * 60);
-      var rect = document.createElementNS(ns, "rect");
-      rect.setAttribute("x", (c * tw).toFixed(2));
-      rect.setAttribute("y", (r * th).toFixed(2));
-      rect.setAttribute("width", tw.toFixed(2));
-      rect.setAttribute("height", th.toFixed(2));
-      rect.setAttribute("fill", color);
-      rect.setAttribute("class", "mosaic-tile");
-      rect.setAttribute("data-delay", delay);
-      rect.setAttribute("data-col", c);
-      rect.setAttribute("data-row", r);
-      rect.style.setProperty("--delay", delay + "ms");
-      rect.style.transformOrigin = ox + "% " + oy + "%";
-      rect._col = c; rect._row = r; svg._tiles.push(rect);
-      svg.appendChild(rect);
-      var hover = document.createElementNS(ns, "rect");
-      hover.setAttribute("x", (c * tw).toFixed(2));
-      hover.setAttribute("y", (r * th).toFixed(2));
-      hover.setAttribute("width", tw.toFixed(2));
-      hover.setAttribute("height", th.toFixed(2));
-      hover.setAttribute("fill", "#ffd8a8");
-      hover.setAttribute("class", "mosaic-hover");
-      hover.setAttribute("data-col", c);
-      hover.setAttribute("data-row", r);
-      hover.style.opacity = "0";
-      hover._col = c; hover._row = r; svg._hovers.push(hover);
-      svg.appendChild(hover);
-      var ripple = document.createElementNS(ns, "rect");
-      ripple.setAttribute("x", (c * tw).toFixed(2));
-      ripple.setAttribute("y", (r * th).toFixed(2));
-      ripple.setAttribute("width", tw.toFixed(2));
-      ripple.setAttribute("height", th.toFixed(2));
-      ripple.setAttribute("fill", "#ffd8a8");
-      ripple.setAttribute("class", "mosaic-ripple");
-      ripple.setAttribute("data-col", c);
-      ripple.setAttribute("data-row", r);
-      ripple.style.opacity = "0";
-      ripple._col = c; ripple._row = r; svg._ripples.push(ripple);
-      svg.appendChild(ripple);
-      var press = document.createElementNS(ns, "rect");
-      press.setAttribute("x", (c * tw).toFixed(2));
-      press.setAttribute("y", (r * th).toFixed(2));
-      press.setAttribute("width", tw.toFixed(2));
-      press.setAttribute("height", th.toFixed(2));
-      press.setAttribute("fill", "#0a0a0a");
-      press.setAttribute("class", "mosaic-press");
-      press.setAttribute("data-col", c);
-      press.setAttribute("data-row", r);
-      press.style.opacity = "0";
-      press._col = c; press._row = r; svg._presses.push(press);
-      svg.appendChild(press);
-    }
-  }
-
+  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201);
   return svg;
 }
 
@@ -190,78 +190,11 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed) {
   buildGrid(ns, svg, W, H, cols, rows, tw, th);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
-
-  var colorOrder = PALETTE.map(function (_, i) { return i; });
-  for (var i = colorOrder.length - 1; i > 0; i--) {
-    var j = Math.floor(tileRand(i, 0, 200, seed) * (i + 1));
-    var tmp = colorOrder[i]; colorOrder[i] = colorOrder[j]; colorOrder[j] = tmp;
-  }
-
-  for (var r = 0; r < rows; r++) {
-    for (var c = 0; c < cols; c++) {
-      var isEdge = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
-      var dropChance = isEdge ? 0.85 : organicDrop(c, r, seed) * 0.5;
-      if (tileRand(c, r, 0, seed) < dropChance) continue;
-
-      var colorIdx = Math.floor(tileRand(c, r, 1, seed) * PALETTE.length);
-      var color = PALETTE[colorIdx];
-      var delay = colorOrder[colorIdx] * 135 + Math.floor(tileRand(c, r, 4, seed) * 200);
-      var ox = Math.round(20 + tileRand(c, r, 5, seed) * 60);
-      var oy = Math.round(20 + tileRand(c, r, 6, seed) * 60);
-
-      var rect = document.createElementNS(ns, "rect");
-      rect.setAttribute("x", (c * tw).toFixed(2));
-      rect.setAttribute("y", (r * th).toFixed(2));
-      rect.setAttribute("width", tw.toFixed(2));
-      rect.setAttribute("height", th.toFixed(2));
-      rect.setAttribute("fill", color);
-      rect.setAttribute("class", "mosaic-tile");
-      rect.setAttribute("data-delay", delay);
-      rect.setAttribute("data-col", c);
-      rect.setAttribute("data-row", r);
-      rect.style.setProperty("--delay", delay + "ms");
-      rect.style.transformOrigin = ox + "% " + oy + "%";
-      rect._col = c; rect._row = r; svg._tiles.push(rect);
-      svg.appendChild(rect);
-      var hover = document.createElementNS(ns, "rect");
-      hover.setAttribute("x", (c * tw).toFixed(2));
-      hover.setAttribute("y", (r * th).toFixed(2));
-      hover.setAttribute("width", tw.toFixed(2));
-      hover.setAttribute("height", th.toFixed(2));
-      hover.setAttribute("fill", "#ffd8a8");
-      hover.setAttribute("class", "mosaic-hover");
-      hover.setAttribute("data-col", c);
-      hover.setAttribute("data-row", r);
-      hover.style.opacity = "0";
-      hover._col = c; hover._row = r; svg._hovers.push(hover);
-      svg.appendChild(hover);
-      var ripple = document.createElementNS(ns, "rect");
-      ripple.setAttribute("x", (c * tw).toFixed(2));
-      ripple.setAttribute("y", (r * th).toFixed(2));
-      ripple.setAttribute("width", tw.toFixed(2));
-      ripple.setAttribute("height", th.toFixed(2));
-      ripple.setAttribute("fill", "#ffd8a8");
-      ripple.setAttribute("class", "mosaic-ripple");
-      ripple.setAttribute("data-col", c);
-      ripple.setAttribute("data-row", r);
-      ripple.style.opacity = "0";
-      ripple._col = c; ripple._row = r; svg._ripples.push(ripple);
-      svg.appendChild(ripple);
-      var press = document.createElementNS(ns, "rect");
-      press.setAttribute("x", (c * tw).toFixed(2));
-      press.setAttribute("y", (r * th).toFixed(2));
-      press.setAttribute("width", tw.toFixed(2));
-      press.setAttribute("height", th.toFixed(2));
-      press.setAttribute("fill", "#0a0a0a");
-      press.setAttribute("class", "mosaic-press");
-      press.setAttribute("data-col", c);
-      press.setAttribute("data-row", r);
-      press.style.opacity = "0";
-      press._col = c; press._row = r; svg._presses.push(press);
-      svg.appendChild(press);
-    }
-  }
-
+  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) {
+    var isEdge = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
+    var dropChance = isEdge ? 0.85 : organicDrop(c, r, seed) * 0.5;
+    return tileRand(c, r, 0, seed) >= dropChance;
+  }, 200);
   return svg;
 }
 
@@ -281,7 +214,8 @@ function setupMosaicLight(container) {
     var tileRow = Math.floor(cy / th);
     svg._hovers.forEach(function (glow) {
       var dist = Math.abs(glow._col - tileCol) + Math.abs(glow._row - tileRow);
-      glow.style.opacity = dist <= LIGHT_RADIUS ? LIGHT_OPACITIES[dist] : "0";
+      var target = dist <= LIGHT_RADIUS ? LIGHT_OPACITIES[dist] : "0";
+      if (glow._opacity !== target) { glow._opacity = target; glow.style.opacity = target; }
     });
   }
 
@@ -303,7 +237,7 @@ function setupMosaicLight(container) {
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     var svg = container._mosaicSvg;
     if (!svg) return;
-    svg._hovers.forEach(function (glow) { glow.style.opacity = "0"; });
+    svg._hovers.forEach(function (glow) { glow._opacity = "0"; glow.style.opacity = "0"; });
   });
 
   container._applyMosaicLight = function () {
@@ -407,7 +341,9 @@ function fitMosaics(animate) {
   document.querySelectorAll(".mosaic-overlay").forEach(function (overlay) {
     var p = overlay.parentElement;
     var target = parseInt(p.dataset.target) || 24;
-    var W = p.offsetWidth;
+    p.style.width = "";
+    var W = Math.round(p.getBoundingClientRect().width);
+    p.style.width = W + "px";
     var H = p.offsetHeight;
     if (!W || !H) return;
 
@@ -421,9 +357,7 @@ function fitMosaics(animate) {
     var seed = parseInt(p.dataset.mosaicSeed);
 
     var isCA = p.dataset.mosaicType === "ca";
-    var isMobile = window.innerWidth <= 768;
-    var mobileCols = parseInt(p.dataset.mobileCols);
-    var cols = (isMobile && mobileCols) ? mobileCols : ((isCA ? Math.floor(W / target) : Math.round(W / target)) || 1);
+    var cols = (isCA ? Math.floor(W / target) : Math.round(W / target)) || 1;
     var rows = (isCA ? Math.floor(H / target) : Math.round(H / target)) || 1;
     var tw = W / cols;
     var th = H / rows;
