@@ -33,6 +33,7 @@ html {
 }
 
 body {
+  background-color: var(--white);
   font-family: "Jost", system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -68,6 +69,16 @@ h4,
 h5,
 h6 {
   overflow-wrap: break-word;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  border-bottom: 2px solid var(--orange);
+  padding-bottom: 4px;
 }
 
 .wordmark {
@@ -138,10 +149,6 @@ header > .panel {
   padding-right: env(safe-area-inset-right);
 }
 
-header > .panel > .panel-content {
-  padding-block-start: 24px;
-  padding-inline: 24px 24px;
-}
 
 .mosaic-tiles-svg {
   inset: 0;
@@ -183,7 +190,7 @@ header > .panel > .panel-content {
   }
 }
 
-h2.hero {
+h1.hero {
   font-size: 36px;
   text-transform: uppercase;
 }
@@ -194,39 +201,20 @@ h2.hero {
   width: 100%;
 }
 
+
 .hero-label {
   align-self: flex-end;
   font-size: 48px;
   line-height: 1;
+  margin-top: 24px;
   text-align: right;
 }
 
-header h2 {
+header h1 {
   font-size: 48px;
   text-transform: uppercase;
 }
 
-.superhero-block {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-.superhero-rule,
-.hero-rule {
-  background: var(--orange);
-  display: block;
-  height: 2px;
-  margin-top: 0;
-}
-
-.superhero-rule {
-  margin-bottom: 48px;
-}
-
-.hero-rule {
-  margin-bottom: 24px;
-}
 
 h1 {
   font-size: 36px;
@@ -236,10 +224,11 @@ h1 {
   align-self: flex-end;
   font-size: 64px;
   line-height: 1;
+  margin-top: 48px;
   text-align: right;
 }
 
-.type-panel {
+.panel-body {
   padding: 24px;
   width: 100%;
 }
@@ -255,10 +244,17 @@ h1 {
   text-transform: uppercase;
 }
 
+.panel-section {
+  border-top: 1px dashed var(--border);
+  margin-block-start: 24px;
+  padding-block-start: 24px;
+}
+
 .type-scale {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  margin-block-start: 24px;
   width: 100%;
 }
 
@@ -271,18 +267,27 @@ h1 {
 }
 
 .type-meta {
-  color: var(--sub);
+  color: #888;
   font-size: 12px;
   letter-spacing: 0.1em;
   white-space: nowrap;
 }
 
-.type-note {
-  color: var(--sub);
-  font-size: 12px;
-  letter-spacing: 0.15em;
-  margin-top: 24px;
-  text-transform: uppercase;
+.type-headings {
+  align-items: baseline;
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+
+.type-weights {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.weight-sample {
+  font-family: "Jost", system-ui, sans-serif;
+  font-size: 48px;
+  line-height: 1;
 }
 
 
@@ -297,6 +302,7 @@ h1 {
 
 .font-excerpt {
   font-size: 14px;
+  font-style: italic;
   line-height: 1.5;
 }
 
@@ -315,6 +321,7 @@ h1 {
   align-items: center;
   color: inherit;
   display: inline-flex;
+  font-style: italic;
   gap: 4px;
   letter-spacing: 0.15em;
   text-decoration: none;

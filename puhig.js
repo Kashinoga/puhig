@@ -33,6 +33,29 @@ function organicDrop(c, r, seed) {
        + valueNoise(c, r, 1, 12, seed) * 0.1;
 }
 
+function buildGrid(ns, svg, W, H, cols, rows, tw, th) {
+  var g = document.createElementNS(ns, "g");
+  g.setAttribute("stroke", "rgba(0,0,0,0.15)");
+  g.setAttribute("stroke-width", "1");
+  g.setAttribute("fill", "none");
+  for (var c = 1; c < cols; c++) {
+    var lx = (c * tw).toFixed(2);
+    var ln = document.createElementNS(ns, "line");
+    ln.setAttribute("x1", lx); ln.setAttribute("y1", "0");
+    ln.setAttribute("x2", lx); ln.setAttribute("y2", H);
+    g.appendChild(ln);
+  }
+  for (var r = 1; r < rows; r++) {
+    var ly = (r * th).toFixed(2);
+    var ln2 = document.createElementNS(ns, "line");
+    ln2.setAttribute("x1", "0"); ln2.setAttribute("y1", ly);
+    ln2.setAttribute("x2", W);  ln2.setAttribute("y2", ly);
+    g.appendChild(ln2);
+  }
+  svg.appendChild(g);
+}
+
+
 function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
   var r, c, dr, dc, nr, nc, alive, next;
 
@@ -72,6 +95,7 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
   svg.setAttribute("class", "mosaic-tiles-svg");
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
+  buildGrid(ns, svg, W, H, cols, rows, tw, th);
 
   var colorOrder = PALETTE.map(function (_, i) { return i; });
   for (var i = colorOrder.length - 1; i > 0; i--) {
@@ -101,25 +125,6 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
     }
   }
 
-  var g = document.createElementNS(ns, "g");
-  g.setAttribute("stroke", "rgba(0,0,0,0.15)");
-  g.setAttribute("stroke-width", "1");
-  g.setAttribute("fill", "none");
-  for (var c2 = 1; c2 < cols; c2++) {
-    var lx = (c2 * tw).toFixed(2);
-    var ln = document.createElementNS(ns, "line");
-    ln.setAttribute("x1", lx); ln.setAttribute("y1", "0");
-    ln.setAttribute("x2", lx); ln.setAttribute("y2", H);
-    g.appendChild(ln);
-  }
-  for (var r2 = 1; r2 < rows; r2++) {
-    var ly = (r2 * th).toFixed(2);
-    var ln2 = document.createElementNS(ns, "line");
-    ln2.setAttribute("x1", "0"); ln2.setAttribute("y1", ly);
-    ln2.setAttribute("x2", W);  ln2.setAttribute("y2", ly);
-    g.appendChild(ln2);
-  }
-  svg.appendChild(g);
   return svg;
 }
 
@@ -129,6 +134,7 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed) {
   svg.setAttribute("class", "mosaic-tiles-svg");
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
+  buildGrid(ns, svg, W, H, cols, rows, tw, th);
 
   var colorOrder = PALETTE.map(function (_, i) { return i; });
   for (var i = colorOrder.length - 1; i > 0; i--) {
@@ -162,27 +168,9 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed) {
     }
   }
 
-  var g = document.createElementNS(ns, "g");
-  g.setAttribute("stroke", "rgba(0,0,0,0.15)");
-  g.setAttribute("stroke-width", "1");
-  g.setAttribute("fill", "none");
-  for (var c2 = 1; c2 < cols; c2++) {
-    var lx = (c2 * tw).toFixed(2);
-    var ln = document.createElementNS(ns, "line");
-    ln.setAttribute("x1", lx); ln.setAttribute("y1", "0");
-    ln.setAttribute("x2", lx); ln.setAttribute("y2", H);
-    g.appendChild(ln);
-  }
-  for (var r2 = 1; r2 < rows; r2++) {
-    var ly = (r2 * th).toFixed(2);
-    var ln2 = document.createElementNS(ns, "line");
-    ln2.setAttribute("x1", "0"); ln2.setAttribute("y1", ly);
-    ln2.setAttribute("x2", W);  ln2.setAttribute("y2", ly);
-    g.appendChild(ln2);
-  }
-  svg.appendChild(g);
   return svg;
 }
+
 
 function fitMosaics(animate) {
   document.querySelectorAll(".mosaic-overlay").forEach(function (overlay) {
