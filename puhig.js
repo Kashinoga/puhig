@@ -118,6 +118,7 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       ripple.setAttribute("data-col", c);
       ripple.setAttribute("data-row", r);
       ripple.style.opacity = "0";
+      ripple._accOpacity = 0;
       ripple._col = c; ripple._row = r; svg._ripples.push(ripple);
       svg.appendChild(ripple);
       var press = document.createElementNS(ns, "rect");
@@ -317,15 +318,18 @@ function setupMosaicPress(container) {
     var maxDist = svg._maxDist;
 
     svg._ripples.forEach(function (ripple) {
-      if (ripple._timers) { ripple._timers.forEach(clearTimeout); }
       var dc = ripple._col - col, dr = ripple._row - row;
       var dist = Math.sqrt(dc * dc + dr * dr);
       var delay = Math.round(dist * 35);
-      var peak = (Math.max(0, 1 - dist / maxDist) * 0.90).toFixed(3);
-      ripple._timers = [
-        setTimeout(function () { ripple.style.opacity = peak; }, delay),
-        setTimeout(function () { ripple.style.opacity = "0"; }, delay + 200)
-      ];
+      var peakVal = Math.max(0, 1 - dist / maxDist) * 0.90;
+      setTimeout(function () {
+        ripple._accOpacity += peakVal;
+        ripple.style.opacity = Math.min(1, ripple._accOpacity).toFixed(3);
+      }, delay);
+      setTimeout(function () {
+        ripple._accOpacity -= peakVal;
+        ripple.style.opacity = Math.max(0, ripple._accOpacity).toFixed(3);
+      }, delay + 80);
     });
   }
 
@@ -338,14 +342,44 @@ function setupMosaicPress(container) {
 }
 
 function fitMosaics(animate) {
+  // Sidebar width: largest multiple of 24px where content col stays >= 2× wider.
+  //   (containerW - mosaicW) / mosaicW >= 2  →  mosaicCols <= containerW / 72
+  // Applied at all viewports so tw=24 is consistent between sidebar and divider.
+  var mosaicW = null;
+  var refEl = document.querySelector(".mosaic-divider");
+  if (refEl) {
+    refEl.style.width = "";
+    var containerW = Math.round(refEl.getBoundingClientRect().width);
+    var mosaicCols = Math.max(Math.floor(containerW / 72), 1);
+    mosaicW = mosaicCols * 24;
+  }
+
   document.querySelectorAll(".mosaic-overlay").forEach(function (overlay) {
     var p = overlay.parentElement;
     var target = parseInt(p.dataset.target) || 24;
+    var isSidebar = p.classList.contains("panel-mosaic");
+    var isDivider = p.classList.contains("mosaic-divider");
+
     p.style.width = "";
-    var W = Math.round(p.getBoundingClientRect().width);
-    p.style.width = W + "px";
+    p.style.flex = "";
+
+    // Sidebar: pin to exact tile-grid width.
+    // Divider: use natural full width but floor to a multiple of 24 so tw=24 exactly.
+    var W, W_full;
+    if (mosaicW !== null && isSidebar) {
+      p.style.flex = "none";
+      p.style.width = mosaicW + "px";
+      W = mosaicW;
+    } else if (isDivider) {
+      W_full = p.offsetWidth;
+      W = Math.floor(W_full / target) * target;
+    } else {
+      W = p.offsetWidth;
+    }
+    if (!W) W = target;
+
     var H = p.offsetHeight;
-    if (!W || !H) return;
+    if (!H) return;
 
     var dimsKey = W + "x" + H;
     if (!animate && p.dataset.mosaicDims === dimsKey) return;
@@ -357,7 +391,7 @@ function fitMosaics(animate) {
     var seed = parseInt(p.dataset.mosaicSeed);
 
     var isCA = p.dataset.mosaicType === "ca";
-    var cols = (isCA ? Math.floor(W / target) : Math.round(W / target)) || 1;
+    var cols = Math.floor(W / target) || 1;
     var rows = (isCA ? Math.floor(H / target) : Math.round(H / target)) || 1;
     var tw = W / cols;
     var th = H / rows;
@@ -370,6 +404,11 @@ function fitMosaics(animate) {
     var newSvg = p.dataset.mosaicType === "ca"
       ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed)
       : buildMosaicSVG(W, H, cols, rows, tw, th, seed);
+    if (isDivider && W_full !== undefined && W_full > W) {
+      newSvg.style.left = (W_full - W) + "px";
+      newSvg.style.width = W + "px";
+    }
+
 
     if (!p._mosaicLightBound) {
       setupMosaicLight(p);

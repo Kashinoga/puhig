@@ -165,7 +165,7 @@ header > .panel {
 }
 
 .mosaic-ripple {
-  transition: opacity 200ms ease;
+  transition: opacity 80ms ease;
 }
 
 .mosaic-press {
@@ -411,10 +411,6 @@ main > section:last-child > .panel {
 }
 
 @media (max-width: 768px) {
-  .panel-mosaic {
-    flex: 1;
-  }
-
   .type-weights {
     grid-template-columns: 1fr;
   }
