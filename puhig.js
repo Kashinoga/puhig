@@ -1,6 +1,18 @@
 var PALETTE = ["#0a0a0a", "#a8d8cc", "#e85d1a", "#f5f5f0"];
+var LIGHT_RADIUS = 3;
+var LIGHT_OPACITIES = (function () {
+  var arr = [];
+  for (var d = 0; d <= LIGHT_RADIUS; d++) {
+    arr[d] = (Math.max(0, 1 - d / LIGHT_RADIUS) * 0.90).toFixed(3);
+  }
+  return arr;
+}());
 var shrinkTimer = null;
 var resizeTimer = null;
+var pressRegistry = [];
+document.addEventListener("pointerup", function () {
+  pressRegistry.forEach(function (fn) { fn(); });
+});
 
 function tileRand(c, r, salt, seed) {
   var n =
@@ -96,6 +108,8 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
   buildGrid(ns, svg, W, H, cols, rows, tw, th);
+  svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
+  svg._maxDist = Math.sqrt(cols * cols + rows * rows);
 
   var colorOrder = PALETTE.map(function (_, i) { return i; });
   for (var i = colorOrder.length - 1; i > 0; i--) {
@@ -119,9 +133,48 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
       rect.setAttribute("fill", color);
       rect.setAttribute("class", "mosaic-tile");
       rect.setAttribute("data-delay", delay);
+      rect.setAttribute("data-col", c);
+      rect.setAttribute("data-row", r);
       rect.style.setProperty("--delay", delay + "ms");
       rect.style.transformOrigin = ox + "% " + oy + "%";
+      rect._col = c; rect._row = r; svg._tiles.push(rect);
       svg.appendChild(rect);
+      var hover = document.createElementNS(ns, "rect");
+      hover.setAttribute("x", (c * tw).toFixed(2));
+      hover.setAttribute("y", (r * th).toFixed(2));
+      hover.setAttribute("width", tw.toFixed(2));
+      hover.setAttribute("height", th.toFixed(2));
+      hover.setAttribute("fill", "#ffd8a8");
+      hover.setAttribute("class", "mosaic-hover");
+      hover.setAttribute("data-col", c);
+      hover.setAttribute("data-row", r);
+      hover.style.opacity = "0";
+      hover._col = c; hover._row = r; svg._hovers.push(hover);
+      svg.appendChild(hover);
+      var ripple = document.createElementNS(ns, "rect");
+      ripple.setAttribute("x", (c * tw).toFixed(2));
+      ripple.setAttribute("y", (r * th).toFixed(2));
+      ripple.setAttribute("width", tw.toFixed(2));
+      ripple.setAttribute("height", th.toFixed(2));
+      ripple.setAttribute("fill", "#ffd8a8");
+      ripple.setAttribute("class", "mosaic-ripple");
+      ripple.setAttribute("data-col", c);
+      ripple.setAttribute("data-row", r);
+      ripple.style.opacity = "0";
+      ripple._col = c; ripple._row = r; svg._ripples.push(ripple);
+      svg.appendChild(ripple);
+      var press = document.createElementNS(ns, "rect");
+      press.setAttribute("x", (c * tw).toFixed(2));
+      press.setAttribute("y", (r * th).toFixed(2));
+      press.setAttribute("width", tw.toFixed(2));
+      press.setAttribute("height", th.toFixed(2));
+      press.setAttribute("fill", "#0a0a0a");
+      press.setAttribute("class", "mosaic-press");
+      press.setAttribute("data-col", c);
+      press.setAttribute("data-row", r);
+      press.style.opacity = "0";
+      press._col = c; press._row = r; svg._presses.push(press);
+      svg.appendChild(press);
     }
   }
 
@@ -135,6 +188,8 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed) {
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
   buildGrid(ns, svg, W, H, cols, rows, tw, th);
+  svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
+  svg._maxDist = Math.sqrt(cols * cols + rows * rows);
 
   var colorOrder = PALETTE.map(function (_, i) { return i; });
   for (var i = colorOrder.length - 1; i > 0; i--) {
@@ -162,15 +217,187 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed) {
       rect.setAttribute("fill", color);
       rect.setAttribute("class", "mosaic-tile");
       rect.setAttribute("data-delay", delay);
+      rect.setAttribute("data-col", c);
+      rect.setAttribute("data-row", r);
       rect.style.setProperty("--delay", delay + "ms");
       rect.style.transformOrigin = ox + "% " + oy + "%";
+      rect._col = c; rect._row = r; svg._tiles.push(rect);
       svg.appendChild(rect);
+      var hover = document.createElementNS(ns, "rect");
+      hover.setAttribute("x", (c * tw).toFixed(2));
+      hover.setAttribute("y", (r * th).toFixed(2));
+      hover.setAttribute("width", tw.toFixed(2));
+      hover.setAttribute("height", th.toFixed(2));
+      hover.setAttribute("fill", "#ffd8a8");
+      hover.setAttribute("class", "mosaic-hover");
+      hover.setAttribute("data-col", c);
+      hover.setAttribute("data-row", r);
+      hover.style.opacity = "0";
+      hover._col = c; hover._row = r; svg._hovers.push(hover);
+      svg.appendChild(hover);
+      var ripple = document.createElementNS(ns, "rect");
+      ripple.setAttribute("x", (c * tw).toFixed(2));
+      ripple.setAttribute("y", (r * th).toFixed(2));
+      ripple.setAttribute("width", tw.toFixed(2));
+      ripple.setAttribute("height", th.toFixed(2));
+      ripple.setAttribute("fill", "#ffd8a8");
+      ripple.setAttribute("class", "mosaic-ripple");
+      ripple.setAttribute("data-col", c);
+      ripple.setAttribute("data-row", r);
+      ripple.style.opacity = "0";
+      ripple._col = c; ripple._row = r; svg._ripples.push(ripple);
+      svg.appendChild(ripple);
+      var press = document.createElementNS(ns, "rect");
+      press.setAttribute("x", (c * tw).toFixed(2));
+      press.setAttribute("y", (r * th).toFixed(2));
+      press.setAttribute("width", tw.toFixed(2));
+      press.setAttribute("height", th.toFixed(2));
+      press.setAttribute("fill", "#0a0a0a");
+      press.setAttribute("class", "mosaic-press");
+      press.setAttribute("data-col", c);
+      press.setAttribute("data-row", r);
+      press.style.opacity = "0";
+      press._col = c; press._row = r; svg._presses.push(press);
+      svg.appendChild(press);
     }
   }
 
   return svg;
 }
 
+
+function setupMosaicLight(container) {
+  var rafId = null;
+  var pendingX = 0, pendingY = 0;
+  var cursorInside = false;
+
+  function applyLight(cx, cy) {
+    if (container.dataset.mosaicPressActive === "1") return;
+    var svg = container._mosaicSvg;
+    if (!svg) return;
+    var tw = container._tw || 24;
+    var th = container._th || 24;
+    var tileCol = Math.floor(cx / tw);
+    var tileRow = Math.floor(cy / th);
+    svg._hovers.forEach(function (glow) {
+      var dist = Math.abs(glow._col - tileCol) + Math.abs(glow._row - tileRow);
+      glow.style.opacity = dist <= LIGHT_RADIUS ? LIGHT_OPACITIES[dist] : "0";
+    });
+  }
+
+  container.addEventListener("mousemove", function (e) {
+    cursorInside = true;
+    var bounds = container.getBoundingClientRect();
+    pendingX = e.clientX - bounds.left;
+    pendingY = e.clientY - bounds.top;
+    if (!rafId) {
+      rafId = requestAnimationFrame(function () {
+        rafId = null;
+        applyLight(pendingX, pendingY);
+      });
+    }
+  });
+
+  container.addEventListener("mouseleave", function () {
+    cursorInside = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    var svg = container._mosaicSvg;
+    if (!svg) return;
+    svg._hovers.forEach(function (glow) { glow.style.opacity = "0"; });
+  });
+
+  container._applyMosaicLight = function () {
+    if (cursorInside) applyLight(pendingX, pendingY);
+  };
+}
+
+function setupMosaicPress(container) {
+  var pressActive = false;
+  var pressTileCol = 0, pressTileRow = 0;
+  var cleanupTimer = null;
+  var PRESS_RADIUS = 4;
+  var PRESS_SCALES  = [0.78, 0.85, 0.91, 0.96, 1.06];
+  var PRESS_SHADOWS = [0.30, 0.18, 0.10, 0.04, 0.00];
+
+  function startPress(cx, cy) {
+    if (pressActive) return;
+    pressActive = true;
+    container.dataset.mosaicPressActive = "1";
+    var svg = container._mosaicSvg;
+    if (!svg) return;
+    var tw = container._tw || 24;
+    var th = container._th || 24;
+    pressTileCol = Math.floor(cx / tw);
+    pressTileRow = Math.floor(cy / th);
+
+    svg._hovers.forEach(function (g) { g.style.opacity = "0"; });
+
+    svg._tiles.forEach(function (tile) {
+      var dist = Math.abs(tile._col - pressTileCol) + Math.abs(tile._row - pressTileRow);
+      if (dist > PRESS_RADIUS) return;
+      tile.style.transformOrigin = "50% 50%";
+      tile.style.transition = "transform 70ms ease " + (dist * 10) + "ms";
+      tile.style.transform = "scale(" + PRESS_SCALES[dist] + ")";
+    });
+
+    svg._presses.forEach(function (p) {
+      var dist = Math.abs(p._col - pressTileCol) + Math.abs(p._row - pressTileRow);
+      if (dist > PRESS_RADIUS) return;
+      p.style.opacity = PRESS_SHADOWS[dist].toFixed(2);
+    });
+  }
+
+  function endPress() {
+    if (!pressActive) return;
+    pressActive = false;
+    container.dataset.mosaicPressActive = "0";
+    var svg = container._mosaicSvg;
+    if (!svg) return;
+    if (container._applyMosaicLight) container._applyMosaicLight();
+
+    svg._tiles.forEach(function (tile) {
+      if (Math.abs(tile._col - pressTileCol) + Math.abs(tile._row - pressTileRow) > PRESS_RADIUS) return;
+      tile.style.transition = "transform 360ms cubic-bezier(0.34, 1.56, 0.64, 1)";
+      tile.style.transform = "scale(1)";
+    });
+
+    svg._presses.forEach(function (p) { p.style.opacity = "0"; });
+
+    triggerRipple(svg);
+
+    if (cleanupTimer) clearTimeout(cleanupTimer);
+    cleanupTimer = setTimeout(function () {
+      cleanupTimer = null;
+      svg._tiles.forEach(function (tile) {
+        if (Math.abs(tile._col - pressTileCol) + Math.abs(tile._row - pressTileRow) > PRESS_RADIUS) return;
+        tile.style.transform = "";
+        tile.style.transition = "";
+        tile.style.transformOrigin = "";
+      });
+    }, 500);
+  }
+
+  function triggerRipple(svg) {
+    var col = pressTileCol, row = pressTileRow;
+    var maxDist = svg._maxDist;
+
+    svg._ripples.forEach(function (ripple) {
+      var dc = ripple._col - col, dr = ripple._row - row;
+      var dist = Math.sqrt(dc * dc + dr * dr);
+      var delay = Math.round(dist * 35);
+      var peak = (Math.max(0, 1 - dist / maxDist) * 0.90).toFixed(3);
+      setTimeout(function () { ripple.style.opacity = peak; }, delay);
+      setTimeout(function () { ripple.style.opacity = "0"; }, delay + 200);
+    });
+  }
+
+  container.addEventListener("pointerdown", function (e) {
+    var bounds = container.getBoundingClientRect();
+    startPress(e.clientX - bounds.left, e.clientY - bounds.top);
+  });
+
+  pressRegistry.push(endPress);
+}
 
 function fitMosaics(animate) {
   document.querySelectorAll(".mosaic-overlay").forEach(function (overlay) {
@@ -194,15 +421,29 @@ function fitMosaics(animate) {
     var rows = (isCA ? Math.floor(H / target) : Math.round(H / target)) || 1;
     var tw = W / cols;
     var th = H / rows;
+    p.dataset.mosaicTw = tw;
+    p.dataset.mosaicTh = th;
+    p._tw = tw;
+    p._th = th;
 
     var existing = p.querySelector(".mosaic-tiles-svg");
     var newSvg = p.dataset.mosaicType === "ca"
       ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed)
       : buildMosaicSVG(W, H, cols, rows, tw, th, seed);
 
+    if (!p._mosaicLightBound) {
+      setupMosaicLight(p);
+      p._mosaicLightBound = true;
+    }
+
+    if (!p._mosaicPressBound) {
+      setupMosaicPress(p);
+      p._mosaicPressBound = true;
+    }
+
     if (animate && existing) {
       if (shrinkTimer) clearTimeout(shrinkTimer);
-      existing.querySelectorAll(".mosaic-tile").forEach(function (rect) {
+      (existing._tiles || []).forEach(function (rect) {
         var d = Math.round((parseInt(rect.getAttribute("data-delay")) || 0) / 3);
         rect.style.animation = "tile-shrink 150ms ease-in " + d + "ms both";
       });
@@ -210,11 +451,13 @@ function fitMosaics(animate) {
         shrinkTimer = null;
         Array.from(p.querySelectorAll(".mosaic-tiles-svg")).forEach(function (s) { s.remove(); });
         p.appendChild(newSvg);
+        p._mosaicSvg = newSvg;
       }, 200);
     } else {
       if (shrinkTimer) { clearTimeout(shrinkTimer); shrinkTimer = null; }
       if (existing) existing.remove();
       p.appendChild(newSvg);
+      p._mosaicSvg = newSvg;
     }
   });
 }

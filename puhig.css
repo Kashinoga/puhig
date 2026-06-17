@@ -156,6 +156,18 @@ header > .panel {
   position: absolute;
 }
 
+.mosaic-hover {
+  transition: opacity 200ms ease;
+}
+
+.mosaic-ripple {
+  transition: opacity 200ms ease;
+}
+
+.mosaic-press {
+  transition: opacity 70ms ease;
+}
+
 .mosaic-tile {
   animation: tile-grow 480ms ease-out both;
   animation-delay: var(--delay, 0ms);
