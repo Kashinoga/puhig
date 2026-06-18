@@ -125,6 +125,14 @@ h2 {
   padding-inline: 0;
 }
 
+.safe-area-top {
+  height: env(safe-area-inset-top);
+  overflow: hidden;
+  position: relative;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 .mosaic-divider {
   height: 72px;
   overflow: hidden;
