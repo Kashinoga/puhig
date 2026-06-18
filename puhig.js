@@ -85,6 +85,41 @@ function buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke) {
   svg.appendChild(g);
 }
 
+// Creates hover, ripple, and press overlay rects on first interaction.
+// Deferred from build time so initial SVG DOM is 4× smaller (tiles only).
+function ensureOverlays(svg) {
+  if (svg._hovers.length > 0) return;
+  var mc = svg._mc;
+  var ns = "http://www.w3.org/2000/svg";
+  svg._tileData.forEach(function (td) {
+    var hover = document.createElementNS(ns, "rect");
+    hover.setAttribute("x", td.x); hover.setAttribute("y", td.y);
+    hover.setAttribute("width", td.w); hover.setAttribute("height", td.h);
+    hover.setAttribute("fill", mc.hover);
+    hover.setAttribute("class", "mosaic-hover");
+    hover.style.opacity = "0";
+    hover._opacity = "0"; hover._col = td.col; hover._row = td.row;
+    svg._hovers.push(hover); svg.appendChild(hover);
+
+    var ripple = document.createElementNS(ns, "rect");
+    ripple.setAttribute("x", td.x); ripple.setAttribute("y", td.y);
+    ripple.setAttribute("width", td.w); ripple.setAttribute("height", td.h);
+    ripple.setAttribute("fill", mc.hover);
+    ripple.setAttribute("class", "mosaic-ripple");
+    ripple.style.opacity = "0";
+    ripple._accOpacity = 0; ripple._col = td.col; ripple._row = td.row;
+    svg._ripples.push(ripple); svg.appendChild(ripple);
+
+    var press = document.createElementNS(ns, "rect");
+    press.setAttribute("x", td.x); press.setAttribute("y", td.y);
+    press.setAttribute("width", td.w); press.setAttribute("height", td.h);
+    press.setAttribute("fill", mc.press);
+    press.setAttribute("class", "mosaic-press");
+    press.style.opacity = "0";
+    press._col = td.col; press._row = td.row;
+    svg._presses.push(press); svg.appendChild(press);
+  });
+}
 
 function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt, palette, mc) {
   var colorOrder = palette.map(function (_, i) { return i; });
@@ -100,11 +135,15 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       var delay = colorOrder[colorIdx] * 135 + Math.floor(tileRand(c, r, 4, seed) * 200);
       var ox = Math.round(20 + tileRand(c, r, 5, seed) * 60);
       var oy = Math.round(20 + tileRand(c, r, 6, seed) * 60);
+      var x = (c * tw).toFixed(2);
+      var y = (r * th).toFixed(2);
+      var w = tw.toFixed(2);
+      var h = th.toFixed(2);
       var rect = document.createElementNS(ns, "rect");
-      rect.setAttribute("x", (c * tw).toFixed(2));
-      rect.setAttribute("y", (r * th).toFixed(2));
-      rect.setAttribute("width", tw.toFixed(2));
-      rect.setAttribute("height", th.toFixed(2));
+      rect.setAttribute("x", x);
+      rect.setAttribute("y", y);
+      rect.setAttribute("width", w);
+      rect.setAttribute("height", h);
       rect.setAttribute("fill", color);
       rect.setAttribute("class", "mosaic-tile");
       rect.setAttribute("data-delay", delay);
@@ -112,45 +151,13 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       rect.setAttribute("data-row", r);
       rect.style.setProperty("--delay", delay + "ms");
       rect.style.transformOrigin = ox + "% " + oy + "%";
-      rect._col = c; rect._row = r; svg._tiles.push(rect);
+      // opacity:0 replaces animation-fill-mode backwards — hides tile during its
+      // delay without holding a compositor layer in the pre-animation state.
+      rect.style.opacity = "0";
+      rect._col = c; rect._row = r;
+      svg._tiles.push(rect);
       svg.appendChild(rect);
-      var hover = document.createElementNS(ns, "rect");
-      hover.setAttribute("x", (c * tw).toFixed(2));
-      hover.setAttribute("y", (r * th).toFixed(2));
-      hover.setAttribute("width", tw.toFixed(2));
-      hover.setAttribute("height", th.toFixed(2));
-      hover.setAttribute("fill", mc.hover);
-      hover.setAttribute("class", "mosaic-hover");
-      hover.setAttribute("data-col", c);
-      hover.setAttribute("data-row", r);
-      hover.style.opacity = "0";
-      hover._col = c; hover._row = r; svg._hovers.push(hover);
-      svg.appendChild(hover);
-      var ripple = document.createElementNS(ns, "rect");
-      ripple.setAttribute("x", (c * tw).toFixed(2));
-      ripple.setAttribute("y", (r * th).toFixed(2));
-      ripple.setAttribute("width", tw.toFixed(2));
-      ripple.setAttribute("height", th.toFixed(2));
-      ripple.setAttribute("fill", mc.hover);
-      ripple.setAttribute("class", "mosaic-ripple");
-      ripple.setAttribute("data-col", c);
-      ripple.setAttribute("data-row", r);
-      ripple.style.opacity = "0";
-      ripple._accOpacity = 0;
-      ripple._col = c; ripple._row = r; svg._ripples.push(ripple);
-      svg.appendChild(ripple);
-      var press = document.createElementNS(ns, "rect");
-      press.setAttribute("x", (c * tw).toFixed(2));
-      press.setAttribute("y", (r * th).toFixed(2));
-      press.setAttribute("width", tw.toFixed(2));
-      press.setAttribute("height", th.toFixed(2));
-      press.setAttribute("fill", mc.press);
-      press.setAttribute("class", "mosaic-press");
-      press.setAttribute("data-col", c);
-      press.setAttribute("data-row", r);
-      press.style.opacity = "0";
-      press._col = c; press._row = r; svg._presses.push(press);
-      svg.appendChild(press);
+      svg._tileData.push({ col: c, row: r, x: x, y: y, w: w, h: h });
     }
   }
 }
@@ -195,6 +202,7 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, m
   svg.setAttribute("height", H);
   buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
+  svg._tileData = []; svg._mc = mc;
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
   buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201, palette, mc);
   return svg;
@@ -208,6 +216,7 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
   svg.setAttribute("height", H);
   buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
+  svg._tileData = []; svg._mc = mc;
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
   buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) {
     var isEdge = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
@@ -227,6 +236,7 @@ function setupMosaicLight(container) {
     if (container.dataset.mosaicPressActive === "1") return;
     var svg = container._mosaicSvg;
     if (!svg) return;
+    ensureOverlays(svg);
     var tw = container._tw || 24;
     var th = container._th || 24;
     var tileCol = Math.floor(cx / tw);
@@ -283,6 +293,7 @@ function setupMosaicPress(container) {
     container.dataset.mosaicPressActive = "1";
     var svg = container._mosaicSvg;
     if (!svg) return;
+    ensureOverlays(svg);
     var tw = container._tw || 24;
     var th = container._th || 24;
     pressTileCol = Math.floor(cx / tw);
@@ -340,6 +351,7 @@ function setupMosaicPress(container) {
   // changes each frame, replacing the prior O(N) setTimeout storm which forced
   // individual repaints on Safari for every callback.
   function triggerRipple(svg) {
+    ensureOverlays(svg);
     var col = pressTileCol, row = pressTileRow;
     var maxDist = svg._maxDist;
     var t0 = performance.now();
@@ -412,11 +424,9 @@ function fitMosaics(animate) {
     var isSidebar = p.classList.contains("panel-mosaic");
     p.style.width = "";
     p.style.flex = "";
-    if (isSidebar && p.parentElement) p.parentElement.style.removeProperty("--mosaic-w");
     if (mosaicW !== null && isSidebar) {
       p.style.flex = "none";
       p.style.width = mosaicW + "px";
-      if (p.parentElement) p.parentElement.style.setProperty("--mosaic-w", mosaicW + "px");
     }
   });
 
