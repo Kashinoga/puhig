@@ -388,6 +388,7 @@ function fitMosaics(animate) {
 
     p.style.width = "";
     p.style.flex = "";
+    if (isSidebar && p.parentElement) p.parentElement.style.removeProperty("--mosaic-w");
 
     // Sidebar: pin to exact tile-grid width.
     // Divider: use natural full width but floor to a multiple of 24 so tw=24 exactly.
@@ -395,6 +396,7 @@ function fitMosaics(animate) {
     if (mosaicW !== null && isSidebar) {
       p.style.flex = "none";
       p.style.width = mosaicW + "px";
+      if (p.parentElement) p.parentElement.style.setProperty("--mosaic-w", mosaicW + "px");
       W = mosaicW;
     } else if (isDivider) {
       W_full = p.offsetWidth;
