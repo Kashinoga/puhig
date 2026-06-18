@@ -127,6 +127,7 @@ h2 {
 
 .mosaic-top {
   height: 72px;
+  margin-top: env(safe-area-inset-top);
   overflow: hidden;
   position: relative;
   -webkit-user-select: none;
@@ -397,6 +398,12 @@ h1 {
 
 .wordmark-row .wordmark {
   margin-bottom: 0;
+}
+
+.tag-group {
+  align-items: center;
+  display: flex;
+  gap: 12px;
 }
 
 .dev-tag {
