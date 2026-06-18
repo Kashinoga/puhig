@@ -1,4 +1,21 @@
-var PALETTE = ["#0a0a0a", "#a8d8cc", "#e85d1a", "#f5f5f0"];
+function getPalette() {
+  var s = getComputedStyle(document.documentElement);
+  return [
+    s.getPropertyValue("--black").trim(),
+    s.getPropertyValue("--teal").trim(),
+    s.getPropertyValue("--orange").trim(),
+    s.getPropertyValue("--white").trim(),
+  ];
+}
+
+function getMosaicColors() {
+  var s = getComputedStyle(document.documentElement);
+  return {
+    hover:  s.getPropertyValue("--mosaic-hover").trim(),
+    press:  s.getPropertyValue("--mosaic-press").trim(),
+    grid:   s.getPropertyValue("--mosaic-grid").trim(),
+  };
+}
 var LIGHT_RADIUS = 3;
 var LIGHT_OPACITIES = (function () {
   var arr = [];
@@ -45,9 +62,9 @@ function organicDrop(c, r, seed) {
        + valueNoise(c, r, 1, 12, seed) * 0.1;
 }
 
-function buildGrid(ns, svg, W, H, cols, rows, tw, th) {
+function buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke) {
   var g = document.createElementNS(ns, "g");
-  g.setAttribute("stroke", "rgba(0,0,0,0.15)");
+  g.setAttribute("stroke", gridStroke || "rgba(0,0,0,0.15)");
   g.setAttribute("stroke-width", "1");
   g.setAttribute("fill", "none");
   for (var c = 1; c < cols; c++) {
@@ -69,7 +86,9 @@ function buildGrid(ns, svg, W, H, cols, rows, tw, th) {
 
 
 function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt) {
-  var colorOrder = PALETTE.map(function (_, i) { return i; });
+  var palette = getPalette();
+  var mc = getMosaicColors();
+  var colorOrder = palette.map(function (_, i) { return i; });
   for (var i = colorOrder.length - 1; i > 0; i--) {
     var j = Math.floor(tileRand(i, 0, shuffleSalt, seed) * (i + 1));
     var tmp = colorOrder[i]; colorOrder[i] = colorOrder[j]; colorOrder[j] = tmp;
@@ -77,8 +96,8 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
   for (var r = 0; r < rows; r++) {
     for (var c = 0; c < cols; c++) {
       if (!isAlive(c, r)) continue;
-      var colorIdx = Math.floor(tileRand(c, r, 1, seed) * PALETTE.length);
-      var color = PALETTE[colorIdx];
+      var colorIdx = Math.floor(tileRand(c, r, 1, seed) * palette.length);
+      var color = palette[colorIdx];
       var delay = colorOrder[colorIdx] * 135 + Math.floor(tileRand(c, r, 4, seed) * 200);
       var ox = Math.round(20 + tileRand(c, r, 5, seed) * 60);
       var oy = Math.round(20 + tileRand(c, r, 6, seed) * 60);
@@ -101,7 +120,7 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       hover.setAttribute("y", (r * th).toFixed(2));
       hover.setAttribute("width", tw.toFixed(2));
       hover.setAttribute("height", th.toFixed(2));
-      hover.setAttribute("fill", "#ffd8a8");
+      hover.setAttribute("fill", mc.hover);
       hover.setAttribute("class", "mosaic-hover");
       hover.setAttribute("data-col", c);
       hover.setAttribute("data-row", r);
@@ -113,7 +132,7 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       ripple.setAttribute("y", (r * th).toFixed(2));
       ripple.setAttribute("width", tw.toFixed(2));
       ripple.setAttribute("height", th.toFixed(2));
-      ripple.setAttribute("fill", "#ffd8a8");
+      ripple.setAttribute("fill", mc.hover);
       ripple.setAttribute("class", "mosaic-ripple");
       ripple.setAttribute("data-col", c);
       ripple.setAttribute("data-row", r);
@@ -126,7 +145,7 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       press.setAttribute("y", (r * th).toFixed(2));
       press.setAttribute("width", tw.toFixed(2));
       press.setAttribute("height", th.toFixed(2));
-      press.setAttribute("fill", "#0a0a0a");
+      press.setAttribute("fill", mc.press);
       press.setAttribute("class", "mosaic-press");
       press.setAttribute("data-col", c);
       press.setAttribute("data-row", r);
@@ -175,7 +194,8 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
   svg.setAttribute("class", "mosaic-tiles-svg");
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
-  buildGrid(ns, svg, W, H, cols, rows, tw, th);
+  var gridStroke = getComputedStyle(document.documentElement).getPropertyValue("--mosaic-grid").trim();
+  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
   buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201);
@@ -188,7 +208,8 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed) {
   svg.setAttribute("class", "mosaic-tiles-svg");
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
-  buildGrid(ns, svg, W, H, cols, rows, tw, th);
+  var gridStroke = getComputedStyle(document.documentElement).getPropertyValue("--mosaic-grid").trim();
+  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
   buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) {
@@ -455,6 +476,10 @@ if (document.fonts && document.fonts.ready) {
 window.addEventListener("resize", function () {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(function () { fitMosaics(false); }, 100);
+});
+
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+  fitMosaics(true);
 });
 
 if (navigator.maxTouchPoints > 0 && !window.matchMedia("(pointer: fine)").matches) {
