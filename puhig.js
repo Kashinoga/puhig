@@ -446,22 +446,7 @@ function fitMosaics(animate) {
   });
 }
 
-window.addEventListener("load", function () {
-  fitMosaics(true);
-  if (window.ResizeObserver) {
-    document.querySelectorAll(".mosaic-overlay").forEach(function (overlay) {
-      var p = overlay.parentElement;
-      if (!p || p.offsetHeight > 0) return;
-      var ro = new ResizeObserver(function (entries) {
-        if (entries[0].contentRect.height > 0) {
-          ro.disconnect();
-          fitMosaics(false);
-        }
-      });
-      ro.observe(p);
-    });
-  }
-});
+window.addEventListener("load", function () { fitMosaics(true); });
 
 if (document.fonts && document.fonts.ready) {
   document.fonts.ready.then(function () { fitMosaics(false); });

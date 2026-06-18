@@ -125,8 +125,8 @@ h2 {
   padding-inline: 0;
 }
 
-.safe-area-top {
-  height: env(safe-area-inset-top);
+.mosaic-top {
+  height: 72px;
   overflow: hidden;
   position: relative;
   -webkit-user-select: none;
