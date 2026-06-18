@@ -351,6 +351,11 @@ function fitMosaics(animate) {
     refEl.style.width = "";
     var containerW = Math.round(refEl.getBoundingClientRect().width);
     var mosaicCols = Math.max(Math.floor(containerW / 72), 1);
+    var firstSidebar = document.querySelector(".panel-mosaic[data-mobile-cols]");
+    if (firstSidebar && containerW <= 480) {
+      var mobileCap = parseInt(firstSidebar.dataset.mobileCols);
+      if (mobileCap && mobileCap < mosaicCols) mosaicCols = mobileCap;
+    }
     mosaicW = mosaicCols * 24;
   }
 
@@ -441,7 +446,22 @@ function fitMosaics(animate) {
   });
 }
 
-window.addEventListener("load", function () { fitMosaics(true); });
+window.addEventListener("load", function () {
+  fitMosaics(true);
+  if (window.ResizeObserver) {
+    document.querySelectorAll(".mosaic-overlay").forEach(function (overlay) {
+      var p = overlay.parentElement;
+      if (!p || p.offsetHeight > 0) return;
+      var ro = new ResizeObserver(function (entries) {
+        if (entries[0].contentRect.height > 0) {
+          ro.disconnect();
+          fitMosaics(false);
+        }
+      });
+      ro.observe(p);
+    });
+  }
+});
 
 if (document.fonts && document.fonts.ready) {
   document.fonts.ready.then(function () { fitMosaics(false); });

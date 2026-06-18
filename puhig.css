@@ -308,9 +308,20 @@ h1 {
 }
 
 .type-headings {
-  align-items: baseline;
+  align-items: start;
   display: grid;
   grid-template-columns: auto 1fr;
+}
+
+.type-specimen {
+  display: flex;
+  flex-direction: column;
+}
+
+.type-body-sample {
+  color: var(--sub);
+  font-size: 14px;
+  margin-top: 8px;
 }
 
 .type-headings h1,
