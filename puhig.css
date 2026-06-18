@@ -130,6 +130,8 @@ h2 {
   overflow: hidden;
   padding-inline: 0;
   position: relative;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .panel-content {
@@ -146,6 +148,8 @@ h2 {
   min-width: 0;
   overflow: hidden;
   position: relative;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 header > .panel {
