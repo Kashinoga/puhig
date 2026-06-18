@@ -415,8 +415,40 @@ main > section:last-child > .panel {
 }
 
 @media (max-width: 768px) {
+  .wordmark-row {
+    flex-wrap: wrap;
+  }
+
   .type-weights {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  header h1 {
+    font-size: 32px;
+  }
+
+  .superhero-label {
+    font-size: 40px;
+  }
+
+  h1.hero {
+    font-size: 28px;
+  }
+
+  .hero-label {
+    font-size: 32px;
+  }
+
+  .type-headings {
+    align-items: start;
+    grid-template-columns: 1fr;
+    row-gap: 4px;
+  }
+
+  .type-headings .type-meta:not(:first-child) {
+    margin-top: 20px;
   }
 }
 
