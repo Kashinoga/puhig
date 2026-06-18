@@ -26,6 +26,7 @@ var LIGHT_OPACITIES = (function () {
 }());
 var shrinkTimer = null;
 var resizeTimer = null;
+var mosaicInitDone = false;
 var pressRegistry = [];
 document.addEventListener("pointerup", function () {
   pressRegistry.forEach(function (fn) { fn(); });
@@ -85,9 +86,7 @@ function buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke) {
 }
 
 
-function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt) {
-  var palette = getPalette();
-  var mc = getMosaicColors();
+function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt, palette, mc) {
   var colorOrder = palette.map(function (_, i) { return i; });
   for (var i = colorOrder.length - 1; i > 0; i--) {
     var j = Math.floor(tileRand(i, 0, shuffleSalt, seed) * (i + 1));
@@ -156,7 +155,7 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
   }
 }
 
-function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
+function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
   var r, c, dr, dc, nr, nc, alive, next;
 
   var grid = [];
@@ -194,21 +193,19 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed) {
   svg.setAttribute("class", "mosaic-tiles-svg");
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
-  var gridStroke = getComputedStyle(document.documentElement).getPropertyValue("--mosaic-grid").trim();
   buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
-  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201);
+  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201, palette, mc);
   return svg;
 }
 
-function buildMosaicSVG(W, H, cols, rows, tw, th, seed) {
+function buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
   var ns = "http://www.w3.org/2000/svg";
   var svg = document.createElementNS(ns, "svg");
   svg.setAttribute("class", "mosaic-tiles-svg");
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
-  var gridStroke = getComputedStyle(document.documentElement).getPropertyValue("--mosaic-grid").trim();
   buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
@@ -216,7 +213,7 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed) {
     var isEdge = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
     var dropChance = isEdge ? 0.85 : organicDrop(c, r, seed) * 0.5;
     return tileRand(c, r, 0, seed) >= dropChance;
-  }, 200);
+  }, 200, palette, mc);
   return svg;
 }
 
@@ -241,15 +238,17 @@ function setupMosaicLight(container) {
     });
   }
 
+  // Store raw client coords; getBoundingClientRect deferred into the RAF to
+  // avoid forcing a layout flush on every mousemove when a frame is already queued.
   container.addEventListener("mousemove", function (e) {
     cursorInside = true;
-    var bounds = container.getBoundingClientRect();
-    pendingX = e.clientX - bounds.left;
-    pendingY = e.clientY - bounds.top;
+    pendingX = e.clientX;
+    pendingY = e.clientY;
     if (!rafId) {
       rafId = requestAnimationFrame(function () {
         rafId = null;
-        applyLight(pendingX, pendingY);
+        var bounds = container.getBoundingClientRect();
+        applyLight(pendingX - bounds.left, pendingY - bounds.top);
       });
     }
   });
@@ -263,7 +262,10 @@ function setupMosaicLight(container) {
   });
 
   container._applyMosaicLight = function () {
-    if (cursorInside) applyLight(pendingX, pendingY);
+    if (cursorInside) {
+      var bounds = container.getBoundingClientRect();
+      applyLight(pendingX - bounds.left, pendingY - bounds.top);
+    }
   };
 }
 
@@ -334,24 +336,42 @@ function setupMosaicPress(container) {
     }, 500);
   }
 
+  // RAF-based ripple: one requestAnimationFrame loop applies all pending opacity
+  // changes each frame, replacing the prior O(N) setTimeout storm which forced
+  // individual repaints on Safari for every callback.
   function triggerRipple(svg) {
     var col = pressTileCol, row = pressTileRow;
     var maxDist = svg._maxDist;
+    var t0 = performance.now();
+    var events = [];
 
     svg._ripples.forEach(function (ripple) {
       var dc = ripple._col - col, dr = ripple._row - row;
       var dist = Math.sqrt(dc * dc + dr * dr);
       var delay = Math.round(dist * 35);
-      var peakVal = Math.max(0, 1 - dist / maxDist) * 0.90;
-      setTimeout(function () {
-        ripple._accOpacity += peakVal;
-        ripple.style.opacity = Math.min(1, ripple._accOpacity).toFixed(3);
-      }, delay);
-      setTimeout(function () {
-        ripple._accOpacity -= peakVal;
-        ripple.style.opacity = Math.max(0, ripple._accOpacity).toFixed(3);
-      }, delay + 80);
+      var peak = Math.max(0, 1 - dist / maxDist) * 0.90;
+      if (peak > 0) {
+        events.push({ r: ripple, t: delay, d: peak });
+        events.push({ r: ripple, t: delay + 80, d: -peak });
+      }
     });
+
+    if (!events.length) return;
+
+    function tick(now) {
+      var elapsed = now - t0;
+      var i = events.length;
+      while (i--) {
+        if (elapsed >= events[i].t) {
+          var ev = events.splice(i, 1)[0];
+          ev.r._accOpacity = Math.min(1, Math.max(0, ev.r._accOpacity + ev.d));
+          ev.r.style.opacity = ev.r._accOpacity.toFixed(3);
+        }
+      }
+      if (events.length) requestAnimationFrame(tick);
+    }
+
+    requestAnimationFrame(tick);
   }
 
   container.addEventListener("pointerdown", function (e) {
@@ -380,23 +400,35 @@ function fitMosaics(animate) {
     mosaicW = mosaicCols * 24;
   }
 
-  document.querySelectorAll(".mosaic-overlay").forEach(function (overlay) {
+  var palette = getPalette();
+  var mc = getMosaicColors();
+  var gridStroke = mc.grid;
+
+  var overlays = document.querySelectorAll(".mosaic-overlay");
+
+  // Pass 1: style writes only — no layout reads — batches all mutations before any forced reflow.
+  overlays.forEach(function (overlay) {
+    var p = overlay.parentElement;
+    var isSidebar = p.classList.contains("panel-mosaic");
+    p.style.width = "";
+    p.style.flex = "";
+    if (isSidebar && p.parentElement) p.parentElement.style.removeProperty("--mosaic-w");
+    if (mosaicW !== null && isSidebar) {
+      p.style.flex = "none";
+      p.style.width = mosaicW + "px";
+      if (p.parentElement) p.parentElement.style.setProperty("--mosaic-w", mosaicW + "px");
+    }
+  });
+
+  // Pass 2: layout reads + SVG builds — one layout flush covers all reads in this loop.
+  overlays.forEach(function (overlay) {
     var p = overlay.parentElement;
     var target = parseInt(p.dataset.target) || 24;
     var isSidebar = p.classList.contains("panel-mosaic");
     var isDivider = p.classList.contains("mosaic-divider");
 
-    p.style.width = "";
-    p.style.flex = "";
-    if (isSidebar && p.parentElement) p.parentElement.style.removeProperty("--mosaic-w");
-
-    // Sidebar: pin to exact tile-grid width.
-    // Divider: use natural full width but floor to a multiple of 24 so tw=24 exactly.
     var W, W_full;
     if (mosaicW !== null && isSidebar) {
-      p.style.flex = "none";
-      p.style.width = mosaicW + "px";
-      if (p.parentElement) p.parentElement.style.setProperty("--mosaic-w", mosaicW + "px");
       W = mosaicW;
     } else if (isDivider) {
       W_full = p.offsetWidth;
@@ -430,8 +462,8 @@ function fitMosaics(animate) {
 
     var existing = p.querySelector(".mosaic-tiles-svg");
     var newSvg = p.dataset.mosaicType === "ca"
-      ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed)
-      : buildMosaicSVG(W, H, cols, rows, tw, th, seed);
+      ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
+      : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc);
     if (isDivider && W_full !== undefined && W_full > W) {
       newSvg.style.left = (W_full - W) + "px";
       newSvg.style.width = W + "px";
@@ -469,10 +501,19 @@ function fitMosaics(animate) {
   });
 }
 
-window.addEventListener("load", function () { fitMosaics(true); });
+// Whichever of load/fonts.ready fires first triggers the animated entrance build;
+// the second triggers a quiet layout-only check (animate=false) so a font-swap
+// reflow can correct mosaic dimensions without replaying the entrance animation.
+window.addEventListener("load", function () {
+  if (!mosaicInitDone) { mosaicInitDone = true; fitMosaics(true); }
+  else fitMosaics(false);
+});
 
 if (document.fonts && document.fonts.ready) {
-  document.fonts.ready.then(function () { fitMosaics(false); });
+  document.fonts.ready.then(function () {
+    if (!mosaicInitDone) { mosaicInitDone = true; fitMosaics(true); }
+    else fitMosaics(false);
+  });
 }
 
 window.addEventListener("resize", function () {
