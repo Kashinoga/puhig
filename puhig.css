@@ -226,9 +226,11 @@ header > .panel {
     transform: scale(1.26);
   }
   78% {
+    opacity: 1;
     transform: scale(0.93);
   }
   100% {
+    opacity: 1;
     transform: scale(1);
   }
 }
