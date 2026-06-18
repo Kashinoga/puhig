@@ -80,6 +80,7 @@ h4,
 h5,
 h6 {
   border-bottom: 2px solid var(--orange);
+  line-height: 1.2;
   padding-bottom: 4px;
 }
 
@@ -320,7 +321,6 @@ h1 {
 }
 
 .type-body-sample {
-  color: var(--sub);
   font-size: 14px;
   margin-top: 8px;
 }
@@ -436,8 +436,13 @@ h1 {
   outline-offset: -1px;
 }
 
-main > section:last-child > .panel {
-  padding-block-end: 64px;
+.mosaic-bottom {
+  height: 72px;
+  overflow: hidden;
+  padding-bottom: env(safe-area-inset-bottom);
+  position: relative;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 @media (max-width: 768px) {
