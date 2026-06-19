@@ -440,11 +440,9 @@ function fitMosaics(animate) {
     var W, W_full;
     if (mosaicW !== null && isSidebar) {
       W = mosaicW;
-    } else if (isDivider) {
+    } else {
       W_full = p.offsetWidth;
       W = Math.floor(W_full / target) * target;
-    } else {
-      W = p.offsetWidth;
     }
     if (!W) W = target;
 
@@ -474,7 +472,7 @@ function fitMosaics(animate) {
     var newSvg = p.dataset.mosaicType === "ca"
       ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
       : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc);
-    if (isDivider && W_full !== undefined && W_full > W) {
+    if (!isSidebar && W_full !== undefined && W_full > W) {
       newSvg.style.left = (W_full - W) + "px";
       newSvg.style.width = W + "px";
     }
