@@ -424,7 +424,7 @@ function startDriftLoop(svg, palette) {
     var dormant = svg._dormantSlots;
 
     var removeCount = Math.min(1 + Math.floor(Math.random() * 4), live.length);
-    var addCount = Math.min(Math.floor(Math.random() * 4), dormant.length);
+    var addCount = Math.min(Math.max(1, 1 + Math.floor(Math.random() * 4)), dormant.length);
 
     var toRemove = sampleN(live, removeCount);
     toRemove.forEach(function (tile, i) {
