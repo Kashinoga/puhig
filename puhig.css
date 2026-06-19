@@ -133,7 +133,7 @@ h2 {
   flex-direction: row;
   gap: 0;
   isolation: isolate;
-  min-height: 480px;
+  min-height: 670px;
   padding-inline: 0;
   position: relative;
 }

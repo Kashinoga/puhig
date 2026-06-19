@@ -63,6 +63,15 @@ function organicDrop(c, r, seed) {
        + valueNoise(c, r, 1, 12, seed) * 0.1;
 }
 
+function sampleN(arr, n) {
+  var copy = arr.slice();
+  for (var i = copy.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = copy[i]; copy[i] = copy[j]; copy[j] = tmp;
+  }
+  return copy.slice(0, Math.min(n, copy.length));
+}
+
 function buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke) {
   var g = document.createElementNS(ns, "g");
   g.setAttribute("stroke", gridStroke || "rgba(0,0,0,0.15)");
@@ -158,6 +167,18 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       svg._tiles.push(rect);
       svg.appendChild(rect);
       svg._tileData.push({ col: c, row: r, x: x, y: y, w: w, h: h });
+    }
+  }
+  svg._dormantSlots = [];
+  for (var rd = 0; rd < rows; rd++) {
+    for (var cd = 0; cd < cols; cd++) {
+      var isEdgeDormant = cd === 0 || cd === cols - 1 || rd === 0 || rd === rows - 1;
+      if (isEdgeDormant || isAlive(cd, rd)) continue;
+      svg._dormantSlots.push({
+        col: cd, row: rd,
+        x: (cd * tw).toFixed(2), y: (rd * th).toFixed(2),
+        w: tw.toFixed(2), h: th.toFixed(2)
+      });
     }
   }
 }
@@ -394,6 +415,74 @@ function setupMosaicPress(container) {
   pressRegistry.push(endPress);
 }
 
+function startDriftLoop(svg, palette) {
+  var ns = "http://www.w3.org/2000/svg";
+
+  function driftTick() {
+    if (!svg.isConnected) return;
+    var live = svg._tiles;
+    var dormant = svg._dormantSlots;
+
+    var removeCount = Math.min(1 + Math.floor(Math.random() * 4), live.length);
+    var addCount = Math.min(Math.floor(Math.random() * 4), dormant.length);
+
+    var toRemove = sampleN(live, removeCount);
+    toRemove.forEach(function (tile, i) {
+      tile.style.animation = "tile-shrink 300ms ease-in " + (i * 80) + "ms both";
+      tile.addEventListener("animationend", function onEnd() {
+        tile.removeEventListener("animationend", onEnd);
+        tile.remove();
+        var idx = svg._tiles.indexOf(tile);
+        if (idx >= 0) {
+          svg._dormantSlots.push({
+            col: tile._col, row: tile._row,
+            x: tile.getAttribute("x"), y: tile.getAttribute("y"),
+            w: tile.getAttribute("width"), h: tile.getAttribute("height")
+          });
+          svg._tiles.splice(idx, 1);
+        }
+      });
+    });
+
+    setTimeout(function () {
+      if (!svg.isConnected) return;
+      var toAdd = sampleN(svg._dormantSlots, addCount);
+      toAdd.forEach(function (slot) {
+        var idx = svg._dormantSlots.indexOf(slot);
+        if (idx >= 0) svg._dormantSlots.splice(idx, 1);
+
+        var colorIdx = Math.floor(Math.random() * palette.length);
+        var ox = Math.round(20 + Math.random() * 60);
+        var oy = Math.round(20 + Math.random() * 60);
+
+        var rect = document.createElementNS(ns, "rect");
+        rect.setAttribute("x", slot.x);
+        rect.setAttribute("y", slot.y);
+        rect.setAttribute("width", slot.w);
+        rect.setAttribute("height", slot.h);
+        rect.setAttribute("fill", palette[colorIdx]);
+        rect.setAttribute("class", "mosaic-tile");
+        rect.style.animation = "tile-grow 360ms ease-out both";
+        rect.style.transformOrigin = ox + "% " + oy + "%";
+        rect._col = slot.col; rect._row = slot.row;
+
+        var firstOverlay = svg._hovers[0] || svg._ripples[0] || svg._presses[0];
+        if (firstOverlay) {
+          svg.insertBefore(rect, firstOverlay);
+        } else {
+          svg.appendChild(rect);
+        }
+        svg._tiles.push(rect);
+      });
+
+      var delay = 1800 + Math.floor(Math.random() * 1700);
+      svg._driftTimer = setTimeout(driftTick, delay);
+    }, 500);
+  }
+
+  svg._driftTimer = setTimeout(driftTick, 1500);
+}
+
 function fitMosaics(animate) {
   // Sidebar width: largest multiple of 24px where content col stays >= 2× wider.
   //   (containerW - mosaicW) / mosaicW >= 2  →  mosaicCols <= containerW / 72
@@ -490,21 +579,26 @@ function fitMosaics(animate) {
 
     if (animate && existing) {
       if (shrinkTimer) clearTimeout(shrinkTimer);
+      if (existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
       (existing._tiles || []).forEach(function (rect) {
         var d = Math.round((parseInt(rect.getAttribute("data-delay")) || 0) / 3);
         rect.style.animation = "tile-shrink 150ms ease-in " + d + "ms both";
       });
+      var capturedPalette = palette;
       shrinkTimer = setTimeout(function () {
         shrinkTimer = null;
         Array.from(p.querySelectorAll(".mosaic-tiles-svg")).forEach(function (s) { s.remove(); });
         p.appendChild(newSvg);
         p._mosaicSvg = newSvg;
+        startDriftLoop(newSvg, capturedPalette);
       }, 200);
     } else {
       if (shrinkTimer) { clearTimeout(shrinkTimer); shrinkTimer = null; }
+      if (existing && existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
       if (existing) existing.remove();
       p.appendChild(newSvg);
       p._mosaicSvg = newSvg;
+      startDriftLoop(newSvg, palette);
     }
   });
 }
