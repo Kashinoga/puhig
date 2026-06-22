@@ -23,6 +23,7 @@
   --mosaic-hover: #ffd8a8;
   --mosaic-press: var(--black);
   --mosaic-grid: rgba(0, 0, 0, 0.15);
+  --mosaic-white: var(--white);
   color-scheme: light dark;
 }
 
@@ -133,7 +134,6 @@ h2 {
   flex-direction: row;
   gap: 0;
   isolation: isolate;
-  min-height: 420px;
   padding-inline: 0;
   position: relative;
 }
@@ -465,11 +465,6 @@ main .wordmark-row {
   user-select: none;
 }
 
-@media (min-width: 769px) {
-  .panel {
-    min-height: 670px;
-  }
-}
 
 @media (max-width: 768px) {
   .type-weights {
@@ -478,6 +473,10 @@ main .wordmark-row {
 }
 
 @media (max-width: 480px) {
+  .panel-mosaic {
+    display: none;
+  }
+
   .type-headings {
     align-items: start;
     grid-template-columns: 1fr;
@@ -490,6 +489,12 @@ main .wordmark-row {
 }
 
 @media (prefers-color-scheme: dark) {
+  header .wordmark-row,
+  main .wordmark-row {
+    background: #ddddd8;
+    color: var(--black);
+  }
+
   :root {
     --ink: var(--white);
     --paper: var(--black);
@@ -498,6 +503,7 @@ main .wordmark-row {
     --grain-opacity: 0.1;
     --mosaic-press: var(--white);
     --mosaic-grid: rgba(255, 255, 255, 0.1);
+    --mosaic-white: #d8d8d2;
   }
 
   .panel-content {
