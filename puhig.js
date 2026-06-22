@@ -24,7 +24,6 @@ var LIGHT_OPACITIES = (function () {
   }
   return arr;
 }());
-var shrinkTimer = null;
 var resizeTimer = null;
 var mosaicInitDone = false;
 var pressRegistry = [];
@@ -578,22 +577,22 @@ function fitMosaics(animate) {
     }
 
     if (animate && existing) {
-      if (shrinkTimer) clearTimeout(shrinkTimer);
+      if (p._shrinkTimer) clearTimeout(p._shrinkTimer);
       if (existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
       (existing._tiles || []).forEach(function (rect) {
         var d = Math.round((parseInt(rect.getAttribute("data-delay")) || 0) / 3);
         rect.style.animation = "tile-shrink 150ms ease-in " + d + "ms both";
       });
       var capturedPalette = palette;
-      shrinkTimer = setTimeout(function () {
-        shrinkTimer = null;
+      p._shrinkTimer = setTimeout(function () {
+        p._shrinkTimer = null;
         Array.from(p.querySelectorAll(".mosaic-tiles-svg")).forEach(function (s) { s.remove(); });
         p.appendChild(newSvg);
         p._mosaicSvg = newSvg;
         startDriftLoop(newSvg, capturedPalette);
       }, 200);
     } else {
-      if (shrinkTimer) { clearTimeout(shrinkTimer); shrinkTimer = null; }
+      if (p._shrinkTimer) { clearTimeout(p._shrinkTimer); p._shrinkTimer = null; }
       if (existing && existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
       if (existing) existing.remove();
       p.appendChild(newSvg);
