@@ -5,6 +5,9 @@ function getPalette() {
     s.getPropertyValue("--teal").trim(),
     s.getPropertyValue("--orange").trim(),
     s.getPropertyValue("--mosaic-white").trim(),
+    s.getPropertyValue("--yellow").trim(),
+    s.getPropertyValue("--pink").trim(),
+    s.getPropertyValue("--purple").trim(),
   ];
 }
 
