@@ -171,6 +171,7 @@ h2 {
 body {
   padding-top: calc(36px + env(safe-area-inset-top));
   padding-bottom: calc(36px + env(safe-area-inset-bottom));
+  padding-inline: 24px;
 }
 
 header {
@@ -186,7 +187,6 @@ main {
 .container {
   margin-inline: auto;
   max-width: 512px;
-  padding-inline: 24px;
 }
 
 .panel {
@@ -627,6 +627,16 @@ main .wordmark-row {
 }
 
 @media (max-width: 480px) {
+  body {
+    padding-top: calc(6px + env(safe-area-inset-top));
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
+    padding-inline: 6px;
+  }
+
+  .container {
+    padding-inline: 0;
+  }
+
   .panel-mosaic,
   .panel-mosaic-blank {
     display: none;
