@@ -600,13 +600,10 @@ function buildBlissSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) 
   svg._tileData = []; svg._mc = mc || {}; svg._dormantSlots = [];
 
   var maxR = Math.min(tw, th) * 0.42;
-  var skyColor = palette[1] || "#18cac0";
-  var hillColors = [
-    palette[1] || "#18cac0",
-    palette[4] || "#e8d060",
-    palette[2] || "#f06030",
-    palette[6] || palette[2],
-  ];
+  // Use base (non-theme-flipping) values — dark mode shifts teal/orange
+  // toward muted variants that look wrong on a dark background.
+  var skyColor = "#18cac0";
+  var hillColors = ["#18cac0", "#e8d060", "#f06030", "#9878c0"];
 
   for (var r = 0; r < rows; r++) {
     for (var c = 0; c < cols; c++) {
