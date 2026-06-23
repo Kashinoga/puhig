@@ -52,9 +52,23 @@ html {
   touch-action: pan-x pan-y;
 }
 
-body {
+html {
   background-color: var(--paper);
+}
+
+#mosaic-bg {
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+
+body {
+  background-color: transparent;
   color: var(--ink);
+  position: relative;
+  z-index: 0;
   font-family: "Jost", system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -132,9 +146,24 @@ h2 {
   font-size: 32px;
 }
 
+body {
+  padding-top: calc(24px + env(safe-area-inset-top));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+header {
+  margin-bottom: 24px;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 .container {
   margin-inline: auto;
-  max-width: 720px;
+  max-width: 512px;
   padding-inline: 24px;
 }
 
@@ -169,6 +198,9 @@ h2 {
 }
 
 .panel-frame {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  background-color: color-mix(in srgb, var(--paper) 80%, transparent);
   border-radius: 12px;
   box-shadow: var(--shadow-panel-frame);
   display: flex;
@@ -216,6 +248,11 @@ h2 {
   user-select: none;
 }
 
+.panel-mosaic-blank {
+  flex: 2;
+  min-width: 0;
+}
+
 header > .panel {
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
@@ -249,7 +286,7 @@ header > .panel {
 }
 
 .mosaic-tile {
-  animation: tile-grow 480ms ease-out forwards;
+  animation: tile-grow 360ms ease-out forwards;
   animation-delay: var(--delay, 0ms);
   transform-box: fill-box;
 }
@@ -548,7 +585,8 @@ main .wordmark-row {
 }
 
 @media (max-width: 480px) {
-  .panel-mosaic {
+  .panel-mosaic,
+  .panel-mosaic-blank {
     display: none;
   }
 
@@ -581,9 +619,9 @@ main .wordmark-row {
 
   html:not([data-theme="light"]) header .wordmark-row,
   html:not([data-theme="light"]) main .wordmark-row {
-    background: #ddddd8;
-    border-inline-color: rgba(255, 255, 255, 0.08);
-    color: var(--black);
+    background: var(--mosaic-black);
+    border-inline-color: rgba(255, 255, 255, 0.06);
+    color: var(--white);
   }
 
   html:not([data-theme="light"]) .mosaic-overlay {
@@ -626,9 +664,9 @@ html[data-theme="dark"] {
 
 html[data-theme="dark"] header .wordmark-row,
 html[data-theme="dark"] main .wordmark-row {
-  background: #ddddd8;
-  border-inline-color: rgba(255, 255, 255, 0.08);
-  color: var(--black);
+  background: var(--mosaic-black);
+  border-inline-color: rgba(255, 255, 255, 0.06);
+  color: var(--white);
 }
 
 html[data-theme="dark"] .mosaic-overlay {
@@ -684,7 +722,9 @@ html[data-theme="dark"] .panel-content {
 }
 
 .theme-flyout {
-  background-color: var(--paper);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  background-color: color-mix(in srgb, var(--paper) 80%, transparent);
   border: none;
   border-radius: 12px;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.05);

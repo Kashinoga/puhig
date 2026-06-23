@@ -143,7 +143,7 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       if (!isAlive(c, r)) continue;
       var colorIdx = Math.floor(tileRand(c, r, 1, seed) * palette.length);
       var color = palette[colorIdx];
-      var delay = colorOrder[colorIdx] * 135 + Math.floor(tileRand(c, r, 4, seed) * 200);
+      var delay = colorOrder[colorIdx] * 220 + Math.floor(tileRand(c, r, 4, seed) * 80);
       var ox = Math.round(20 + tileRand(c, r, 5, seed) * 60);
       var oy = Math.round(20 + tileRand(c, r, 6, seed) * 60);
       var x = (c * tw).toFixed(2);
@@ -485,6 +485,18 @@ function startDriftLoop(svg, palette) {
   svg._driftTimer = setTimeout(driftTick, 1500);
 }
 
+function buildGridSVG(W, H, cols, rows, tw, th, gridStroke) {
+  var ns = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "mosaic-tiles-svg");
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
+  svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
+  svg._tileData = []; svg._mc = {};
+  return svg;
+}
+
 function fitMosaics(animate) {
   // Sidebar width: largest multiple of 24px where content col stays >= 2× wider.
   //   (containerW - mosaicW) / mosaicW >= 2  →  mosaicCols <= containerW / 72
@@ -533,7 +545,9 @@ function fitMosaics(animate) {
       W = mosaicW;
     } else {
       W_full = p.offsetWidth;
-      W = Math.floor(W_full / target) * target;
+      W = p.dataset.mosaicAlign === "left"
+        ? W_full
+        : Math.floor(W_full / target) * target;
     }
     if (!W) W = target;
 
@@ -550,7 +564,7 @@ function fitMosaics(animate) {
     var seed = parseInt(p.dataset.mosaicSeed);
 
     var isCA = p.dataset.mosaicType === "ca";
-    var cols = Math.floor(W / target) || 1;
+    var cols = (p.dataset.mosaicAlign === "left" ? Math.round(W / target) : Math.floor(W / target)) || 1;
     var rows = (isCA ? Math.floor(H / target) : Math.round(H / target)) || 1;
     var tw = W / cols;
     var th = H / rows;
@@ -559,24 +573,21 @@ function fitMosaics(animate) {
     p._tw = tw;
     p._th = th;
 
+    var isGridOnly = "mosaicGridOnly" in p.dataset;
     var existing = p.querySelector(".mosaic-tiles-svg");
-    var newSvg = p.dataset.mosaicType === "ca"
-      ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
-      : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc);
-    if (!isSidebar && W_full !== undefined && W_full > W) {
+    var newSvg = isGridOnly
+      ? buildGridSVG(W, H, cols, rows, tw, th, gridStroke)
+      : (p.dataset.mosaicType === "ca"
+          ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
+          : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc));
+    if (!isSidebar && W_full !== undefined && W_full > W && p.dataset.mosaicAlign !== "left") {
       newSvg.style.left = (W_full - W) + "px";
       newSvg.style.width = W + "px";
     }
 
-
-    if (!p._mosaicLightBound) {
-      setupMosaicLight(p);
-      p._mosaicLightBound = true;
-    }
-
-    if (!p._mosaicPressBound) {
-      setupMosaicPress(p);
-      p._mosaicPressBound = true;
+    if (!isGridOnly) {
+      if (!p._mosaicLightBound) { setupMosaicLight(p); p._mosaicLightBound = true; }
+      if (!p._mosaicPressBound) { setupMosaicPress(p); p._mosaicPressBound = true; }
     }
 
     if (animate && existing) {
@@ -592,7 +603,7 @@ function fitMosaics(animate) {
         Array.from(p.querySelectorAll(".mosaic-tiles-svg")).forEach(function (s) { s.remove(); });
         p.appendChild(newSvg);
         p._mosaicSvg = newSvg;
-        startDriftLoop(newSvg, capturedPalette);
+        if (!isGridOnly) startDriftLoop(newSvg, capturedPalette);
       }, 200);
     } else {
       if (p._shrinkTimer) { clearTimeout(p._shrinkTimer); p._shrinkTimer = null; }
@@ -600,7 +611,7 @@ function fitMosaics(animate) {
       if (existing) existing.remove();
       p.appendChild(newSvg);
       p._mosaicSvg = newSvg;
-      startDriftLoop(newSvg, palette);
+      if (!isGridOnly) startDriftLoop(newSvg, palette);
     }
   });
 }
@@ -709,7 +720,6 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
       var val = o.dataset.value;
       val === 'system' ? localStorage.removeItem(STORAGE_KEY) : localStorage.setItem(STORAGE_KEY, val);
       applyTheme(val, true);
-      closeFlyout();
     });
   });
 
@@ -718,7 +728,6 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
       var val = o.dataset.value;
       val === 'paperback' ? localStorage.removeItem(UI_THEME_KEY) : localStorage.setItem(UI_THEME_KEY, val);
       applyUITheme(val);
-      closeFlyout();
     });
   });
 
