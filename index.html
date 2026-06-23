@@ -8,7 +8,9 @@
     />
     <meta name="color-scheme" content="light dark" />
     <title>Pocket Universe — Human Interface Guidelines</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="stylesheet" href="puhig.css" />
+    <link rel="stylesheet" href="phosphor.css" />
     <script src="puhig.js" defer></script>
   </head>
 
@@ -18,6 +20,7 @@
     </div>
     <header>
       <div class="container panel">
+        <div class="panel-frame">
         <div class="panel-content">
           <div class="panel-body">
             <div class="wordmark-row">
@@ -36,6 +39,7 @@
             </div>
           </div>
         </div>
+        </div>
         <div class="panel-mosaic" data-mobile-cols="3">
           <div class="mosaic-overlay"></div>
         </div>
@@ -47,6 +51,7 @@
     <main>
       <section>
         <div class="container panel">
+          <div class="panel-frame">
           <div class="panel-content">
             <div class="panel-body">
               <div class="wordmark-row">
@@ -83,29 +88,7 @@
                     target="_blank"
                     rel="noopener"
                     >Indestructible Type<span class="external-link-icon"
-                      ><svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="-1 -1 18 18"
-                        width="16"
-                        height="16"
-                      >
-                        <line
-                          x1="0"
-                          y1="16"
-                          x2="14"
-                          y2="2"
-                          stroke="currentColor"
-                          stroke-width="1"
-                          stroke-linecap="round"
-                        />
-                        <polyline
-                          points="8,0 16,0 16,8"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="1"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                        /></svg></span
+                      ><i class="ph ph-arrow-square-out"></i></span
                   ></a>
                 </footer>
               </blockquote>
@@ -186,6 +169,86 @@
               </div>
             </div>
           </div>
+          </div>
+          <div class="panel-mosaic" data-mobile-cols="3">
+            <div class="mosaic-overlay"></div>
+          </div>
+        </div>
+      </section>
+      <div class="mosaic-divider container">
+        <div class="mosaic-overlay"></div>
+      </div>
+      <section>
+        <div class="container panel">
+          <div class="panel-frame">
+          <div class="panel-content">
+            <div class="panel-body">
+              <div class="wordmark-row">
+                <span class="wordmark">Iconography</span>
+                <div class="tag-group">
+                  <span class="dev-tag dev-tag--version"
+                    >v0.2;22.June.2026</span
+                  >
+                </div>
+              </div>
+              <div class="hero-block">
+                <h2>Phosphor</h2>
+                <hr class="hero-rule" />
+                <h1 class="hero-label">Flexible<br />Icon<br />Family</h1>
+              </div>
+              <blockquote class="panel-quote">
+                <p class="panel-excerpt">
+                  Phosphor is a flexible icon family for interfaces,
+                  diagrams, presentations — whatever, really.
+                </p>
+                <footer class="panel-attribution">
+                  <span class="panel-attribution-rule">—</span>
+                  <a
+                    class="panel-link"
+                    href="https://phosphoricons.com"
+                    target="_blank"
+                    rel="noopener"
+                    >Phosphor Icons<span class="external-link-icon"
+                      ><i class="ph ph-arrow-square-out"></i></span
+                  ></a>
+                </footer>
+              </blockquote>
+              <div class="panel-section">
+                <h2 class="section-heading">External Link</h2>
+                <div class="section-body">
+                  <div class="type-scale">
+                    <div class="type-row">
+                      <span class="type-meta">Regular</span
+                      ><i class="ph ph-arrow-square-out icon-sample"></i>
+                    </div>
+                    <div class="type-row">
+                      <span class="type-meta">Bold</span
+                      ><i class="ph-bold ph-arrow-square-out icon-sample"></i>
+                    </div>
+                    <div class="type-row">
+                      <span class="type-meta">Fill</span
+                      ><i class="ph-fill ph-arrow-square-out icon-sample"></i>
+                    </div>
+                    <div class="type-row">
+                      <span class="type-meta">Light</span
+                      ><i class="ph-light ph-arrow-square-out icon-sample"></i>
+                    </div>
+                    <div class="type-row">
+                      <span class="type-meta">Thin</span
+                      ><i class="ph-thin ph-arrow-square-out icon-sample"></i>
+                    </div>
+                    <div class="type-row">
+                      <span class="type-meta">Duotone</span
+                      ><i
+                        class="ph-duotone ph-arrow-square-out icon-sample"
+                      ></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
           <div class="panel-mosaic" data-mobile-cols="3">
             <div class="mosaic-overlay"></div>
           </div>
@@ -194,6 +257,36 @@
     </main>
     <div class="mosaic-bottom container">
       <div class="mosaic-overlay"></div>
+    </div>
+    <div class="theme-switcher">
+      <div class="theme-flyout">
+        <span class="flyout-label">Theme</span>
+        <button class="theme-option" data-group="ui-theme" data-value="paperback">
+          <i class="ph ph-book"></i>
+          <span>Paperback</span>
+        </button>
+        <button class="theme-option" data-group="ui-theme" data-value="plastic">
+          <i class="ph ph-cube"></i>
+          <span>Plastic</span>
+        </button>
+        <div class="flyout-divider"></div>
+        <span class="flyout-label">Appearance</span>
+        <button class="theme-option" data-group="appearance" data-value="light">
+          <i class="ph ph-sun"></i>
+          <span>Light</span>
+        </button>
+        <button class="theme-option" data-group="appearance" data-value="dark">
+          <i class="ph ph-moon"></i>
+          <span>Dark</span>
+        </button>
+        <button class="theme-option" data-group="appearance" data-value="system">
+          <i class="ph ph-desktop"></i>
+          <span>System</span>
+        </button>
+      </div>
+      <button class="theme-toggle" aria-label="Display mode">
+        <i class="ph ph-crown-simple"></i>
+      </button>
     </div>
   </body>
 </html>

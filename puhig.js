@@ -1,7 +1,7 @@
 function getPalette() {
   var s = getComputedStyle(document.documentElement);
   return [
-    s.getPropertyValue("--black").trim(),
+    s.getPropertyValue("--mosaic-black").trim(),
     s.getPropertyValue("--teal").trim(),
     s.getPropertyValue("--orange").trim(),
     s.getPropertyValue("--mosaic-white").trim(),
@@ -625,6 +625,111 @@ window.addEventListener("resize", function () {
 window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
   fitMosaics(true);
 });
+
+(function () {
+  var STORAGE_KEY = 'puhig-theme';
+  var UI_THEME_KEY = 'puhig-ui-theme';
+  var html = document.documentElement;
+  var switcher = document.querySelector('.theme-switcher');
+  if (!switcher) return;
+  var toggle = switcher.querySelector('.theme-toggle');
+  var flyout = switcher.querySelector('.theme-flyout');
+  var appearanceOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="appearance"]'));
+  var uiThemeOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="ui-theme"]'));
+
+  function applyTheme(pref, redraw) {
+    if (pref === 'light' || pref === 'dark') {
+      html.dataset.theme = pref;
+    } else {
+      delete html.dataset.theme;
+    }
+    appearanceOpts.forEach(function (o) {
+      o.setAttribute('aria-pressed', String(o.dataset.value === pref));
+    });
+    if (redraw) fitMosaics(true);
+  }
+
+  function applyUITheme(pref) {
+    if (pref === 'plastic') {
+      html.dataset.uiTheme = 'plastic';
+    } else {
+      delete html.dataset.uiTheme;
+    }
+    uiThemeOpts.forEach(function (o) {
+      o.setAttribute('aria-pressed', String(o.dataset.value === pref));
+    });
+  }
+
+  var saved = localStorage.getItem(STORAGE_KEY) || 'system';
+  applyTheme(saved, false);
+  var savedUITheme = localStorage.getItem(UI_THEME_KEY) || 'paperback';
+  applyUITheme(savedUITheme);
+
+  function closeFlyout() {
+    if (!flyout.classList.contains('is-open') || flyout.classList.contains('is-closing')) return;
+    flyout.classList.add('is-closing');
+    flyout.addEventListener('animationend', function () {
+      flyout.classList.remove('is-open', 'is-closing');
+    }, { once: true });
+  }
+
+  toggle.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (flyout.classList.contains('is-open')) {
+      closeFlyout();
+    } else {
+      flyout.classList.remove('is-closing');
+      flyout.classList.add('is-open');
+    }
+  });
+
+  toggle.addEventListener('pointerdown', function (e) {
+    toggle.setPointerCapture(e.pointerId);
+    toggle.classList.remove('is-bouncing');
+    toggle.style.transition = 'transform 60ms ease';
+    toggle.style.transform = 'scale(0.88)';
+  });
+
+  toggle.addEventListener('pointerup', function (e) {
+    toggle.releasePointerCapture(e.pointerId);
+    toggle.style.transition = '';
+    toggle.style.transform = '';
+    toggle.classList.add('is-bouncing');
+  });
+
+  toggle.addEventListener('animationend', function () {
+    toggle.classList.remove('is-bouncing');
+  });
+
+  appearanceOpts.forEach(function (o) {
+    o.addEventListener('click', function () {
+      var val = o.dataset.value;
+      val === 'system' ? localStorage.removeItem(STORAGE_KEY) : localStorage.setItem(STORAGE_KEY, val);
+      applyTheme(val, true);
+      closeFlyout();
+    });
+  });
+
+  uiThemeOpts.forEach(function (o) {
+    o.addEventListener('click', function () {
+      var val = o.dataset.value;
+      val === 'paperback' ? localStorage.removeItem(UI_THEME_KEY) : localStorage.setItem(UI_THEME_KEY, val);
+      applyUITheme(val);
+      closeFlyout();
+    });
+  });
+
+  document.addEventListener('click', function () {
+    closeFlyout();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeFlyout();
+  });
+
+  flyout.addEventListener('click', function (e) { e.stopPropagation(); });
+
+}());
 
 if (navigator.maxTouchPoints > 0 && !window.matchMedia("(pointer: fine)").matches) {
   document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
