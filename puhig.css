@@ -324,6 +324,17 @@ header > .panel {
   transform-box: fill-box;
 }
 
+.mosaic-dot {
+  animation: tile-grow 360ms ease-out forwards;
+  animation-delay: var(--delay, 0ms);
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+#mosaic-bg[data-mosaic-type="bliss"] {
+  position: fixed;
+}
+
 @keyframes tile-grow {
   0% {
     opacity: 0;

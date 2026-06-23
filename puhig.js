@@ -590,6 +590,77 @@ function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
   return svg;
 }
 
+function buildBlissSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
+  var ns = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "mosaic-tiles-svg");
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+  svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
+  svg._tileData = []; svg._mc = mc || {}; svg._dormantSlots = [];
+
+  var maxR = Math.min(tw, th) * 0.42;
+  var skyColor = palette[1] || "#18cac0";
+  var hillColors = [
+    palette[1] || "#18cac0",
+    palette[4] || "#e8d060",
+    palette[2] || "#f06030",
+    palette[6] || palette[2],
+  ];
+
+  for (var r = 0; r < rows; r++) {
+    for (var c = 0; c < cols; c++) {
+      var nx = cols > 1 ? c / (cols - 1) : 0.5;
+      var ny = rows > 1 ? r / (rows - 1) : 0.5;
+
+      var horizon = 0.50
+        - 0.18 * Math.sin(nx * Math.PI)
+        - 0.06 * Math.sin(nx * Math.PI * 2.1 + 0.5)
+        - 0.02 * Math.sin(nx * Math.PI * 4.7 + 1.2);
+      horizon = Math.max(0.25, Math.min(0.72, horizon));
+
+      var noise1 = valueNoise(c, r, 4, 10, seed);
+      var isSky = ny < horizon;
+      var dotR, fillColor, opacity, delay;
+      // bottom-up sweep: row 0 is top, row rows-1 is bottom
+      var fromBottom = rows > 1 ? (rows - 1 - r) / (rows - 1) : 0;
+
+      if (isSky) {
+        var skyP = 0.04 + 0.06 * valueNoise(c, r, 12, 20, seed + 1);
+        if (tileRand(c, r, 77, seed) > skyP) continue;
+        dotR = maxR * (0.10 + 0.10 * noise1);
+        fillColor = skyColor;
+        opacity = 0.18 + 0.12 * noise1;
+        delay = Math.floor(tileRand(c, r, 3, seed) * 80 + fromBottom * 600);
+      } else {
+        var depth = (ny - horizon) / Math.max(0.001, 1.0 - horizon);
+        dotR = Math.min(maxR, maxR * Math.max(0.08, 0.12 + 0.72 * depth + 0.10 * noise1));
+        opacity = Math.min(0.92, 0.35 + 0.55 * depth);
+        var colorT = Math.max(0, Math.min(0.99, depth + 0.20 * (noise1 - 0.5)));
+        fillColor = hillColors[Math.floor(colorT * hillColors.length)];
+        delay = Math.floor(tileRand(c, r, 5, seed) * 80 + fromBottom * 600);
+      }
+
+      var cx = (c + 0.5) * tw;
+      var cy = (r + 0.5) * th;
+      var dot = document.createElementNS(ns, "circle");
+      dot.setAttribute("cx", cx.toFixed(1));
+      dot.setAttribute("cy", cy.toFixed(1));
+      dot.setAttribute("r", Math.max(0.5, dotR).toFixed(1));
+      dot.setAttribute("fill", fillColor);
+      dot.setAttribute("class", "mosaic-dot");
+      dot.setAttribute("data-delay", delay);
+      dot.style.setProperty("--delay", delay + "ms");
+      dot.style.opacity = "0";
+      dot._col = c; dot._row = r;
+      svg._tiles.push(dot);
+      svg.appendChild(dot);
+    }
+  }
+
+  return svg;
+}
+
 function fitMosaics(animate) {
   // Sidebar width: largest multiple of 24px where content col stays >= 2× wider.
   //   (containerW - mosaicW) / mosaicW >= 2  →  mosaicCols <= containerW / 72
@@ -667,18 +738,22 @@ function fitMosaics(animate) {
     p._th = th;
 
     var isGridOnly = "mosaicGridOnly" in p.dataset;
+    var isBliss = p.dataset.mosaicType === "bliss";
     var existing = p.querySelector(".mosaic-tiles-svg");
     var newSvg = isGridOnly
       ? buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc)
-      : (p.dataset.mosaicType === "ca"
-          ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
-          : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc));
+      : isBliss
+          ? buildBlissSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
+          : (p.dataset.mosaicType === "ca"
+              ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
+              : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc));
     if (!isSidebar && W_full !== undefined && W_full > W && p.dataset.mosaicAlign !== "left") {
       newSvg.style.left = (W_full - W) + "px";
       newSvg.style.width = W + "px";
     }
 
-    if (!isGridOnly) {
+    var isStaticBg = isGridOnly || isBliss;
+    if (!isStaticBg) {
       if (!p._mosaicLightBound) { setupMosaicLight(p); p._mosaicLightBound = true; }
       if (!p._mosaicPressBound) { setupMosaicPress(p); p._mosaicPressBound = true; }
     } else {
@@ -693,12 +768,13 @@ function fitMosaics(animate) {
         rect.style.animation = "tile-shrink 150ms ease-in " + d + "ms both";
       });
       var capturedPalette = palette;
+      var capturedBliss = isBliss;
       p._shrinkTimer = setTimeout(function () {
         p._shrinkTimer = null;
         Array.from(p.querySelectorAll(".mosaic-tiles-svg")).forEach(function (s) { s.remove(); });
         p.appendChild(newSvg);
         p._mosaicSvg = newSvg;
-        if (!isGridOnly) startDriftLoop(newSvg, capturedPalette);
+        if (!isGridOnly && !capturedBliss) startDriftLoop(newSvg, capturedPalette);
       }, 200);
     } else {
       if (p._shrinkTimer) { clearTimeout(p._shrinkTimer); p._shrinkTimer = null; }
@@ -706,7 +782,7 @@ function fitMosaics(animate) {
       if (existing) existing.remove();
       p.appendChild(newSvg);
       p._mosaicSvg = newSvg;
-      if (!isGridOnly) startDriftLoop(newSvg, palette);
+      if (!isGridOnly && !isBliss) startDriftLoop(newSvg, palette);
     }
   });
 }
@@ -738,6 +814,7 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
 (function () {
   var STORAGE_KEY = 'puhig-theme';
   var UI_THEME_KEY = 'puhig-ui-theme';
+  var BG_KEY = 'puhig-bg';
   var html = document.documentElement;
   var switcher = document.querySelector('.theme-switcher');
   if (!switcher) return;
@@ -745,6 +822,7 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
   var flyout = switcher.querySelector('.theme-flyout');
   var appearanceOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="appearance"]'));
   var uiThemeOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="ui-theme"]'));
+  var bgOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="bg"]'));
 
   function applyTheme(pref, redraw) {
     if (pref === 'light' || pref === 'dark') {
@@ -769,10 +847,33 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
     });
   }
 
+  function applyBG(pref, redraw) {
+    var mosaicBg = document.getElementById('mosaic-bg');
+    if (!mosaicBg) return;
+    bgOpts.forEach(function (o) {
+      o.setAttribute('aria-pressed', String(o.dataset.value === pref));
+    });
+    if (pref === 'bliss') {
+      delete mosaicBg.dataset.mosaicGridOnly;
+      mosaicBg.dataset.mosaicType = 'bliss';
+      mosaicBg.dataset.target = '12';
+    } else {
+      delete mosaicBg.dataset.mosaicType;
+      delete mosaicBg.dataset.target;
+      mosaicBg.dataset.mosaicGridOnly = '';
+    }
+    if (redraw) {
+      delete mosaicBg.dataset.mosaicDims;
+      fitMosaics(true);
+    }
+  }
+
   var saved = localStorage.getItem(STORAGE_KEY) || 'system';
   applyTheme(saved, false);
   var savedUITheme = localStorage.getItem(UI_THEME_KEY) || 'simulacra';
   applyUITheme(savedUITheme);
+  var savedBG = localStorage.getItem(BG_KEY) || 'grid';
+  applyBG(savedBG, false);
 
   function closeFlyout() {
     if (!flyout.classList.contains('is-open') || flyout.classList.contains('is-closing')) return;
@@ -823,6 +924,14 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
       var val = o.dataset.value;
       val === 'simulacra' ? localStorage.removeItem(UI_THEME_KEY) : localStorage.setItem(UI_THEME_KEY, val);
       applyUITheme(val);
+    });
+  });
+
+  bgOpts.forEach(function (o) {
+    o.addEventListener('click', function () {
+      var val = o.dataset.value;
+      val === 'grid' ? localStorage.removeItem(BG_KEY) : localStorage.setItem(BG_KEY, val);
+      applyBG(val, true);
     });
   });
 
