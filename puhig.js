@@ -302,6 +302,99 @@ function setupMosaicLight(container) {
   };
 }
 
+// Variant of setupMosaicLight for pointer-events:none containers (e.g. full-page
+// background). Listens on document and maps client coords into the container's space.
+// Pool-based variant for pointer-events:none containers (e.g. full-page background).
+// Uses a fixed pool of (2*LIGHT_RADIUS+1)^2 rects that are repositioned each frame,
+// avoiding the bulk DOM creation that ensureOverlays would trigger for large grids.
+function setupMosaicLightGlobal(container) {
+  var rafId = null;
+  var pendingX = 0, pendingY = 0;
+  var pool = null;
+  var poolSvg = null;
+  var ns = "http://www.w3.org/2000/svg";
+  var DIAMETER = 2 * LIGHT_RADIUS + 1;
+
+  function ensurePool(svg) {
+    if (pool && poolSvg === svg) return;
+    pool = null; poolSvg = svg;
+    var color = (svg._mc && svg._mc.hover) || "#e8d060";
+    pool = [];
+    for (var i = 0; i < DIAMETER * DIAMETER; i++) {
+      var rect = document.createElementNS(ns, "rect");
+      rect.setAttribute("fill", color);
+      rect.setAttribute("class", "mosaic-hover");
+      rect.style.opacity = "0";
+      rect._opacity = "0";
+      rect._col = -1; rect._row = -1;
+      pool.push(rect);
+      svg.appendChild(rect);
+    }
+  }
+
+  function applyLight(cx, cy) {
+    var svg = container._mosaicSvg;
+    if (!svg) return;
+    ensurePool(svg);
+    var tw = container._tw || 24;
+    var th = container._th || 24;
+    var W = parseFloat(svg.getAttribute("width"));
+    var H = parseFloat(svg.getAttribute("height"));
+    var maxCol = Math.floor(W / tw) - 1;
+    var maxRow = Math.floor(H / th) - 1;
+    var tileCol = Math.floor(cx / tw);
+    var tileRow = Math.floor(cy / th);
+    var i = 0;
+    for (var dr = -LIGHT_RADIUS; dr <= LIGHT_RADIUS; dr++) {
+      for (var dc = -LIGHT_RADIUS; dc <= LIGHT_RADIUS; dc++) {
+        var rect = pool[i++];
+        var nc = tileCol + dc;
+        var nr = tileRow + dr;
+        var dist = Math.abs(dc) + Math.abs(dr);
+        if (dist > LIGHT_RADIUS || nc < 0 || nr < 0 || nc > maxCol || nr > maxRow) {
+          if (rect._opacity !== "0") { rect._opacity = "0"; rect.style.opacity = "0"; }
+          continue;
+        }
+        if (rect._col !== nc || rect._row !== nr) {
+          rect.setAttribute("x", (nc * tw).toFixed(2));
+          rect.setAttribute("y", (nr * th).toFixed(2));
+          rect.setAttribute("width", tw.toFixed(2));
+          rect.setAttribute("height", th.toFixed(2));
+          rect._col = nc; rect._row = nr;
+        }
+        var target = LIGHT_OPACITIES[dist];
+        if (rect._opacity !== target) { rect._opacity = target; rect.style.opacity = target; }
+      }
+    }
+  }
+
+  function clearLight() {
+    if (!pool) return;
+    pool.forEach(function (rect) {
+      if (rect._opacity !== "0") { rect._opacity = "0"; rect.style.opacity = "0"; }
+    });
+  }
+
+  document.addEventListener("mousemove", function (e) {
+    pendingX = e.clientX;
+    pendingY = e.clientY;
+    if (!rafId) {
+      rafId = requestAnimationFrame(function () {
+        rafId = null;
+        var bounds = container.getBoundingClientRect();
+        applyLight(pendingX - bounds.left, pendingY - bounds.top);
+      });
+    }
+  });
+
+  document.addEventListener("mouseleave", function () {
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    clearLight();
+  });
+
+  container._applyMosaicLight = function () {};
+}
+
 function setupMosaicPress(container) {
   var pressActive = false;
   var pressTileCol = 0, pressTileRow = 0;
@@ -485,7 +578,7 @@ function startDriftLoop(svg, palette) {
   svg._driftTimer = setTimeout(driftTick, 1500);
 }
 
-function buildGridSVG(W, H, cols, rows, tw, th, gridStroke) {
+function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
   var ns = "http://www.w3.org/2000/svg";
   var svg = document.createElementNS(ns, "svg");
   svg.setAttribute("class", "mosaic-tiles-svg");
@@ -493,7 +586,7 @@ function buildGridSVG(W, H, cols, rows, tw, th, gridStroke) {
   svg.setAttribute("height", H);
   buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
-  svg._tileData = []; svg._mc = {};
+  svg._tileData = []; svg._mc = mc || {};
   return svg;
 }
 
@@ -576,7 +669,7 @@ function fitMosaics(animate) {
     var isGridOnly = "mosaicGridOnly" in p.dataset;
     var existing = p.querySelector(".mosaic-tiles-svg");
     var newSvg = isGridOnly
-      ? buildGridSVG(W, H, cols, rows, tw, th, gridStroke)
+      ? buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc)
       : (p.dataset.mosaicType === "ca"
           ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
           : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc));
@@ -588,6 +681,8 @@ function fitMosaics(animate) {
     if (!isGridOnly) {
       if (!p._mosaicLightBound) { setupMosaicLight(p); p._mosaicLightBound = true; }
       if (!p._mosaicPressBound) { setupMosaicPress(p); p._mosaicPressBound = true; }
+    } else {
+      if (!p._mosaicLightBound) { setupMosaicLightGlobal(p); p._mosaicLightBound = true; }
     }
 
     if (animate && existing) {
@@ -676,7 +771,7 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
 
   var saved = localStorage.getItem(STORAGE_KEY) || 'system';
   applyTheme(saved, false);
-  var savedUITheme = localStorage.getItem(UI_THEME_KEY) || 'paperback';
+  var savedUITheme = localStorage.getItem(UI_THEME_KEY) || 'simulacra';
   applyUITheme(savedUITheme);
 
   function closeFlyout() {
@@ -726,7 +821,7 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
   uiThemeOpts.forEach(function (o) {
     o.addEventListener('click', function () {
       var val = o.dataset.value;
-      val === 'paperback' ? localStorage.removeItem(UI_THEME_KEY) : localStorage.setItem(UI_THEME_KEY, val);
+      val === 'simulacra' ? localStorage.removeItem(UI_THEME_KEY) : localStorage.setItem(UI_THEME_KEY, val);
       applyUITheme(val);
     });
   });
