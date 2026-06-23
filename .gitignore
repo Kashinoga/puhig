@@ -4,7 +4,9 @@
 # Un-ignore project files
 !index.html
 !puhig.css
+!phosphor.css
 !puhig.js
+!favicon.svg
 !fonts/
 !fonts/**
 !.gitignore
