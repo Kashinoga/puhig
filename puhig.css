@@ -32,11 +32,26 @@
   --mosaic-white: #f0f4f8;
   color-scheme: light dark;
   --shadow-panel-frame:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 4px 16px rgba(0, 0, 0, 0.05), 0 16px 48px rgba(0, 0, 0, 0.04);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.50),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.07),
+    0 2px 6px rgba(0, 0, 0, 0.07), 0 8px 24px rgba(0, 0, 0, 0.05),
+    0 24px 56px rgba(0, 0, 0, 0.04);
   --shadow-panel-content:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.06),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset -10px -5px 100px 50px rgba(80, 52, 12, 0.03);
+  --sleeve-radius: 4px;
+  --card-radius: 16px;
+  --sleeve-blur: blur(0.5px);
+  --sleeve-bg: color-mix(in srgb, var(--paper) 50%, transparent);
+  --sleeve-streak: linear-gradient(
+    135deg,
+    transparent 15%,
+    rgba(0, 0, 0, 0.03) 28%,
+    rgba(255, 255, 255, 0.12) 38%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 65%
+  );
 }
 
 *,
@@ -205,10 +220,10 @@ main {
 }
 
 .panel-frame {
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  background-color: color-mix(in srgb, var(--paper) 80%, transparent);
-  border-radius: 12px;
+  -webkit-backdrop-filter: var(--sleeve-blur);
+  backdrop-filter: var(--sleeve-blur);
+  background-color: var(--sleeve-bg);
+  border-radius: var(--sleeve-radius);
   box-shadow: var(--shadow-panel-frame);
   display: flex;
   flex: 4;
@@ -223,7 +238,7 @@ main {
 .panel-content {
   align-items: flex-start;
   background-color: var(--surface);
-  border-radius: 6px;
+  border-radius: var(--card-radius);
   box-shadow: var(--shadow-panel-content);
   display: flex;
   flex: 1;
@@ -233,6 +248,15 @@ main {
   z-index: 2;
   min-width: 0;
   position: relative;
+}
+
+.panel-frame::after {
+  background-image: var(--sleeve-streak);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
 }
 
 .panel-content::before {
@@ -384,9 +408,7 @@ h1 {
 }
 
 .panel-section {
-  border-top: 1px dashed var(--rule);
   margin-block-start: 24px;
-  padding-block-start: 24px;
 }
 
 .section-heading {
@@ -625,14 +647,23 @@ main .wordmark-row {
     --mosaic-grid: rgba(255, 255, 255, 0.1);
     --mosaic-white: #c8d4dc;
     --shadow-panel-frame:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.2),
-      0 16px 48px rgba(0, 0, 0, 0.15);
+      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+      0 2px 6px rgba(0, 0, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.22),
+      0 24px 56px rgba(0, 0, 0, 0.16);
     --shadow-panel-content:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-      inset 0 2px 10px -4px rgba(255, 255, 255, 0.06),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
       inset -2px 0 10px -4px rgba(255, 255, 255, 0.04),
       inset -10px -5px 100px 50px rgba(200, 160, 90, 0.03);
+    --sleeve-streak: linear-gradient(
+      135deg,
+      transparent 15%,
+      rgba(255, 255, 255, 0.06) 38%,
+      rgba(255, 255, 255, 0.02) 50%,
+      transparent 65%
+    );
   }
 
   html:not([data-theme="light"]) header .wordmark-row,
@@ -671,14 +702,23 @@ html[data-theme="dark"] {
   --mosaic-grid: rgba(255, 255, 255, 0.1);
   --mosaic-white: #c8d4dc;
   --shadow-panel-frame:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 4px 16px rgba(0, 0, 0, 0.2),
-    0 16px 48px rgba(0, 0, 0, 0.15);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    0 2px 6px rgba(0, 0, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.22),
+    0 24px 56px rgba(0, 0, 0, 0.16);
   --shadow-panel-content:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
-    inset 0 2px 10px -4px rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset -2px 0 10px -4px rgba(255, 255, 255, 0.04),
     inset -10px -5px 100px 50px rgba(200, 160, 90, 0.03);
+  --sleeve-streak: linear-gradient(
+    135deg,
+    transparent 15%,
+    rgba(255, 255, 255, 0.06) 38%,
+    rgba(255, 255, 255, 0.02) 50%,
+    transparent 65%
+  );
 }
 
 html[data-theme="dark"] header .wordmark-row,
@@ -697,8 +737,8 @@ html[data-theme="dark"] .mosaic-overlay {
 }
 
 .theme-switcher {
-  bottom: calc(24px + env(safe-area-inset-bottom));
-  left: calc(24px + env(safe-area-inset-left));
+  bottom: calc(36px + env(safe-area-inset-bottom));
+  left: calc(36px + env(safe-area-inset-left));
   position: fixed;
   z-index: 100;
 }
@@ -724,26 +764,26 @@ html[data-theme="dark"] .mosaic-overlay {
   background-color: color-mix(in srgb, var(--paper) 80%, transparent);
   align-items: stretch;
   border: none;
-  border-radius: 9999px;
+  border-radius: var(--sleeve-radius);
   box-shadow: var(--shadow-panel-frame);
   color: var(--ink);
   cursor: pointer;
   display: flex;
-  height: 40px;
+  height: 64px;
   overflow: hidden;
-  padding: 4px;
+  padding: 6px;
   position: relative;
-  width: 40px;
+  width: 64px;
 }
 
 .toggle-body {
   align-items: center;
   background-color: var(--surface);
-  border-radius: inherit;
+  border-radius: var(--card-radius);
   box-shadow: var(--shadow-panel-content);
   display: flex;
   flex: 1;
-  font-size: 20px;
+  font-size: 32px;
   isolation: isolate;
   justify-content: center;
   overflow: hidden;
@@ -765,26 +805,26 @@ html[data-theme="dark"] .mosaic-overlay {
 }
 
 .theme-flyout {
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  background-color: color-mix(in srgb, var(--paper) 80%, transparent);
+  -webkit-backdrop-filter: var(--sleeve-blur);
+  backdrop-filter: var(--sleeve-blur);
+  background-color: var(--sleeve-bg);
   border: none;
-  border-radius: 12px;
+  border-radius: var(--sleeve-radius);
   box-shadow: var(--shadow-panel-frame);
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 6px);
   display: none;
   flex-direction: column;
   left: 0;
-  min-width: 152px;
+  min-width: 256px;
   overflow: hidden;
-  padding: 4px;
+  padding: 6px;
   position: absolute;
   transform-origin: bottom left;
 }
 
 .flyout-body {
   background-color: var(--surface);
-  border-radius: 8px;
+  border-radius: var(--card-radius);
   box-shadow: var(--shadow-panel-content);
   display: flex;
   flex-direction: column;
@@ -929,9 +969,10 @@ html[data-ui-theme="plastic"] .theme-flyout::before {
 
 html[data-ui-theme="plastic"] {
   --shadow-panel-frame:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.62),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.10), 0 4px 16px rgba(0, 0, 0, 0.06),
-    0 16px 48px rgba(0, 0, 0, 0.05);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.62),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+    0 2px 6px rgba(0, 0, 0, 0.08), 0 8px 24px rgba(0, 0, 0, 0.06),
+    0 24px 56px rgba(0, 0, 0, 0.05);
 }
 
 html[data-ui-theme="plastic"] .panel-frame {
