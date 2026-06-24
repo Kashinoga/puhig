@@ -331,7 +331,7 @@ header > .panel {
   transform-origin: 50% 50%;
 }
 
-#mosaic-bg[data-mosaic-type="bliss"] {
+#mosaic-bg[data-mosaic-type="dotted-valley"] {
   position: fixed;
 }
 
@@ -628,9 +628,9 @@ main .wordmark-row {
 
 @media (max-width: 480px) {
   body {
-    padding-top: calc(6px + env(safe-area-inset-top));
-    padding-bottom: calc(6px + env(safe-area-inset-bottom));
-    padding-inline: 6px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    padding-inline: 12px;
   }
 
   .container {
@@ -790,11 +790,11 @@ html[data-theme="dark"] .mosaic-overlay {
   color: var(--ink);
   cursor: pointer;
   display: flex;
-  height: 64px;
+  height: 36px;
   overflow: hidden;
-  padding: 6px;
+  padding: 4px;
   position: relative;
-  width: 64px;
+  width: 36px;
 }
 
 .toggle-body {
@@ -804,7 +804,7 @@ html[data-theme="dark"] .mosaic-overlay {
   box-shadow: var(--shadow-panel-content);
   display: flex;
   flex: 1;
-  font-size: 32px;
+  font-size: 18px;
   isolation: isolate;
   justify-content: center;
   overflow: hidden;

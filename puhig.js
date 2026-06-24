@@ -28,6 +28,42 @@ var LIGHT_OPACITIES = (function () {
   return arr;
 }());
 var resizeTimer = null;
+var lastResizeW = window.innerWidth;
+var valleyScrollSvg = null;
+var valleyScrollRaf = null;
+
+function applyValleyScroll() {
+  valleyScrollRaf = null;
+  if (!valleyScrollSvg || !valleyScrollSvg.isConnected) { valleyScrollSvg = null; return; }
+  var maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+  var scrollFraction = Math.min(1, window.scrollY / maxScroll);
+  var offset = scrollFraction * 0.75;
+
+  var colors = valleyScrollSvg._hillColors;
+  var tiles = valleyScrollSvg._tiles;
+  for (var i = 0; i < tiles.length; i++) {
+    var dot = tiles[i];
+    if (dot._colorT === undefined) continue;
+    var t = Math.min(0.99, dot._colorT + offset);
+    dot.setAttribute('fill', colors[Math.floor(t * colors.length)]);
+  }
+
+  var fillDots = valleyScrollSvg._skyFillDots;
+  for (var j = 0; j < fillDots.length; j++) {
+    var fd = fillDots[j];
+    fd.style.opacity = scrollFraction >= fd._skyRevealAt ? fd._skyOpacity : '0';
+  }
+}
+
+function startValleyScroll(svg) {
+  valleyScrollSvg = svg;
+  applyValleyScroll();
+}
+
+window.addEventListener('scroll', function () {
+  if (!valleyScrollSvg || valleyScrollRaf) return;
+  valleyScrollRaf = requestAnimationFrame(applyValleyScroll);
+}, { passive: true });
 var mosaicInitDone = false;
 var pressRegistry = [];
 document.addEventListener("pointerup", function () {
@@ -590,7 +626,7 @@ function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
   return svg;
 }
 
-function buildBlissSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
+function buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
   var ns = "http://www.w3.org/2000/svg";
   var svg = document.createElementNS(ns, "svg");
   svg.setAttribute("class", "mosaic-tiles-svg");
@@ -598,40 +634,52 @@ function buildBlissSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) 
   svg.setAttribute("height", H);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
   svg._tileData = []; svg._mc = mc || {}; svg._dormantSlots = [];
+  svg._skyFillDots = [];
 
   var maxR = Math.min(tw, th) * 0.42;
   // Use base (non-theme-flipping) values — dark mode shifts teal/orange
   // toward muted variants that look wrong on a dark background.
   var skyColor = "#18cac0";
   var hillColors = ["#18cac0", "#e8d060", "#f06030", "#9878c0"];
+  svg._hillColors = hillColors;
+
+  // Sky dots beyond the sparse initial threshold are pre-built but hidden;
+  // they are revealed progressively as the user scrolls (sky fills up).
+  var maxSkyP = 0.45;
 
   for (var r = 0; r < rows; r++) {
     for (var c = 0; c < cols; c++) {
       var nx = cols > 1 ? c / (cols - 1) : 0.5;
       var ny = rows > 1 ? r / (rows - 1) : 0.5;
 
-      var horizon = 0.50
-        - 0.18 * Math.sin(nx * Math.PI)
-        - 0.06 * Math.sin(nx * Math.PI * 2.1 + 0.5)
-        - 0.02 * Math.sin(nx * Math.PI * 4.7 + 1.2);
-      horizon = Math.max(0.25, Math.min(0.72, horizon));
+      // V-shape: horizon high at center (valley floor), rises toward edges
+      // Small edge-drop (0.36) keeps wall bands narrow → farther-horizon look
+      var distFromCenter = Math.abs(nx - 0.5) * 2;
+      var horizon = 0.78 - 0.36 * distFromCenter
+        + 0.04 * Math.sin(nx * Math.PI * 3.1 + 0.9);
+      horizon = Math.max(0.10, Math.min(0.92, horizon));
 
       var noise1 = valueNoise(c, r, 4, 10, seed);
       var isSky = ny < horizon;
       var dotR, fillColor, opacity, delay;
+      var isSkyFill = false;
       // bottom-up sweep: row 0 is top, row rows-1 is bottom
       var fromBottom = rows > 1 ? (rows - 1 - r) / (rows - 1) : 0;
 
       if (isSky) {
         var skyP = 0.04 + 0.06 * valueNoise(c, r, 12, 20, seed + 1);
-        if (tileRand(c, r, 77, seed) > skyP) continue;
-        dotR = maxR * (0.10 + 0.10 * noise1);
+        var skyRand = tileRand(c, r, 77, seed);
+        if (skyRand >= maxSkyP) continue;
+        dotR = maxR * (0.08 + 0.20 * noise1);
         fillColor = skyColor;
         opacity = 0.18 + 0.12 * noise1;
         delay = Math.floor(tileRand(c, r, 3, seed) * 80 + fromBottom * 600);
+        if (skyRand >= skyP) {
+          isSkyFill = true;
+        }
       } else {
         var depth = (ny - horizon) / Math.max(0.001, 1.0 - horizon);
-        dotR = Math.min(maxR, maxR * Math.max(0.08, 0.12 + 0.72 * depth + 0.10 * noise1));
+        dotR = Math.min(maxR, maxR * Math.max(0.05, 0.05 + 0.85 * depth + 0.25 * noise1));
         opacity = Math.min(0.92, 0.35 + 0.55 * depth);
         var colorT = Math.max(0, Math.min(0.99, depth + 0.20 * (noise1 - 0.5)));
         fillColor = hillColors[Math.floor(colorT * hillColors.length)];
@@ -641,16 +689,24 @@ function buildBlissSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) 
       var cx = (c + 0.5) * tw;
       var cy = (r + 0.5) * th;
       var dot = document.createElementNS(ns, "circle");
+      if (!isSky) dot._colorT = colorT;
       dot.setAttribute("cx", cx.toFixed(1));
       dot.setAttribute("cy", cy.toFixed(1));
       dot.setAttribute("r", Math.max(0.5, dotR).toFixed(1));
       dot.setAttribute("fill", fillColor);
-      dot.setAttribute("class", "mosaic-dot");
-      dot.setAttribute("data-delay", delay);
-      dot.style.setProperty("--delay", delay + "ms");
       dot.style.opacity = "0";
       dot._col = c; dot._row = r;
-      svg._tiles.push(dot);
+
+      if (isSkyFill) {
+        dot._skyRevealAt = (skyRand - skyP) / (maxSkyP - skyP);
+        dot._skyOpacity = opacity;
+        svg._skyFillDots.push(dot);
+      } else {
+        dot.setAttribute("class", "mosaic-dot");
+        dot.setAttribute("data-delay", delay);
+        dot.style.setProperty("--delay", delay + "ms");
+        svg._tiles.push(dot);
+      }
       svg.appendChild(dot);
     }
   }
@@ -735,12 +791,12 @@ function fitMosaics(animate) {
     p._th = th;
 
     var isGridOnly = "mosaicGridOnly" in p.dataset;
-    var isBliss = p.dataset.mosaicType === "bliss";
+    var isDottedValley = p.dataset.mosaicType === "dotted-valley";
     var existing = p.querySelector(".mosaic-tiles-svg");
     var newSvg = isGridOnly
       ? buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc)
-      : isBliss
-          ? buildBlissSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
+      : isDottedValley
+          ? buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
           : (p.dataset.mosaicType === "ca"
               ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
               : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc));
@@ -749,7 +805,7 @@ function fitMosaics(animate) {
       newSvg.style.width = W + "px";
     }
 
-    var isStaticBg = isGridOnly || isBliss;
+    var isStaticBg = isGridOnly || isDottedValley;
     if (!isStaticBg) {
       if (!p._mosaicLightBound) { setupMosaicLight(p); p._mosaicLightBound = true; }
       if (!p._mosaicPressBound) { setupMosaicPress(p); p._mosaicPressBound = true; }
@@ -765,13 +821,14 @@ function fitMosaics(animate) {
         rect.style.animation = "tile-shrink 150ms ease-in " + d + "ms both";
       });
       var capturedPalette = palette;
-      var capturedBliss = isBliss;
+      var capturedDottedValley = isDottedValley;
       p._shrinkTimer = setTimeout(function () {
         p._shrinkTimer = null;
         Array.from(p.querySelectorAll(".mosaic-tiles-svg")).forEach(function (s) { s.remove(); });
         p.appendChild(newSvg);
         p._mosaicSvg = newSvg;
-        if (!isGridOnly && !capturedBliss) startDriftLoop(newSvg, capturedPalette);
+        if (capturedDottedValley) startValleyScroll(newSvg);
+        else if (!isGridOnly) startDriftLoop(newSvg, capturedPalette);
       }, 200);
     } else {
       if (p._shrinkTimer) { clearTimeout(p._shrinkTimer); p._shrinkTimer = null; }
@@ -779,7 +836,8 @@ function fitMosaics(animate) {
       if (existing) existing.remove();
       p.appendChild(newSvg);
       p._mosaicSvg = newSvg;
-      if (!isGridOnly && !isBliss) startDriftLoop(newSvg, palette);
+      if (isDottedValley) startValleyScroll(newSvg);
+      else if (!isGridOnly) startDriftLoop(newSvg, palette);
     }
   });
 }
@@ -800,6 +858,11 @@ if (document.fonts && document.fonts.ready) {
 }
 
 window.addEventListener("resize", function () {
+  var w = window.innerWidth;
+  // Height-only changes are the mobile URL-bar showing/hiding — skip them to
+  // prevent the dotted-valley background from replaying its entry animation on scroll.
+  if (w === lastResizeW) return;
+  lastResizeW = w;
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(function () { fitMosaics(false); }, 100);
 });
@@ -850,9 +913,9 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
     bgOpts.forEach(function (o) {
       o.setAttribute('aria-pressed', String(o.dataset.value === pref));
     });
-    if (pref === 'bliss') {
+    if (pref === 'dotted-valley') {
       delete mosaicBg.dataset.mosaicGridOnly;
-      mosaicBg.dataset.mosaicType = 'bliss';
+      mosaicBg.dataset.mosaicType = 'dotted-valley';
       mosaicBg.dataset.target = '12';
     } else {
       delete mosaicBg.dataset.mosaicType;
@@ -870,6 +933,7 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
   var savedUITheme = localStorage.getItem(UI_THEME_KEY) || 'simulacra';
   applyUITheme(savedUITheme);
   var savedBG = localStorage.getItem(BG_KEY) || 'grid';
+  if (savedBG === 'bliss') savedBG = 'dotted-valley';
   applyBG(savedBG, false);
 
   function closeFlyout() {
