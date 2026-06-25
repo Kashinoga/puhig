@@ -35,7 +35,7 @@
   --miku-7: oklch(56% 0.08 198);
   --mosaic-hover: #e8d060;
   --mosaic-press: var(--black);
-  --mosaic-grid: oklch(0% 0 0 / 50%);
+  --mosaic-grid: oklch(0% 0 0 / 15%);
   --mosaic-white: #f0f4f8;
   color-scheme: light dark;
   --shadow-panel-frame:
@@ -391,7 +391,11 @@ main {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
-  text-transform: uppercase;
+}
+
+.card-name a {
+  color: inherit;
+  text-decoration: none;
 }
 
 .card-art {
@@ -426,7 +430,6 @@ main {
 .card-type {
   align-items: center;
   border-bottom: 1px solid var(--rule);
-  border-top: 1px solid var(--rule);
   display: flex;
   flex-shrink: 0;
   font-size: 11px;
@@ -442,8 +445,26 @@ main {
 
 .card-text {
   flex: 1;
+  font-size: 11px;
+  line-height: 1.4;
   overflow: hidden;
   padding: 8px;
+  position: relative;
+}
+
+.card-text .panel-quote {
+  border-left: none;
+  margin-block: 0;
+  padding-inline-start: 0;
+}
+
+.card-text .panel-excerpt {
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.card-text .type-meta {
+  font-size: 9px;
 }
 
 .card-footer {
@@ -452,13 +473,78 @@ main {
   color: var(--dim);
   display: flex;
   flex-shrink: 0;
-  font-size: 9px;
+  font-size: 8px;
   gap: 6px;
   height: 20px;
   justify-content: space-between;
   letter-spacing: 0.08em;
   padding-inline: 10px;
   text-transform: uppercase;
+}
+
+.card-frame {
+  border: 1px solid var(--rule);
+  border-bottom: none;
+  border-radius: var(--card-radius) var(--card-radius) 0 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.card-frame .card-art {
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+.card-cost {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: 3px;
+}
+
+.card-pip {
+  border: 1px solid var(--rule);
+  border-radius: 50%;
+  display: block;
+  height: 8px;
+  opacity: 0.75;
+  width: 8px;
+}
+
+.card-rarity {
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.card-rarity[data-rarity="draft"]    { color: var(--dim); }
+.card-rarity[data-rarity="alpha"]    { color: #b0b8c0; }
+.card-rarity[data-rarity="stable"]   { color: #c8a832; }
+.card-rarity[data-rarity="landmark"] { color: var(--teal); }
+
+.card-flavor {
+  color: var(--dim);
+  font-size: 11px;
+  font-style: italic;
+  margin-top: 6px;
+}
+
+.card-stats {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  bottom: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 2px 6px;
+  position: absolute;
+  right: 6px;
+}
+
+.card-footer-number {
+  letter-spacing: 0.12em;
 }
 
 header > .panel {
