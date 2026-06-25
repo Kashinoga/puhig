@@ -332,7 +332,11 @@ header > .panel {
 }
 
 #mosaic-bg[data-mosaic-type="dotted-valley"] {
+  bottom: calc(0px - env(safe-area-inset-bottom, 0px));
+  left: calc(0px - env(safe-area-inset-left, 0px));
   position: fixed;
+  right: calc(0px - env(safe-area-inset-right, 0px));
+  top: calc(0px - env(safe-area-inset-top, 0px));
 }
 
 @keyframes tile-grow {
@@ -758,8 +762,8 @@ html[data-theme="dark"] .mosaic-overlay {
 }
 
 .theme-switcher {
-  bottom: calc(36px + env(safe-area-inset-bottom));
-  left: calc(36px + env(safe-area-inset-left));
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  left: calc(24px + env(safe-area-inset-left));
   position: fixed;
   z-index: 100;
 }
@@ -790,11 +794,11 @@ html[data-theme="dark"] .mosaic-overlay {
   color: var(--ink);
   cursor: pointer;
   display: flex;
-  height: 36px;
+  height: 48px;
   overflow: hidden;
-  padding: 4px;
+  padding: 6px;
   position: relative;
-  width: 36px;
+  width: 48px;
 }
 
 .toggle-body {
@@ -804,7 +808,7 @@ html[data-theme="dark"] .mosaic-overlay {
   box-shadow: var(--shadow-panel-content);
   display: flex;
   flex: 1;
-  font-size: 18px;
+  font-size: 24px;
   isolation: isolate;
   justify-content: center;
   overflow: hidden;
@@ -832,13 +836,13 @@ html[data-theme="dark"] .mosaic-overlay {
   border: none;
   border-radius: var(--sleeve-radius);
   box-shadow: var(--shadow-panel-frame);
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 8px);
   display: none;
   flex-direction: column;
   left: 0;
   min-width: 256px;
   overflow: hidden;
-  padding: 6px;
+  padding: 8px;
   position: absolute;
   transform-origin: bottom left;
 }
@@ -851,7 +855,7 @@ html[data-theme="dark"] .mosaic-overlay {
   flex-direction: column;
   isolation: isolate;
   overflow: hidden;
-  padding: 12px;
+  padding: 16px;
   position: relative;
 }
 

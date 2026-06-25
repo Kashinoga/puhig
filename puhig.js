@@ -37,21 +37,30 @@ function applyValleyScroll() {
   if (!valleyScrollSvg || !valleyScrollSvg.isConnected) { valleyScrollSvg = null; return; }
   var maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
   var scrollFraction = Math.min(1, window.scrollY / maxScroll);
-  var offset = scrollFraction * 0.75;
 
-  var colors = valleyScrollSvg._hillColors;
-  var tiles = valleyScrollSvg._tiles;
-  for (var i = 0; i < tiles.length; i++) {
-    var dot = tiles[i];
-    if (dot._colorT === undefined) continue;
-    var t = Math.min(0.99, dot._colorT + offset);
-    dot.setAttribute('fill', colors[Math.floor(t * colors.length)]);
+  // Camera pan: shift the SVG upward to reveal deeper terrain as scroll increases.
+  if (valleyScrollSvg._cameraInitialTop !== undefined) {
+    var camTop = valleyScrollSvg._cameraInitialTop - scrollFraction * valleyScrollSvg._cameraMaxShift;
+    valleyScrollSvg.style.top = camTop.toFixed(1) + 'px';
   }
+
+  // Terrain dot colors are fixed at build time; only the fill-dot reveals animate.
 
   var fillDots = valleyScrollSvg._skyFillDots;
   for (var j = 0; j < fillDots.length; j++) {
     var fd = fillDots[j];
     fd.style.opacity = scrollFraction >= fd._skyRevealAt ? fd._skyOpacity : '0';
+  }
+
+  var purpleDots = valleyScrollSvg._purpleFillDots;
+  for (var k = 0; k < purpleDots.length; k++) {
+    var pd = purpleDots[k];
+    if (scrollFraction >= pd._purpleRevealAt) {
+      var localT = Math.min(1, (scrollFraction - pd._purpleRevealAt) / Math.max(0.01, 1 - pd._purpleRevealAt));
+      pd.style.opacity = (parseFloat(pd._purpleOpacity) * localT).toFixed(3);
+    } else {
+      pd.style.opacity = '0';
+    }
   }
 }
 
@@ -626,7 +635,7 @@ function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
   return svg;
 }
 
-function buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
+function buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, viewH) {
   var ns = "http://www.w3.org/2000/svg";
   var svg = document.createElementNS(ns, "svg");
   svg.setAttribute("class", "mosaic-tiles-svg");
@@ -634,7 +643,7 @@ function buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palett
   svg.setAttribute("height", H);
   svg._tiles = []; svg._hovers = []; svg._ripples = []; svg._presses = [];
   svg._tileData = []; svg._mc = mc || {}; svg._dormantSlots = [];
-  svg._skyFillDots = [];
+  svg._skyFillDots = []; svg._purpleFillDots = [];
 
   var maxR = Math.min(tw, th) * 0.42;
   // Use base (non-theme-flipping) values — dark mode shifts teal/orange
@@ -642,10 +651,15 @@ function buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palett
   var skyColor = "#18cac0";
   var hillColors = ["#18cac0", "#e8d060", "#f06030", "#9878c0"];
   svg._hillColors = hillColors;
+  var purpleColor = "#9878c0";
+
+  // Bottom-layer group — purple fill dots render behind all other dots.
+  var purpleGroup = document.createElementNS(ns, "g");
+  svg.appendChild(purpleGroup);
 
   // Sky dots beyond the sparse initial threshold are pre-built but hidden;
   // they are revealed progressively as the user scrolls (sky fills up).
-  var maxSkyP = 0.45;
+  var maxSkyP = 0.20;
 
   for (var r = 0; r < rows; r++) {
     for (var c = 0; c < cols; c++) {
@@ -669,7 +683,20 @@ function buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palett
       if (isSky) {
         var skyP = 0.04 + 0.06 * valueNoise(c, r, 12, 20, seed + 1);
         var skyRand = tileRand(c, r, 77, seed);
-        if (skyRand >= maxSkyP) continue;
+        if (skyRand >= maxSkyP) {
+          var pdot = document.createElementNS(ns, "circle");
+          var pdotR = maxR * (0.10 + 0.22 * noise1);
+          pdot.setAttribute("cx", ((c + 0.5) * tw).toFixed(1));
+          pdot.setAttribute("cy", ((r + 0.5) * th).toFixed(1));
+          pdot.setAttribute("r", Math.max(0.5, pdotR).toFixed(1));
+          pdot.setAttribute("fill", skyColor);
+          pdot.style.opacity = "0";
+          pdot._purpleRevealAt = 0.55 + 0.4 * tileRand(c, r, 91, seed);
+          pdot._purpleOpacity = (0.18 + 0.12 * noise1).toFixed(3);
+          purpleGroup.appendChild(pdot);
+          svg._purpleFillDots.push(pdot);
+          continue;
+        }
         dotR = maxR * (0.08 + 0.20 * noise1);
         fillColor = skyColor;
         opacity = 0.18 + 0.12 * noise1;
@@ -681,7 +708,8 @@ function buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palett
         var depth = (ny - horizon) / Math.max(0.001, 1.0 - horizon);
         dotR = Math.min(maxR, maxR * Math.max(0.05, 0.05 + 0.85 * depth + 0.25 * noise1));
         opacity = Math.min(0.92, 0.35 + 0.55 * depth);
-        var colorT = Math.max(0, Math.min(0.99, depth + 0.20 * (noise1 - 0.5)));
+        var ridgeNoise = valueNoise(c, r, 6, 44, seed);
+        var colorT = Math.max(0, Math.min(0.99, depth + 0.12 * (ridgeNoise - 0.5)));
         fillColor = hillColors[Math.floor(colorT * hillColors.length)];
         delay = Math.floor(tileRand(c, r, 5, seed) * 80 + fromBottom * 600);
       }
@@ -709,6 +737,19 @@ function buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palett
       }
       svg.appendChild(dot);
     }
+  }
+
+  // Camera pan: SVG is built taller than viewH; position so the horizon
+  // appears at 88% of viewport height at scroll=0 (generous sky), then shift
+  // up on scroll to reveal deeper terrain without changing dot colors.
+  if (viewH && viewH < H) {
+    var horizonFrac = 0.78;     // where horizon sits in the built SVG (ny ≈ 0.78)
+    var initialViewFrac = 0.88; // horizon at 88% viewport height at scroll=0
+    svg._cameraInitialTop = -(horizonFrac * H - initialViewFrac * viewH);
+    svg._cameraMaxShift = (H - viewH) + svg._cameraInitialTop;
+    svg.style.height = H + 'px';
+    svg.style.top = svg._cameraInitialTop.toFixed(1) + 'px';
+    svg.style.bottom = 'auto';
   }
 
   return svg;
@@ -771,7 +812,13 @@ function fitMosaics(animate) {
     var H = p.offsetHeight;
     if (!H) return;
 
-    var dimsKey = W + "x" + H;
+    var isCA = p.dataset.mosaicType === "ca";
+    var isGridOnly = "mosaicGridOnly" in p.dataset;
+    var isDottedValley = p.dataset.mosaicType === "dotted-valley";
+    // Dotted valley: build SVG 2.5× taller than the viewport for the camera-pan effect.
+    var H_build = isDottedValley ? Math.round(H * 2.5) : H;
+
+    var dimsKey = W + "x" + H_build;
     if (!animate && p.dataset.mosaicDims === dimsKey) return;
     p.dataset.mosaicDims = dimsKey;
 
@@ -780,23 +827,20 @@ function fitMosaics(animate) {
     }
     var seed = parseInt(p.dataset.mosaicSeed);
 
-    var isCA = p.dataset.mosaicType === "ca";
     var cols = (p.dataset.mosaicAlign === "left" ? Math.round(W / target) : Math.floor(W / target)) || 1;
-    var rows = (isCA ? Math.floor(H / target) : Math.round(H / target)) || 1;
+    var rows = (isCA ? Math.floor(H_build / target) : Math.round(H_build / target)) || 1;
     var tw = W / cols;
-    var th = H / rows;
+    var th = H_build / rows;
     p.dataset.mosaicTw = tw;
     p.dataset.mosaicTh = th;
     p._tw = tw;
     p._th = th;
 
-    var isGridOnly = "mosaicGridOnly" in p.dataset;
-    var isDottedValley = p.dataset.mosaicType === "dotted-valley";
     var existing = p.querySelector(".mosaic-tiles-svg");
     var newSvg = isGridOnly
-      ? buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc)
+      ? buildGridSVG(W, H_build, cols, rows, tw, th, gridStroke, mc)
       : isDottedValley
-          ? buildDottedValleySVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
+          ? buildDottedValleySVG(W, H_build, cols, rows, tw, th, seed, gridStroke, palette, mc, H)
           : (p.dataset.mosaicType === "ca"
               ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
               : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc));
