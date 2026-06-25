@@ -48,7 +48,7 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset -10px -5px 100px 50px rgba(80, 52, 12, 0.03);
   --card-w: 264px;
-  --card-ratio: 5 / 7;
+  --card-ratio: 66 / 91;
   --sleeve-radius: 4px;
   --card-radius: 16px;
   --sleeve-blur: blur(0.5px);
@@ -396,7 +396,7 @@ main {
 
 .card-art {
   background-color: var(--mosaic-bg);
-  border-inline: 1px solid var(--rule);
+  border: 1px solid var(--rule);
   flex-shrink: 0;
   height: 160px;
   overflow: hidden;
@@ -405,22 +405,13 @@ main {
   user-select: none;
 }
 
-.card-art::after {
-  box-shadow: inset 0 0 0 8px var(--surface);
-  content: "";
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-  z-index: 2;
-}
-
 .card-art-label {
   bottom: 12px;
   color: var(--mosaic-white);
   margin: 0;
   position: absolute;
   right: 12px;
-  z-index: 3;
+  z-index: 2;
 }
 
 .card-type {

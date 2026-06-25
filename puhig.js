@@ -475,14 +475,14 @@ function fitMosaics(animate) {
     if (mosaicW !== null && isSidebar) {
       W = mosaicW;
     } else {
-      W_full = p.offsetWidth;
+      W_full = p.clientWidth;
       W = p.dataset.mosaicAlign === "left"
         ? W_full
         : Math.floor(W_full / target) * target;
     }
     if (!W) W = target;
 
-    var H = p.offsetHeight;
+    var H = p.clientHeight;
     if (!H) return;
 
     var isCA = p.dataset.mosaicType === "ca";
