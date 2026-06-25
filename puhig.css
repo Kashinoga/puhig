@@ -398,11 +398,20 @@ main {
   background-color: var(--mosaic-bg);
   border: 1px solid var(--rule);
   flex-shrink: 0;
-  height: 160px;
+  height: 162px;
   overflow: hidden;
   position: relative;
   -webkit-user-select: none;
   user-select: none;
+}
+
+.card-title + .card-art {
+  border-top: none;
+  height: 161px;
+}
+
+.card-art + .card-type {
+  border-top: none;
 }
 
 .card-art-label {

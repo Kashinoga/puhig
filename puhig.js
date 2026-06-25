@@ -665,12 +665,19 @@ function initFlipCards() {
     function tiltFrame() {
       tiltX += (targetX - tiltX) * 0.15;
       tiltY += (targetY - tiltY) * 0.15;
+      var transform = flipped
+        ? 'perspective(600px) rotateY(' + (-180 + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
+        : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
       if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
-        card.style.transform = 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+        card.style.transform = transform;
         rafId = requestAnimationFrame(tiltFrame);
       } else {
         tiltX = targetX; tiltY = targetY; rafId = null;
-        card.style.transform = (targetX === 0 && targetY === 0) ? '' : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+        if (targetX === 0 && targetY === 0) {
+          card.style.transform = flipped ? 'perspective(600px) rotateY(-180deg)' : '';
+        } else {
+          card.style.transform = transform;
+        }
       }
     }
 
@@ -681,15 +688,17 @@ function initFlipCards() {
     }
 
     card.addEventListener('mousemove', function (e) {
-      if (flipped || animating) return;
+      if (animating) return;
       var rect = card.getBoundingClientRect();
-      targetX = -((e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
-      targetY = ((e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
+      var rawX = ((e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
+      var rawY = ((e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
+      targetX = flipped ? -rawX : rawX;
+      targetY = -rawY;
       startTiltLoop();
     });
 
     card.addEventListener('mouseleave', function () {
-      if (flipped || animating) return;
+      if (animating) return;
       targetX = 0; targetY = 0;
       startTiltLoop();
     });
