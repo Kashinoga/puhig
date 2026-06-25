@@ -583,13 +583,9 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
   var UI_THEME_KEY = 'puhig-ui-theme';
   var BG_KEY = 'puhig-bg';
   var html = document.documentElement;
-  var switcher = document.querySelector('.theme-switcher');
-  if (!switcher) return;
-  var toggle = switcher.querySelector('.theme-toggle');
-  var flyout = switcher.querySelector('.theme-flyout');
-  var appearanceOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="appearance"]'));
-  var uiThemeOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="ui-theme"]'));
-  var bgOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="bg"]'));
+  var appearanceOpts = Array.from(document.querySelectorAll('.theme-option[data-group="appearance"]'));
+  var uiThemeOpts = Array.from(document.querySelectorAll('.theme-option[data-group="ui-theme"]'));
+  var bgOpts = Array.from(document.querySelectorAll('.theme-option[data-group="bg"]'));
 
   function applyTheme(pref, redraw) {
     if (pref === 'light' || pref === 'dark') {
@@ -632,42 +628,6 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
   var savedBG = localStorage.getItem(BG_KEY) || 'grid';
   applyBG(savedBG, false);
 
-  function closeFlyout() {
-    if (!flyout.classList.contains('is-open') || flyout.classList.contains('is-closing')) return;
-    flyout.classList.add('is-closing');
-    flyout.addEventListener('animationend', function () {
-      flyout.classList.remove('is-open', 'is-closing');
-    }, { once: true });
-  }
-
-  toggle.addEventListener('click', function (e) {
-    e.stopPropagation();
-    if (flyout.classList.contains('is-open')) {
-      closeFlyout();
-    } else {
-      flyout.classList.remove('is-closing');
-      flyout.classList.add('is-open');
-    }
-  });
-
-  toggle.addEventListener('pointerdown', function (e) {
-    toggle.setPointerCapture(e.pointerId);
-    toggle.classList.remove('is-bouncing');
-    toggle.style.transition = 'transform 60ms ease';
-    toggle.style.transform = 'scale(0.88)';
-  });
-
-  toggle.addEventListener('pointerup', function (e) {
-    toggle.releasePointerCapture(e.pointerId);
-    toggle.style.transition = '';
-    toggle.style.transform = '';
-    toggle.classList.add('is-bouncing');
-  });
-
-  toggle.addEventListener('animationend', function () {
-    toggle.classList.remove('is-bouncing');
-  });
-
   appearanceOpts.forEach(function (o) {
     o.addEventListener('click', function () {
       var val = o.dataset.value;
@@ -691,16 +651,6 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
       applyBG(val, true);
     });
   });
-
-  document.addEventListener('click', function () {
-    closeFlyout();
-  });
-
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeFlyout();
-  });
-
-  flyout.addEventListener('click', function (e) { e.stopPropagation(); });
 
 }());
 
@@ -744,8 +694,9 @@ function initFlipCards() {
       startTiltLoop();
     });
 
-    card.addEventListener('click', function () {
+    card.addEventListener('click', function (e) {
       if (animating) return;
+      if (e.target.closest('button, a, input, select')) return;
       flipped = !flipped;
       animating = true;
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
@@ -764,6 +715,35 @@ function initFlipCards() {
 }
 
 initFlipCards();
+
+(function () {
+  function setupScrollBtn(btn, action) {
+    if (!btn) return;
+    btn.addEventListener('click', action);
+    btn.addEventListener('pointerdown', function (e) {
+      btn.setPointerCapture(e.pointerId);
+      btn.classList.remove('is-bouncing');
+      btn.style.transition = 'transform 60ms ease';
+      btn.style.transform = 'scale(0.88)';
+    });
+    btn.addEventListener('pointerup', function (e) {
+      btn.releasePointerCapture(e.pointerId);
+      btn.style.transition = '';
+      btn.style.transform = '';
+      btn.classList.add('is-bouncing');
+    });
+    btn.addEventListener('animationend', function () {
+      btn.classList.remove('is-bouncing');
+    });
+  }
+
+  setupScrollBtn(document.getElementById('scroll-top-btn'), function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  setupScrollBtn(document.getElementById('scroll-bottom-btn'), function () {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  });
+}());
 
 if (navigator.maxTouchPoints > 0 && !window.matchMedia("(pointer: fine)").matches) {
   document.addEventListener("gesturestart", function (e) { e.preventDefault(); });

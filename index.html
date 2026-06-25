@@ -38,9 +38,39 @@
           </div>
         </div>
         </div>
-        <div class="panel-frame panel-frame--flip">
-          <div class="panel-content panel-content--centered">
-            <i class="ph-light ph-crown-simple"></i>
+        <div class="panel-frame panel-frame--flip" id="settings-card">
+          <div class="panel-content">
+            <div class="card-title">
+              <span class="card-name">Settings</span>
+              <i class="ph ph-gear"></i>
+            </div>
+            <div class="settings-body">
+              <span class="flyout-label">Theme</span>
+              <button class="theme-option" data-group="ui-theme" data-value="simulacra">
+                <i class="ph ph-book"></i>
+                <span>Simulacra</span>
+              </button>
+              <div class="flyout-divider"></div>
+              <span class="flyout-label">Background</span>
+              <button class="theme-option" data-group="bg" data-value="grid">
+                <i class="ph ph-grid-four"></i>
+                <span>Grid</span>
+              </button>
+              <div class="flyout-divider"></div>
+              <span class="flyout-label">Appearance</span>
+              <button class="theme-option" data-group="appearance" data-value="light">
+                <i class="ph ph-sun"></i>
+                <span>Light</span>
+              </button>
+              <button class="theme-option" data-group="appearance" data-value="dark">
+                <i class="ph ph-moon"></i>
+                <span>Dark</span>
+              </button>
+              <button class="theme-option" data-group="appearance" data-value="system">
+                <i class="ph ph-desktop"></i>
+                <span>System</span>
+              </button>
+            </div>
           </div>
           <div class="panel-back panel-content--centered">
             <i class="ph ph-gear"></i>
@@ -364,38 +394,14 @@
       </section>
     </main>
     <div class="theme-switcher">
-      <div class="panel-frame theme-flyout">
-        <div class="flyout-body">
-          <span class="flyout-label">Theme</span>
-          <button class="theme-option" data-group="ui-theme" data-value="simulacra">
-            <i class="ph ph-book"></i>
-            <span>Simulacra</span>
-          </button>
-<div class="flyout-divider"></div>
-          <span class="flyout-label">Background</span>
-          <button class="theme-option" data-group="bg" data-value="grid">
-            <i class="ph ph-grid-four"></i>
-            <span>Grid</span>
-          </button>
-<div class="flyout-divider"></div>
-          <span class="flyout-label">Appearance</span>
-          <button class="theme-option" data-group="appearance" data-value="light">
-            <i class="ph ph-sun"></i>
-            <span>Light</span>
-          </button>
-          <button class="theme-option" data-group="appearance" data-value="dark">
-            <i class="ph ph-moon"></i>
-            <span>Dark</span>
-          </button>
-          <button class="theme-option" data-group="appearance" data-value="system">
-            <i class="ph ph-desktop"></i>
-            <span>System</span>
-          </button>
-        </div>
-      </div>
-      <button class="panel-frame theme-toggle" aria-label="Display mode">
+      <button class="panel-frame theme-toggle" id="scroll-bottom-btn" aria-label="Go to bottom">
         <span class="toggle-body">
-          <i class="ph-light ph-crown-simple"></i>
+          <i class="ph-light ph-arrow-line-down"></i>
+        </span>
+      </button>
+      <button class="panel-frame theme-toggle" id="scroll-top-btn" aria-label="Go to top">
+        <span class="toggle-body">
+          <i class="ph-light ph-arrow-line-up"></i>
         </span>
       </button>
     </div>
