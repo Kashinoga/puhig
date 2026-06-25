@@ -47,7 +47,7 @@
     inset 0 0 0 1px rgba(0, 0, 0, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset -10px -5px 100px 50px rgba(80, 52, 12, 0.03);
-  --card-w: 320px;
+  --card-w: 264px;
   --card-ratio: 5 / 7;
   --sleeve-radius: 4px;
   --card-radius: 16px;
@@ -178,9 +178,10 @@ h2 {
 }
 
 body {
-  padding-top: calc(36px + env(safe-area-inset-top));
+  padding-top: calc(12px + env(safe-area-inset-top));
+  padding-right: 24px;
   padding-bottom: calc(36px + env(safe-area-inset-bottom));
-  padding-inline: 24px;
+  padding-left: 12px;
 }
 
 header {
@@ -203,7 +204,7 @@ main {
   gap: 24px;
   grid-template-columns: repeat(auto-fill, var(--card-w));
   isolation: isolate;
-  justify-content: center;
+  justify-content: start;
   padding-inline: 0;
   position: relative;
 }
@@ -260,6 +261,51 @@ main {
   z-index: 2;
   min-width: 0;
   position: relative;
+}
+
+.panel-content--centered {
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+}
+
+.panel-frame--flip {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  cursor: pointer;
+  isolation: auto;
+  overflow: visible;
+  transform-style: preserve-3d;
+}
+
+.panel-frame--flip .panel-content,
+.panel-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--card-radius);
+  inset: 6px;
+  overflow: hidden;
+  position: absolute;
+}
+
+@keyframes card-flip-forward {
+  0%   { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg)  rotateY(0deg)    scale(1); }
+  22%  { transform: perspective(600px) rotateX(8deg)  rotateZ(-5deg) rotateY(0deg)    scale(1.08); }
+  78%  { transform: perspective(600px) rotateX(5deg)  rotateZ(-3deg) rotateY(-180deg) scale(1.08); }
+  100% { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg)  rotateY(-180deg) scale(1); }
+}
+
+@keyframes card-flip-back {
+  0%   { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg)  rotateY(-180deg) scale(1); }
+  22%  { transform: perspective(600px) rotateX(8deg)  rotateZ(-5deg) rotateY(-180deg) scale(1.08); }
+  78%  { transform: perspective(600px) rotateX(5deg)  rotateZ(-3deg) rotateY(-360deg) scale(1.08); }
+  100% { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg)  rotateY(-360deg) scale(1); }
+}
+
+.panel-back {
+  background-color: var(--surface);
+  box-shadow: var(--shadow-panel-content);
+  transform: rotateY(180deg);
 }
 
 .panel-frame::after {

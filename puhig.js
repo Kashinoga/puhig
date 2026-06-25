@@ -704,6 +704,67 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
 
 }());
 
+function initFlipCards() {
+  document.querySelectorAll('.panel-frame--flip').forEach(function (card) {
+    var flipped = false;
+    var animating = false;
+    var tiltX = 0, tiltY = 0;
+    var targetX = 0, targetY = 0;
+    var rafId = null;
+
+    function tiltFrame() {
+      tiltX += (targetX - tiltX) * 0.15;
+      tiltY += (targetY - tiltY) * 0.15;
+      if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
+        card.style.transform = 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+        rafId = requestAnimationFrame(tiltFrame);
+      } else {
+        tiltX = targetX; tiltY = targetY; rafId = null;
+        card.style.transform = (targetX === 0 && targetY === 0) ? '' : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+      }
+    }
+
+    function startTiltLoop() {
+      if (animating) return;
+      card.style.transition = '';
+      if (!rafId) rafId = requestAnimationFrame(tiltFrame);
+    }
+
+    card.addEventListener('mousemove', function (e) {
+      if (flipped || animating) return;
+      var rect = card.getBoundingClientRect();
+      targetX = -((e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
+      targetY = ((e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
+      startTiltLoop();
+    });
+
+    card.addEventListener('mouseleave', function () {
+      if (flipped || animating) return;
+      targetX = 0; targetY = 0;
+      startTiltLoop();
+    });
+
+    card.addEventListener('click', function () {
+      if (animating) return;
+      flipped = !flipped;
+      animating = true;
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
+      card.style.transition = '';
+      card.style.transform = '';
+      card.style.animation = flipped ? 'card-flip-forward 0.65s ease-in-out forwards' : 'card-flip-back 0.65s ease-in-out forwards';
+      card.addEventListener('animationend', function onFlipEnd() {
+        card.removeEventListener('animationend', onFlipEnd);
+        card.style.animation = '';
+        card.style.transform = flipped ? 'perspective(600px) rotateY(-180deg)' : '';
+        animating = false;
+      });
+    });
+  });
+}
+
+initFlipCards();
+
 if (navigator.maxTouchPoints > 0 && !window.matchMedia("(pointer: fine)").matches) {
   document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
   document.addEventListener("touchmove", function (e) {
