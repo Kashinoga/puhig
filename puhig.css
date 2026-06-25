@@ -24,10 +24,18 @@
   --rule: var(--border);
   --dim: var(--sub);
   --grain-opacity: 0.2;
-  --mosaic-black: #1c1810;
+  --mosaic-black: oklch(9% 0.012 65);
+  --mosaic-bg: oklch(9% 0.012 65);
+  --miku-1: oklch(22% 0.06 192);
+  --miku-2: oklch(73% 0.11 192);
+  --miku-3: oklch(48% 0.10 192);
+  --miku-4: oklch(90% 0.04 192);
+  --miku-5: oklch(62% 0.10 192);
+  --miku-6: oklch(82% 0.09 188);
+  --miku-7: oklch(56% 0.08 198);
   --mosaic-hover: #e8d060;
   --mosaic-press: var(--black);
-  --mosaic-grid: rgba(0, 0, 0, 0.15);
+  --mosaic-grid: oklch(0% 0 0 / 50%);
   --mosaic-white: #f0f4f8;
   color-scheme: light dark;
   --shadow-panel-frame:
@@ -39,6 +47,8 @@
     inset 0 0 0 1px rgba(0, 0, 0, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset -10px -5px 100px 50px rgba(80, 52, 12, 0.03);
+  --card-w: 320px;
+  --card-ratio: 5 / 7;
   --sleeve-radius: 4px;
   --card-radius: 16px;
   --sleeve-blur: blur(0.5px);
@@ -148,23 +158,23 @@ h6 {
 }
 
 h6 {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 h5 {
-  font-size: 20px;
+  font-size: 16px;
 }
 
 h4 {
-  font-size: 24px;
+  font-size: 18px;
 }
 
 h3 {
-  font-size: 28px;
+  font-size: 20px;
 }
 
 h2 {
-  font-size: 32px;
+  font-size: 24px;
 }
 
 body {
@@ -185,19 +195,21 @@ main {
 
 .container {
   margin-inline: auto;
-  max-width: 512px;
+  width: 100%;
 }
 
 .panel {
-  display: flex;
-  flex-direction: row;
+  display: grid;
   gap: 24px;
+  grid-template-columns: repeat(auto-fill, var(--card-w));
   isolation: isolate;
+  justify-content: center;
   padding-inline: 0;
   position: relative;
 }
 
 .mosaic-top {
+  background-color: var(--mosaic-bg);
   height: 72px;
   margin-top: env(safe-area-inset-top);
   margin-bottom: 24px;
@@ -209,6 +221,7 @@ main {
 }
 
 .mosaic-divider {
+  background-color: var(--mosaic-bg);
   height: 72px;
   margin-block: 24px;
   overflow: hidden;
@@ -221,21 +234,21 @@ main {
 .panel-frame {
   -webkit-backdrop-filter: var(--sleeve-blur);
   backdrop-filter: var(--sleeve-blur);
+  aspect-ratio: var(--card-ratio);
   background-color: var(--sleeve-bg);
   border-radius: var(--sleeve-radius);
   box-shadow: var(--shadow-panel-frame);
   display: flex;
-  flex: 4;
+  flex: none;
   flex-direction: column;
   isolation: isolate;
-  min-width: 0;
   overflow: hidden;
   padding: 6px;
   position: relative;
+  width: min(var(--card-w), 100%);
 }
 
 .panel-content {
-  align-items: flex-start;
   background-color: var(--surface);
   border-radius: var(--card-radius);
   box-shadow: var(--shadow-panel-content);
@@ -269,6 +282,7 @@ main {
 }
 
 .panel-mosaic {
+  background-color: var(--mosaic-bg);
   flex: 2;
   min-width: 0;
   overflow: hidden;
@@ -280,6 +294,91 @@ main {
 .panel-mosaic-blank {
   flex: 2;
   min-width: 0;
+}
+
+.card-title {
+  align-items: center;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+  height: 28px;
+  padding-inline: 10px;
+}
+
+.card-name {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.card-art {
+  background-color: var(--mosaic-bg);
+  border-inline: 1px solid var(--rule);
+  flex-shrink: 0;
+  height: 160px;
+  overflow: hidden;
+  position: relative;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.card-art::after {
+  box-shadow: inset 0 0 0 8px var(--surface);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.card-art-label {
+  bottom: 12px;
+  color: var(--mosaic-white);
+  margin: 0;
+  position: absolute;
+  right: 12px;
+  z-index: 3;
+}
+
+.card-type {
+  align-items: center;
+  border-bottom: 1px solid var(--rule);
+  border-top: 1px solid var(--rule);
+  display: flex;
+  flex-shrink: 0;
+  font-size: 11px;
+  gap: 6px;
+  height: 24px;
+  letter-spacing: 0.06em;
+  padding-inline: 10px;
+}
+
+.card-type-label {
+  flex: 1;
+}
+
+.card-text {
+  flex: 1;
+  overflow: hidden;
+  padding: 8px;
+}
+
+.card-footer {
+  align-items: center;
+  border-top: 1px solid var(--rule);
+  color: var(--dim);
+  display: flex;
+  flex-shrink: 0;
+  font-size: 9px;
+  gap: 6px;
+  height: 20px;
+  justify-content: space-between;
+  letter-spacing: 0.08em;
+  padding-inline: 10px;
+  text-transform: uppercase;
 }
 
 header > .panel {
@@ -365,7 +464,7 @@ header > .panel {
 
 .hero-block h2 {
   border-bottom: none;
-  margin-top: 24px;
+  margin-top: 12px;
   text-align: right;
   text-transform: uppercase;
 }
@@ -373,7 +472,7 @@ header > .panel {
 .hero-rule {
   border: none;
   border-top: 2px solid var(--orange);
-  margin-block: 12px;
+  margin-block: 6px;
 }
 
 .hero-label {
@@ -382,20 +481,20 @@ header > .panel {
   font-weight: 200;
   letter-spacing: 0.08em;
   line-height: 1;
-  margin-top: 24px;
+  margin-top: 12px;
   padding-bottom: 0;
   text-align: right;
   text-transform: uppercase;
 }
 
 h1 {
-  font-size: 36px;
+  font-size: 28px;
 }
 
 .panel-body {
   -webkit-user-select: text;
   user-select: text;
-  padding: 24px;
+  padding: 16px;
   width: 100%;
 }
 
@@ -403,15 +502,15 @@ h1 {
   align-items: center;
   color: var(--dim);
   display: flex;
-  font-size: 14px;
+  font-size: 12px;
   letter-spacing: 0.2em;
-  margin-bottom: 24px;
-  min-height: 24px;
+  margin-bottom: 10px;
+  min-height: 16px;
   text-transform: uppercase;
 }
 
 .panel-section {
-  margin-block-start: 24px;
+  margin-block-start: 12px;
 }
 
 .section-heading {
@@ -420,13 +519,13 @@ h1 {
 }
 
 .section-body {
-  margin-block-start: 24px;
+  margin-block-start: 10px;
 }
 
 .type-scale {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 10px;
   width: 100%;
 }
 
@@ -479,7 +578,7 @@ h1 {
 
 .weight-sample {
   font-family: "Jost", system-ui, sans-serif;
-  font-size: 36px;
+  font-size: 28px;
   line-height: 1;
 }
 
@@ -487,9 +586,9 @@ h1 {
   border-left: 2px solid var(--orange);
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  margin-block: 24px;
-  padding-inline-start: 24px;
+  gap: 8px;
+  margin-block: 8px;
+  padding-inline-start: 12px;
 }
 
 .panel-excerpt {
@@ -527,7 +626,7 @@ h1 {
 }
 
 .icon-sample {
-  font-size: 36px;
+  font-size: 28px;
   line-height: 1;
 }
 
@@ -564,15 +663,15 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 header .wordmark-row,
 main .wordmark-row {
   background: var(--white);
   border-inline: 1px solid rgba(0, 0, 0, 0.1);
-  margin-inline: -24px;
-  padding: 12px 24px;
+  margin-inline: -16px;
+  padding: 10px 16px;
 }
 
 .wordmark-row .wordmark {
@@ -589,8 +688,8 @@ main .wordmark-row {
   background: var(--orange);
   border-radius: 9999px;
   color: var(--white);
-  font-size: 14px;
-  padding: 4px 8px;
+  font-size: 11px;
+  padding: 2px 6px;
 }
 
 .dev-tag--version {
@@ -598,6 +697,7 @@ main .wordmark-row {
 }
 
 .mosaic-bottom {
+  background-color: var(--mosaic-bg);
   height: 72px;
   margin-top: 24px;
   overflow: hidden;
@@ -655,9 +755,10 @@ main .wordmark-row {
     --orange: #c84820;
     --teal: #5cdcd4;
     --grain-opacity: 0.1;
-    --mosaic-black: #3a3020;
+    --mosaic-black: oklch(20% 0.018 65);
+    --mosaic-bg: oklch(5% 0.008 65);
     --mosaic-press: var(--white);
-    --mosaic-grid: rgba(255, 255, 255, 0.1);
+    --mosaic-grid: oklch(0% 0 0 / 65%);
     --mosaic-white: #c8d4dc;
     --shadow-panel-frame:
       inset 0 0 0 1px rgba(255, 255, 255, 0.10),
@@ -710,9 +811,10 @@ html[data-theme="dark"] {
   --orange: #c84820;
   --teal: #5cdcd4;
   --grain-opacity: 0.1;
-  --mosaic-black: #3a3020;
+  --mosaic-black: oklch(20% 0.018 65);
+  --mosaic-bg: oklch(5% 0.008 65);
   --mosaic-press: var(--white);
-  --mosaic-grid: rgba(255, 255, 255, 0.1);
+  --mosaic-grid: oklch(0% 0 0 / 65%);
   --mosaic-white: #c8d4dc;
   --shadow-panel-frame:
     inset 0 0 0 1px rgba(255, 255, 255, 0.10),
@@ -820,6 +922,7 @@ html[data-theme="dark"] .mosaic-overlay {
 .theme-flyout {
   -webkit-backdrop-filter: var(--sleeve-blur);
   backdrop-filter: var(--sleeve-blur);
+  aspect-ratio: auto;
   background-color: var(--sleeve-bg);
   border: none;
   border-radius: var(--sleeve-radius);
@@ -833,6 +936,7 @@ html[data-theme="dark"] .mosaic-overlay {
   padding: 8px;
   position: absolute;
   transform-origin: bottom left;
+  width: auto;
 }
 
 .flyout-body {

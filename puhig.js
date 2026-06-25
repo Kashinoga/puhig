@@ -158,8 +158,7 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
   svg._dormantSlots = [];
   for (var rd = 0; rd < rows; rd++) {
     for (var cd = 0; cd < cols; cd++) {
-      var isEdgeDormant = cd === 0 || cd === cols - 1 || rd === 0 || rd === rows - 1;
-      if (isEdgeDormant || isAlive(cd, rd)) continue;
+      if (isAlive(cd, rd)) continue;
       svg._dormantSlots.push({
         col: cd, row: rd,
         x: (cd * tw).toFixed(2), y: (rd * th).toFixed(2),
@@ -176,8 +175,7 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, m
   for (r = 0; r < rows; r++) {
     grid[r] = [];
     for (c = 0; c < cols; c++) {
-      var isEdge = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
-      grid[r][c] = isEdge ? 0 : (tileRand(c, r, 50, seed) < 0.45 ? 1 : 0);
+      grid[r][c] = tileRand(c, r, 50, seed) < 0.90 ? 1 : 0;
     }
   }
   for (var iter = 0; iter < 4; iter++) {
@@ -185,8 +183,6 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, m
     for (r = 0; r < rows; r++) {
       next[r] = [];
       for (c = 0; c < cols; c++) {
-        var isEdge2 = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
-        if (isEdge2) { next[r][c] = 0; continue; }
         alive = 0;
         for (dr = -1; dr <= 1; dr++) {
           for (dc = -1; dc <= 1; dc++) {
@@ -225,10 +221,8 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
   svg._tiles = []; svg._ripples = []; svg._presses = [];
   svg._tileData = []; svg._mc = mc;
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
-  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) {
-    var isEdge = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
-    var dropChance = isEdge ? 0.85 : organicDrop(c, r, seed) * 0.5;
-    return tileRand(c, r, 0, seed) >= dropChance;
+  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function () {
+    return true;
   }, 200, palette, mc);
   return svg;
 }
@@ -414,6 +408,13 @@ function startDriftLoop(svg, palette) {
   svg._driftTimer = setTimeout(driftTick, 1500);
 }
 
+function getMikuPalette() {
+  var s = getComputedStyle(document.documentElement);
+  return [1, 2, 3, 4, 5, 6, 7].map(function (n) {
+    return s.getPropertyValue("--miku-" + n).trim();
+  });
+}
+
 function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
   var ns = "http://www.w3.org/2000/svg";
   var svg = document.createElementNS(ns, "svg");
@@ -445,7 +446,7 @@ function fitMosaics(animate) {
     mosaicW = mosaicCols * 24;
   }
 
-  var palette = getPalette();
+  var defaultPalette = getPalette();
   var mc = getMosaicColors();
   var gridStroke = mc.grid;
 
@@ -486,6 +487,7 @@ function fitMosaics(animate) {
 
     var isCA = p.dataset.mosaicType === "ca";
     var isGridOnly = "mosaicGridOnly" in p.dataset;
+    var palette = p.dataset.mosaicPalette === "miku" ? getMikuPalette() : defaultPalette;
     var H_build = H;
 
     var dimsKey = W + "x" + H_build;
@@ -517,7 +519,7 @@ function fitMosaics(animate) {
       newSvg.style.width = W + "px";
     }
 
-    var isStaticBg = isGridOnly;
+    var isStaticBg = isGridOnly || "mosaicStatic" in p.dataset;
     if (!isStaticBg) {
       if (!p._mosaicPressBound) { setupMosaicPress(p); p._mosaicPressBound = true; }
     }
@@ -535,7 +537,7 @@ function fitMosaics(animate) {
         Array.from(p.querySelectorAll(".mosaic-tiles-svg")).forEach(function (s) { s.remove(); });
         p.appendChild(newSvg);
         p._mosaicSvg = newSvg;
-        if (!isGridOnly) startDriftLoop(newSvg, capturedPalette);
+        if (!isStaticBg) startDriftLoop(newSvg, capturedPalette);
       }, 200);
     } else {
       if (p._shrinkTimer) { clearTimeout(p._shrinkTimer); p._shrinkTimer = null; }
@@ -543,7 +545,7 @@ function fitMosaics(animate) {
       if (existing) existing.remove();
       p.appendChild(newSvg);
       p._mosaicSvg = newSvg;
-      if (!isGridOnly) startDriftLoop(newSvg, palette);
+      if (!isStaticBg) startDriftLoop(newSvg, palette);
     }
   });
 }
