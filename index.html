@@ -16,9 +16,9 @@
 
   <body>
     <div id="mosaic-bg" data-mosaic-align="left" data-mosaic-grid-only><div class="mosaic-overlay"></div></div>
-    <header>
-      <div class="container panel">
-        <div class="panel-frame">
+    <div class="container panel">
+      <header>
+        <div class="panel-frame" data-row="header">
         <div class="panel-content">
           <div class="panel-body">
             <div class="wordmark-row">
@@ -38,7 +38,7 @@
           </div>
         </div>
         </div>
-        <div class="panel-frame panel-frame--flip" id="settings-card">
+        <div class="panel-frame panel-frame--flip" id="settings-card" data-row="header">
           <div class="panel-content">
             <div class="card-title">
               <span class="card-name">Settings</span>
@@ -76,16 +76,14 @@
             <i class="ph ph-gear"></i>
           </div>
         </div>
-
-      </div>
-    </header>
-    <main>
-      <section>
-        <div class="container panel">
-          <div class="panel-frame">
-            <div class="panel-content">
+      </header>
+      <main>
+        <section data-row="typography">
+          <div class="panel-frame card-sleeve panel-row-start" data-row="typography">
+            <div class="panel-content card">
               <div class="card-frame">
                 <div class="card-title">
+                  <i class="card-title-icon ph ph-arrows-clockwise"></i>
                   <span class="card-name">Jost*, <a href="https://indestructibletype.com/Jost.html" target="_blank" rel="noopener">Indestructible Type<span class="external-link-icon"><i class="ph ph-arrow-square-out"></i></span></a></span>
                   <div class="card-cost">
                     <span class="card-pip" style="background: var(--orange)"></span>
@@ -93,14 +91,14 @@
                   </div>
                 </div>
                 <div class="card-art" data-mosaic-type="ca" data-target="24" data-mosaic-align="left" data-mosaic-palette="miku" data-mosaic-static>
-                  <div class="mosaic-overlay"></div>
+                  <div class="mosaic-overlay card-mosaic"></div>
                   <h1 class="hero-label card-art-label">A Tribute<br />for the<br />Digital Era</h1>
                 </div>
                 <div class="card-type">
                   <span class="card-type-label">Typography — Typeface</span>
                   <span class="card-rarity" data-rarity="stable">◆</span>
                 </div>
-                <div class="card-text">
+                <div class="card-text-box">
                   <blockquote class="panel-quote">
                     <p class="panel-excerpt">
                       Jost* aims to keep the attitude of Futura rather than the
@@ -111,18 +109,30 @@
                   </blockquote>
                   <div class="card-stats">14 / 900</div>
                 </div>
-              </div>
-              <div class="card-footer">
-                <span class="card-footer-number">M 001</span>
-                <span>Atelier Kashinoga</span>
-                <span>v0.2 · 25.June.2026</span>
+                <div class="card-footer">
+                  <div class="card-footer-left">
+                    <span class="card-number">M 001</span>
+                    <div class="card-metadata">
+                      <span class="card-set-abbreviation">PUH</span>
+                      <span class="card-language">EN</span>
+                    </div>
+                  </div>
+                  <div class="card-footer-right">
+                    <span class="card-version">v0.2</span>
+                    <span class="card-author">Atelier Kashinoga</span>
+                  </div>
+                </div>
               </div>
             </div>
+            <div class="card-back">
+              <i class="ph ph-star"></i>
+            </div>
           </div>
-          <div class="panel-frame">
-            <div class="panel-content">
+          <div class="panel-frame card-sleeve" data-row="typography">
+            <div class="panel-content card">
               <div class="card-frame">
                 <div class="card-title">
+                  <i class="card-title-icon ph ph-arrows-clockwise"></i>
                   <span class="card-name">Headings</span>
                   <div class="card-cost">
                     <span class="card-pip" style="background: var(--orange)"></span>
@@ -132,7 +142,7 @@
                   <span class="card-type-label">Typography — Type Scale</span>
                   <span class="card-rarity" data-rarity="stable">◆</span>
                 </div>
-                <div class="card-text">
+                <div class="card-text-box">
                   <div class="type-scale type-headings">
                     <span class="type-meta">H1 · 28px</span><h1>Pocket Universe</h1>
                     <span class="type-meta">H2 · 24px</span><h2>Pocket Universe</h2>
@@ -144,15 +154,26 @@
                   </div>
                   <div class="card-stats">7 / 28px</div>
                 </div>
-              </div>
-              <div class="card-footer">
-                <span class="card-footer-number">M 002</span>
-                <span>Atelier Kashinoga</span>
-                <span>v0.2 · 25.June.2026</span>
+                <div class="card-footer">
+                  <div class="card-footer-left">
+                    <span class="card-number">M 002</span>
+                    <div class="card-metadata">
+                      <span class="card-set-abbreviation">PUH</span>
+                      <span class="card-language">EN</span>
+                    </div>
+                  </div>
+                  <div class="card-footer-right">
+                    <span class="card-version">v0.2</span>
+                    <span class="card-author">Atelier Kashinoga</span>
+                  </div>
+                </div>
               </div>
             </div>
+            <div class="card-back">
+              <i class="ph ph-star"></i>
+            </div>
           </div>
-          <div class="panel-frame">
+          <div class="panel-frame" data-row="typography">
             <div class="panel-content">
               <div class="panel-body">
                 <div class="panel-section">
@@ -201,11 +222,9 @@
               </div>
             </div>
           </div>
-        </div>
-      </section>
-      <section>
-        <div class="container panel">
-          <div class="panel-frame">
+        </section>
+        <section data-row="color">
+          <div class="panel-frame panel-row-start" data-row="color">
             <div class="panel-content">
               <div class="panel-body">
                 <div class="wordmark-row">
@@ -245,7 +264,7 @@
               </div>
             </div>
           </div>
-          <div class="panel-frame">
+          <div class="panel-frame" data-row="color">
             <div class="panel-content">
               <div class="panel-body">
                 <div class="panel-section">
@@ -285,11 +304,9 @@
               </div>
             </div>
           </div>
-        </div>
-      </section>
-      <section>
-        <div class="container panel">
-          <div class="panel-frame">
+        </section>
+        <section data-row="iconography">
+          <div class="panel-frame panel-row-start" data-row="iconography">
             <div class="panel-content">
               <div class="panel-body">
                 <div class="wordmark-row">
@@ -323,7 +340,7 @@
               </div>
             </div>
           </div>
-          <div class="panel-frame">
+          <div class="panel-frame" data-row="iconography">
             <div class="panel-content">
               <div class="panel-body">
                 <div class="panel-section">
@@ -360,7 +377,7 @@
               </div>
             </div>
           </div>
-          <div class="panel-frame">
+          <div class="panel-frame" data-row="iconography">
             <div class="panel-content">
               <div class="panel-body">
                 <div class="panel-section">
@@ -397,14 +414,13 @@
               </div>
             </div>
           </div>
-        </div>
-      </section>
-      <section>
-        <div class="container panel">
-          <div class="panel-frame">
-            <div class="panel-content">
+        </section>
+        <section data-row="motion">
+          <div class="panel-frame card-sleeve panel-row-start" data-row="motion">
+            <div class="panel-content card">
               <div class="card-frame">
                 <div class="card-title">
+                  <i class="card-title-icon ph ph-arrows-clockwise"></i>
                   <span class="card-name">Motion</span>
                   <div class="card-cost">
                     <span class="card-pip" style="background: var(--teal)"></span>
@@ -413,28 +429,39 @@
                   </div>
                 </div>
                 <div class="card-art" data-target="24" data-mosaic-align="left" data-mosaic-static>
-                  <div class="mosaic-overlay"></div>
+                  <div class="mosaic-overlay card-mosaic"></div>
                 </div>
                 <div class="card-type">
                   <span class="card-type-label">Animation — Interaction System</span>
                   <span class="card-rarity" data-rarity="stable">◆</span>
                 </div>
-                <div class="card-text">
+                <div class="card-text-box">
                   <p>Tiles animate at <strong>480ms</strong> with bounce-overshoot. Press fires a ripple wave. Hover traces warm cursor light.</p>
-                  <p class="card-flavor">Light reaches the lake before you wake.</p>
+                  <p class="card-quote">Light reaches the lake before you wake.</p>
                   <div class="card-stats">480 / 15</div>
                 </div>
-              </div>
-              <div class="card-footer">
-                <span class="card-footer-number">M 003</span>
-                <span>Atelier Kashinoga</span>
-                <span>v0.2 · 25.June.2026</span>
+                <div class="card-footer">
+                  <div class="card-footer-left">
+                    <span class="card-number">M 003</span>
+                    <div class="card-metadata">
+                      <span class="card-set-abbreviation">PUH</span>
+                      <span class="card-language">EN</span>
+                    </div>
+                  </div>
+                  <div class="card-footer-right">
+                    <span class="card-version">v0.2</span>
+                    <span class="card-author">Atelier Kashinoga</span>
+                  </div>
+                </div>
               </div>
             </div>
+            <div class="card-back">
+              <i class="ph ph-star"></i>
+            </div>
           </div>
-        </div>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
     <div class="theme-switcher">
       <button class="panel-frame theme-toggle" id="scroll-bottom-btn" aria-label="Go to bottom">
         <span class="toggle-body">

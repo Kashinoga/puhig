@@ -50,7 +50,7 @@
   --card-w: 264px;
   --card-ratio: 66 / 91;
   --sleeve-radius: 4px;
-  --card-radius: 16px;
+  --card-radius: 8px;
   --sleeve-blur: blur(0.5px);
   --sleeve-bg: color-mix(in srgb, var(--paper) 50%, transparent);
   --sleeve-streak: linear-gradient(
@@ -184,14 +184,11 @@ body {
   padding-left: 12px;
 }
 
-header {
-  margin-bottom: 24px;
-}
 
-main {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+header,
+main,
+section {
+  display: contents;
 }
 
 .container {
@@ -201,12 +198,16 @@ main {
 
 .panel {
   display: grid;
-  gap: 24px;
+  gap: 12px;
   grid-template-columns: repeat(auto-fill, var(--card-w));
   isolation: isolate;
   justify-content: start;
   padding-inline: 0;
   position: relative;
+}
+
+.panel-row-start {
+  grid-column: 1;
 }
 
 .mosaic-top {
@@ -391,11 +392,19 @@ main {
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.12em;
+  line-height: 1;
 }
 
 .card-name a {
   color: inherit;
   text-decoration: none;
+}
+
+.card-title-icon {
+  color: var(--dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: 10px;
 }
 
 .card-art {
@@ -443,7 +452,8 @@ main {
   flex: 1;
 }
 
-.card-text {
+.card-text-box {
+  cursor: text;
   flex: 1;
   font-size: 11px;
   line-height: 1.4;
@@ -452,40 +462,53 @@ main {
   position: relative;
 }
 
-.card-text .panel-quote {
+.card-text-box .panel-quote {
   border-left: none;
   margin-block: 0;
   padding-inline-start: 0;
 }
 
-.card-text .panel-excerpt {
+.card-text-box .panel-excerpt {
   font-size: 11px;
   line-height: 1.4;
 }
 
-.card-text .type-meta {
+.card-text-box .type-meta {
   font-size: 9px;
 }
 
 .card-footer {
-  align-items: center;
   border-top: 1px solid var(--rule);
   color: var(--dim);
   display: flex;
   flex-shrink: 0;
-  font-size: 8px;
-  gap: 6px;
-  height: 20px;
+  font-size: 7px;
+  height: 24px;
   justify-content: space-between;
   letter-spacing: 0.08em;
-  padding-inline: 10px;
+  padding: 3px 10px;
   text-transform: uppercase;
+}
+
+.card-footer-left,
+.card-footer-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.card-footer-right {
+  align-items: flex-end;
+}
+
+.card-metadata {
+  display: flex;
+  gap: 4px;
 }
 
 .card-frame {
   border: 1px solid var(--rule);
-  border-bottom: none;
-  border-radius: var(--card-radius) var(--card-radius) 0 0;
+  border-radius: var(--card-radius);
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -524,7 +547,7 @@ main {
 .card-rarity[data-rarity="stable"]   { color: #c8a832; }
 .card-rarity[data-rarity="landmark"] { color: var(--teal); }
 
-.card-flavor {
+.card-quote {
   color: var(--dim);
   font-size: 11px;
   font-style: italic;
@@ -543,11 +566,76 @@ main {
   right: 6px;
 }
 
-.card-footer-number {
+.card-number {
   letter-spacing: 0.12em;
 }
 
-header > .panel {
+.card-sleeve {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  cursor: pointer;
+  isolation: auto;
+  overflow: visible;
+  transform-style: preserve-3d;
+}
+
+.card-sleeve::after {
+  content: none;
+}
+
+.card-sleeve .card {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  inset: 6px;
+  position: absolute;
+}
+
+.card-sleeve .card::after {
+  background-image: var(--sleeve-streak);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.card-back {
+  align-items: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background-color: var(--surface);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-panel-content);
+  display: flex;
+  font-size: 48px;
+  inset: 6px;
+  isolation: isolate;
+  justify-content: center;
+  overflow: hidden;
+  position: absolute;
+  transform: rotateY(180deg);
+}
+
+.card-back::before {
+  background-image: var(--grain);
+  content: "";
+  inset: 0;
+  opacity: var(--grain-opacity);
+  pointer-events: none;
+  position: absolute;
+  z-index: -1;
+}
+
+.card-back::after {
+  background-image: var(--sleeve-streak);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.container.panel {
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }

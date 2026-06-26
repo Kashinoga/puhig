@@ -712,10 +712,12 @@ function initFlipCards() {
       tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
       card.style.transition = '';
       card.style.transform = '';
+      card.style.zIndex = '10';
       card.style.animation = flipped ? 'card-flip-forward 0.65s ease-in-out forwards' : 'card-flip-back 0.65s ease-in-out forwards';
       card.addEventListener('animationend', function onFlipEnd() {
         card.removeEventListener('animationend', onFlipEnd);
         card.style.animation = '';
+        card.style.zIndex = '';
         card.style.transform = flipped ? 'perspective(600px) rotateY(-180deg)' : '';
         animating = false;
       });
@@ -724,6 +726,48 @@ function initFlipCards() {
 }
 
 initFlipCards();
+
+function initCardSleeveFlips() {
+  document.querySelectorAll('.card-sleeve').forEach(function (sleeve) {
+    var flipped = false;
+    var animating = false;
+
+    function flip() {
+      if (animating) return;
+      flipped = !flipped;
+      animating = true;
+      sleeve.style.zIndex = '10';
+      sleeve.style.animation = flipped
+        ? 'card-flip-forward 0.65s ease-in-out forwards'
+        : 'card-flip-back 0.65s ease-in-out forwards';
+      sleeve.addEventListener('animationend', function onEnd() {
+        sleeve.removeEventListener('animationend', onEnd);
+        sleeve.style.animation = '';
+        sleeve.style.zIndex = '';
+        sleeve.style.transform = flipped ? 'perspective(600px) rotateY(-180deg)' : '';
+        animating = false;
+      });
+    }
+
+    // Flip on click anywhere on the sleeve except text-content zones.
+    // card-art is intentionally omitted — no text there, large flip target.
+    sleeve.addEventListener('click', function (e) {
+      if (e.target.closest('.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-stats, .card-footer')) return;
+      flip();
+    });
+
+    // Title icon: stop propagation so the sleeve handler above doesn't double-fire.
+    var icon = sleeve.querySelector('.card-title-icon');
+    if (icon) {
+      icon.addEventListener('click', function (e) {
+        e.stopPropagation();
+        flip();
+      });
+    }
+  });
+}
+
+initCardSleeveFlips();
 
 (function () {
   function setupScrollBtn(btn, action) {
