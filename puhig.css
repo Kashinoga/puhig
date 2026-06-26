@@ -536,6 +536,52 @@ section {
   font-size: 9px;
 }
 
+/* Compact the section subheadings + samples when reused inside a card text box. */
+.card-text-box .panel-section {
+  margin-block-start: 8px;
+}
+
+.card-text-box .panel-section:first-child {
+  margin-block-start: 0;
+}
+
+.card-text-box .section-heading {
+  color: var(--dim);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.card-text-box .section-body {
+  margin-block-start: 5px;
+}
+
+.card-text-box .type-scale {
+  gap: 12px;
+}
+
+/* Weights collapses to a single column inside the narrower card text box
+   (mirrors the mobile collapse) so the right-hand samples never clip. */
+.card-text-box .type-weights {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.card-text-box .weight-sample,
+.card-text-box .icon-sample {
+  font-size: 18px;
+}
+
+.card-text-box .color-grid {
+  gap: 8px;
+}
+
+.card-text-box .swatch-chip {
+  height: 18px;
+  width: 36px;
+}
+
 .card-footer {
   border-top: 1px solid var(--rule);
   color: var(--dim);
@@ -568,6 +614,7 @@ section {
 .card-frame {
   border: 1px solid var(--rule);
   border-radius: var(--card-radius);
+  cursor: default;
   display: flex;
   flex: 1;
   flex-direction: column;
