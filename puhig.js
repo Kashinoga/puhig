@@ -22,6 +22,7 @@ function getMosaicColors() {
 var resizeTimer = null;
 var lastResizeW = window.innerWidth;
 var mosaicInitDone = false;
+var mosaicEntryPlayed = false;
 var pressRegistry = [];
 document.addEventListener("pointerup", function () {
   pressRegistry.forEach(function (fn) { fn(); });
@@ -116,7 +117,7 @@ function ensureOverlays(svg) {
   });
 }
 
-function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt, palette, mc) {
+function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt, palette, mc, playEntry) {
   var colorOrder = palette.map(function (_, i) { return i; });
   for (var i = colorOrder.length - 1; i > 0; i--) {
     var j = Math.floor(tileRand(i, 0, shuffleSalt, seed) * (i + 1));
@@ -127,7 +128,6 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       if (!isAlive(c, r)) continue;
       var colorIdx = Math.floor(tileRand(c, r, 1, seed) * palette.length);
       var color = palette[colorIdx];
-      var delay = colorOrder[colorIdx] * 220 + Math.floor(tileRand(c, r, 4, seed) * 80);
       var ox = Math.round(20 + tileRand(c, r, 5, seed) * 60);
       var oy = Math.round(20 + tileRand(c, r, 6, seed) * 60);
       var x = (c * tw).toFixed(2);
@@ -141,14 +141,19 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       rect.setAttribute("height", h);
       rect.setAttribute("fill", color);
       rect.setAttribute("class", "mosaic-tile");
-      rect.setAttribute("data-delay", delay);
       rect.setAttribute("data-col", c);
       rect.setAttribute("data-row", r);
-      rect.style.setProperty("--delay", delay + "ms");
       rect.style.transformOrigin = ox + "% " + oy + "%";
-      // opacity:0 replaces animation-fill-mode backwards — hides tile during its
-      // delay without holding a compositor layer in the pre-animation state.
-      rect.style.opacity = "0";
+      if (playEntry) {
+        var delay = colorOrder[colorIdx] * 220 + Math.floor(tileRand(c, r, 4, seed) * 80);
+        rect.setAttribute("data-delay", delay);
+        rect.style.setProperty("--delay", delay + "ms");
+        // opacity:0 replaces animation-fill-mode backwards — hides tile during its
+        // delay without holding a compositor layer in the pre-animation state.
+        rect.style.opacity = "0";
+      } else {
+        rect.setAttribute("class", "mosaic-tile mosaic-tile--instant");
+      }
       rect._col = c; rect._row = r;
       svg._tiles.push(rect);
       svg.appendChild(rect);
@@ -168,7 +173,7 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
   }
 }
 
-function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
+function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry) {
   var r, c, dr, dc, nr, nc, alive, next;
 
   var grid = [];
@@ -207,11 +212,11 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, m
   svg._tiles = []; svg._ripples = []; svg._presses = [];
   svg._tileData = []; svg._mc = mc;
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
-  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201, palette, mc);
+  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201, palette, mc, playEntry);
   return svg;
 }
 
-function buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
+function buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry) {
   var ns = "http://www.w3.org/2000/svg";
   var svg = document.createElementNS(ns, "svg");
   svg.setAttribute("class", "mosaic-tiles-svg");
@@ -223,7 +228,7 @@ function buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
   svg._maxDist = Math.sqrt(cols * cols + rows * rows);
   buildTileLayers(ns, svg, rows, cols, tw, th, seed, function () {
     return true;
-  }, 200, palette, mc);
+  }, 200, palette, mc, playEntry);
   return svg;
 }
 
@@ -429,6 +434,10 @@ function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
 
 
 function fitMosaics(animate) {
+  // Entry animation plays only once, only for mosaics in the viewport at page load.
+  var playAllEntry = animate && !mosaicEntryPlayed;
+  if (playAllEntry) mosaicEntryPlayed = true;
+
   // Sidebar width: largest multiple of 24px where content col stays >= 2× wider.
   //   (containerW - mosaicW) / mosaicW >= 2  →  mosaicCols <= containerW / 72
   // Applied at all viewports so tw=24 is consistent between sidebar and divider.
@@ -509,11 +518,13 @@ function fitMosaics(animate) {
     p._th = th;
 
     var existing = p.querySelector(".mosaic-tiles-svg");
+    var inViewport = p.getBoundingClientRect().top < window.innerHeight;
+    var playEntry = playAllEntry && inViewport;
     var newSvg = isGridOnly
       ? buildGridSVG(W, H_build, cols, rows, tw, th, gridStroke, mc)
       : (p.dataset.mosaicType === "ca"
-          ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
-          : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc));
+          ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry)
+          : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry));
     if (!isSidebar && W_full !== undefined && W_full > W && p.dataset.mosaicAlign !== "left") {
       newSvg.style.left = (W_full - W) + "px";
       newSvg.style.width = W + "px";
@@ -654,9 +665,40 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
 
 }());
 
+// Move el to last child of its .panel so it paints above all siblings
+// regardless of compositor layer ordering (Safari backdrop-filter issue).
+// WebKit returns "auto" from getComputedStyle for auto-placed grid items,
+// so derive the explicit row/column from the element's visual offset instead.
+// The element may live inside a display:contents wrapper (header/section), so
+// save its true originalParent (not the panel) for correct DOM restoration.
+function liftToFront(el) {
+  var panel = el.closest('.panel');
+  if (!panel) return null;
+  var ps = window.getComputedStyle(panel);
+  var gap = parseFloat(ps.gap) || parseFloat(ps.columnGap) || 12;
+  var padL = parseFloat(ps.paddingLeft) || 0;
+  var padT = parseFloat(ps.paddingTop) || 0;
+  var col = Math.round((el.offsetLeft - padL) / (el.offsetWidth + gap)) + 1;
+  var row = Math.round((el.offsetTop - padT) / (el.offsetHeight + gap)) + 1;
+  var originalParent = el.parentNode;
+  var originalNext = el.nextSibling;
+  el.style.gridRow = row;
+  el.style.gridColumn = col;
+  panel.appendChild(el);
+  return { panel: panel, originalParent: originalParent, originalNext: originalNext };
+}
+
+function restoreFromFront(el, lifted) {
+  if (!lifted) return;
+  el.style.gridRow = '';
+  el.style.gridColumn = '';
+  lifted.originalParent.insertBefore(el, lifted.originalNext);
+}
+
 function initFlipCards() {
   document.querySelectorAll('.panel-frame--flip').forEach(function (card) {
     var flipped = false;
+    var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
     var animating = false;
     var tiltX = 0, tiltY = 0;
     var targetX = 0, targetY = 0;
@@ -665,8 +707,9 @@ function initFlipCards() {
     function tiltFrame() {
       tiltX += (targetX - tiltX) * 0.15;
       tiltY += (targetY - tiltY) * 0.15;
+      var base = lastFlipSign * 180;
       var transform = flipped
-        ? 'perspective(600px) rotateY(' + (-180 + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
+        ? 'perspective(600px) rotateY(' + (base + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
         : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
       if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
         card.style.transform = transform;
@@ -674,7 +717,7 @@ function initFlipCards() {
       } else {
         tiltX = targetX; tiltY = targetY; rafId = null;
         if (targetX === 0 && targetY === 0) {
-          card.style.transform = flipped ? 'perspective(600px) rotateY(-180deg)' : '';
+          card.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
         } else {
           card.style.transform = transform;
         }
@@ -693,7 +736,7 @@ function initFlipCards() {
       var rawX = ((e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
       var rawY = ((e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
       targetX = flipped ? -rawX : rawX;
-      targetY = -rawY;
+      targetY = flipped ? lastFlipSign * rawY : -rawY;
       startTiltLoop();
     });
 
@@ -706,19 +749,30 @@ function initFlipCards() {
     card.addEventListener('click', function (e) {
       if (animating) return;
       if (e.target.closest('button, a, input, select')) return;
+      var rect = card.getBoundingClientRect();
+      var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
+      lastFlipSign = flipSign;
       flipped = !flipped;
       animating = true;
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
       card.style.transition = '';
       card.style.transform = '';
-      card.style.zIndex = '10';
-      card.style.animation = flipped ? 'card-flip-forward 0.65s ease-in-out forwards' : 'card-flip-back 0.65s ease-in-out forwards';
+      card.style.zIndex = '100';
+      var panel = card.closest('.panel');
+      if (panel) panel.classList.add('panel--flipping');
+      var lifted = liftToFront(card);
+      var animName = flipped
+        ? (lastFlipSign === 1 ? 'card-flip-forward-left' : 'card-flip-forward')
+        : (lastFlipSign === 1 ? 'card-flip-back-left'    : 'card-flip-back');
+      card.style.animation = animName + ' 0.65s ease-in-out forwards';
       card.addEventListener('animationend', function onFlipEnd() {
         card.removeEventListener('animationend', onFlipEnd);
+        if (panel) panel.classList.remove('panel--flipping');
+        restoreFromFront(card, lifted);
         card.style.animation = '';
         card.style.zIndex = '';
-        card.style.transform = flipped ? 'perspective(600px) rotateY(-180deg)' : '';
+        card.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
         animating = false;
       });
     });
@@ -731,20 +785,25 @@ function initCardSleeveFlips() {
   document.querySelectorAll('.card-sleeve').forEach(function (sleeve) {
     var flipped = false;
     var animating = false;
+    var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
 
-    function flip() {
+    function flip(e) {
       if (animating) return;
+      var rect = sleeve.getBoundingClientRect();
+      var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
+      lastFlipSign = flipSign;
       flipped = !flipped;
       animating = true;
-      sleeve.style.zIndex = '10';
-      sleeve.style.animation = flipped
-        ? 'card-flip-forward 0.65s ease-in-out forwards'
-        : 'card-flip-back 0.65s ease-in-out forwards';
+      sleeve.style.zIndex = '100';
+      var animName = flipped
+        ? (lastFlipSign === 1 ? 'card-flip-forward-left' : 'card-flip-forward')
+        : (lastFlipSign === 1 ? 'card-flip-back-left'    : 'card-flip-back');
+      sleeve.style.animation = animName + ' 0.65s ease-in-out forwards';
       sleeve.addEventListener('animationend', function onEnd() {
         sleeve.removeEventListener('animationend', onEnd);
         sleeve.style.animation = '';
         sleeve.style.zIndex = '';
-        sleeve.style.transform = flipped ? 'perspective(600px) rotateY(-180deg)' : '';
+        sleeve.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
         animating = false;
       });
     }
@@ -753,7 +812,7 @@ function initCardSleeveFlips() {
     // card-art is intentionally omitted — no text there, large flip target.
     sleeve.addEventListener('click', function (e) {
       if (e.target.closest('.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-stats, .card-footer')) return;
-      flip();
+      flip(e);
     });
 
     // Title icon: stop propagation so the sleeve handler above doesn't double-fire.
@@ -761,7 +820,7 @@ function initCardSleeveFlips() {
     if (icon) {
       icon.addEventListener('click', function (e) {
         e.stopPropagation();
-        flip();
+        flip(e);
       });
     }
   });
