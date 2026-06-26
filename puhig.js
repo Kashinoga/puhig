@@ -699,6 +699,7 @@ function initFlipCards() {
   document.querySelectorAll('.panel-frame--flip').forEach(function (card) {
     var flipped = false;
     var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
+    var lastFlipTop = false;
     var animating = false;
     var tiltX = 0, tiltY = 0;
     var targetX = 0, targetY = 0;
@@ -736,7 +737,7 @@ function initFlipCards() {
       var rawX = ((e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
       var rawY = ((e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
       targetX = flipped ? -rawX : rawX;
-      targetY = flipped ? lastFlipSign * rawY : -rawY;
+      targetY = -rawY; // back face is Y-mirrored, so horizontal tilt keeps the same sign
       startTiltLoop();
     });
 
@@ -751,7 +752,9 @@ function initFlipCards() {
       if (e.target.closest('button, a, input, select')) return;
       var rect = card.getBoundingClientRect();
       var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
+      var fromTop = e.clientY < rect.top + rect.height / 2;
       lastFlipSign = flipSign;
+      lastFlipTop = fromTop;
       flipped = !flipped;
       animating = true;
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
@@ -762,9 +765,14 @@ function initFlipCards() {
       var panel = card.closest('.panel');
       if (panel) panel.classList.add('panel--flipping');
       var lifted = liftToFront(card);
-      var animName = flipped
-        ? (lastFlipSign === 1 ? 'card-flip-forward-left' : 'card-flip-forward')
-        : (lastFlipSign === 1 ? 'card-flip-back-left'    : 'card-flip-back');
+      var animName;
+      if (flipped) {
+        if (fromTop) animName = flipSign === 1 ? 'card-flip-forward-tl' : 'card-flip-forward-tr';
+        else         animName = flipSign === 1 ? 'card-flip-forward-left' : 'card-flip-forward';
+      } else {
+        if (lastFlipTop) animName = lastFlipSign === 1 ? 'card-flip-back-tl' : 'card-flip-back-tr';
+        else             animName = lastFlipSign === 1 ? 'card-flip-back-left' : 'card-flip-back';
+      }
       card.style.animation = animName + ' 0.65s ease-in-out forwards';
       card.addEventListener('animationend', function onFlipEnd() {
         card.removeEventListener('animationend', onFlipEnd);
@@ -786,18 +794,75 @@ function initCardSleeveFlips() {
     var flipped = false;
     var animating = false;
     var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
+    var lastFlipTop = false;
+    var tiltX = 0, tiltY = 0;
+    var targetX = 0, targetY = 0;
+    var rafId = null;
+
+    function tiltFrame() {
+      tiltX += (targetX - tiltX) * 0.15;
+      tiltY += (targetY - tiltY) * 0.15;
+      var base = lastFlipSign * 180;
+      var transform = flipped
+        ? 'perspective(600px) rotateY(' + (base + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
+        : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+      if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
+        sleeve.style.transform = transform;
+        rafId = requestAnimationFrame(tiltFrame);
+      } else {
+        tiltX = targetX; tiltY = targetY; rafId = null;
+        if (targetX === 0 && targetY === 0) {
+          sleeve.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
+        } else {
+          sleeve.style.transform = transform;
+        }
+      }
+    }
+
+    function startTiltLoop() {
+      if (animating) return;
+      sleeve.style.transition = '';
+      if (!rafId) rafId = requestAnimationFrame(tiltFrame);
+    }
+
+    sleeve.addEventListener('mousemove', function (e) {
+      if (animating) return;
+      var rect = sleeve.getBoundingClientRect();
+      var rawX = ((e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
+      var rawY = ((e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
+      targetX = flipped ? -rawX : rawX;
+      targetY = -rawY; // back face is Y-mirrored, so horizontal tilt keeps the same sign
+      startTiltLoop();
+    });
+
+    sleeve.addEventListener('mouseleave', function () {
+      if (animating) return;
+      targetX = 0; targetY = 0;
+      startTiltLoop();
+    });
 
     function flip(e) {
       if (animating) return;
       var rect = sleeve.getBoundingClientRect();
       var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
+      var fromTop = e.clientY < rect.top + rect.height / 2;
       lastFlipSign = flipSign;
+      lastFlipTop = fromTop;
       flipped = !flipped;
       animating = true;
+      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+      tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
+      sleeve.style.transition = '';
+      sleeve.style.transform = '';
       sleeve.style.zIndex = '100';
-      var animName = flipped
-        ? (lastFlipSign === 1 ? 'card-flip-forward-left' : 'card-flip-forward')
-        : (lastFlipSign === 1 ? 'card-flip-back-left'    : 'card-flip-back');
+      var animName;
+      if (flipped) {
+        if (fromTop) animName = flipSign === 1 ? 'card-flip-forward-tl' : 'card-flip-forward-tr';
+        else         animName = flipSign === 1 ? 'card-flip-forward-left' : 'card-flip-forward';
+      } else {
+        if (lastFlipTop) animName = lastFlipSign === 1 ? 'card-flip-back-tl' : 'card-flip-back-tr';
+        else             animName = lastFlipSign === 1 ? 'card-flip-back-left' : 'card-flip-back';
+      }
       sleeve.style.animation = animName + ' 0.65s ease-in-out forwards';
       sleeve.addEventListener('animationend', function onEnd() {
         sleeve.removeEventListener('animationend', onEnd);
