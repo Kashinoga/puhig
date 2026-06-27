@@ -695,6 +695,48 @@ function restoreFromFront(el, lifted) {
   lifted.originalParent.insertBefore(el, lifted.originalNext);
 }
 
+// Builds Web Animations API keyframes for a flip that BEGINS at the card's
+// current tilt pose (curTransform) instead of snapping to a flat 0% frame, so a
+// hover-tilted card flips from exactly where it sits. Mirrors the CSS @keyframes
+// profiles: a rotateX hump (8deg then 5deg, negated for top-edge flips) brackets
+// the rotateY turn, which happens between 22% and 78%. Per-frame ease-in-out
+// matches the CSS animation-timing-function (which eases each segment, unlike a
+// single WAAPI options.easing). `flipped` is the state AFTER the toggle; prevBase
+// is the card's resting yaw (deg) BEFORE this flip; curYaw is its live yaw
+// (resting yaw + the hover tilt's rotateY) at the instant of the click.
+//
+// The lift frame (22%) holds rotateY at curYaw — NOT at a flat yStart. Snapping
+// to yStart would unwind the hover tilt's yaw back to 0 before the turn begins,
+// and at a corner that unwind runs opposite the flip, reading as a slight
+// counter-rotation ("clockwise wobble") before the card reverses into the flip.
+// Holding curYaw keeps rotateY monotonic from the tilt straight into the turn.
+//
+// `backStart` (the card was showing its back) selects the rotateX/rotateY order.
+// The back tilt is written rotateY-then-rotateX (it's Y-mirrored), the front tilt
+// rotateX-then-rotateY. Every frame in a flip MUST use the same order as its
+// entry pose: WAAPI only interpolates rotations component-wise when the function
+// lists match — a mismatch falls back to matrix decomposition, which injects a
+// twist (the back-flip wobble). The hump sign is also negated for back flips so
+// the lift continues the back tilt's (sign-flipped) rotateX instead of fighting it.
+function buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart) {
+  var xs = fromTop ? -1 : 1;            // top-edge flips hump the opposite way
+  if (backStart) xs = -xs;             // back tilt negates rotateX; match it so the lift doesn't reverse
+  var yStart = flipped ? 0 : prevBase;  // forward starts at front (0); back unwinds from its real yaw
+  var yEnd = yStart + flipSign * 180;
+  var P = 'perspective(600px) ';
+  function pose(x, y) {
+    return backStart
+      ? P + 'rotateY(' + y + 'deg) rotateX(' + x + 'deg)'
+      : P + 'rotateX(' + x + 'deg) rotateY(' + y + 'deg)';
+  }
+  return [
+    { transform: curTransform, offset: 0, easing: 'ease-in-out' },
+    { transform: pose(8 * xs, curYaw.toFixed(2)), offset: 0.22, easing: 'ease-in-out' },
+    { transform: pose(5 * xs, yEnd), offset: 0.78, easing: 'ease-in-out' },
+    { transform: pose(0, yEnd), offset: 1 }
+  ];
+}
+
 function initFlipCards() {
   document.querySelectorAll('.panel-frame--flip').forEach(function (card) {
     var flipped = false;
@@ -753,6 +795,16 @@ function initFlipCards() {
       var rect = card.getBoundingClientRect();
       var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
       var fromTop = e.clientY < rect.top + rect.height / 2;
+
+      // Snapshot the live tilt pose BEFORE mutating state, so the flip starts
+      // exactly where the hover tilt left the card (no snap to a flat 0% frame).
+      var prevBase = lastFlipSign * 180;
+      var backStart = flipped;
+      var curYaw = (flipped ? prevBase : 0) + tiltY;
+      var curTransform = flipped
+        ? 'perspective(600px) rotateY(' + (prevBase + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
+        : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+
       lastFlipSign = flipSign;
       lastFlipTop = fromTop;
       flipped = !flipped;
@@ -760,29 +812,21 @@ function initFlipCards() {
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
       card.style.transition = '';
-      card.style.transform = '';
       card.style.zIndex = '100';
       var panel = card.closest('.panel');
       if (panel) panel.classList.add('panel--flipping');
       var lifted = liftToFront(card);
-      var animName;
-      if (flipped) {
-        if (fromTop) animName = flipSign === 1 ? 'card-flip-forward-tl' : 'card-flip-forward-tr';
-        else         animName = flipSign === 1 ? 'card-flip-forward-left' : 'card-flip-forward';
-      } else {
-        if (lastFlipTop) animName = lastFlipSign === 1 ? 'card-flip-back-tl' : 'card-flip-back-tr';
-        else             animName = lastFlipSign === 1 ? 'card-flip-back-left' : 'card-flip-back';
-      }
-      card.style.animation = animName + ' 0.65s ease-in-out forwards';
-      card.addEventListener('animationend', function onFlipEnd() {
-        card.removeEventListener('animationend', onFlipEnd);
+
+      var frames = buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart);
+      var anim = card.animate(frames, { duration: 650, fill: 'forwards' });
+      anim.onfinish = function () {
         if (panel) panel.classList.remove('panel--flipping');
         restoreFromFront(card, lifted);
-        card.style.animation = '';
         card.style.zIndex = '';
         card.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
+        anim.cancel();
         animating = false;
-      });
+      };
     });
   });
 }
@@ -846,6 +890,16 @@ function initCardSleeveFlips() {
       var rect = sleeve.getBoundingClientRect();
       var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
       var fromTop = e.clientY < rect.top + rect.height / 2;
+
+      // Snapshot the live tilt pose BEFORE mutating state, so the flip starts
+      // exactly where the hover tilt left the card (no snap to a flat 0% frame).
+      var prevBase = lastFlipSign * 180;
+      var backStart = flipped;
+      var curYaw = (flipped ? prevBase : 0) + tiltY;
+      var curTransform = flipped
+        ? 'perspective(600px) rotateY(' + (prevBase + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
+        : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+
       lastFlipSign = flipSign;
       lastFlipTop = fromTop;
       flipped = !flipped;
@@ -853,24 +907,16 @@ function initCardSleeveFlips() {
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
       sleeve.style.transition = '';
-      sleeve.style.transform = '';
       sleeve.style.zIndex = '100';
-      var animName;
-      if (flipped) {
-        if (fromTop) animName = flipSign === 1 ? 'card-flip-forward-tl' : 'card-flip-forward-tr';
-        else         animName = flipSign === 1 ? 'card-flip-forward-left' : 'card-flip-forward';
-      } else {
-        if (lastFlipTop) animName = lastFlipSign === 1 ? 'card-flip-back-tl' : 'card-flip-back-tr';
-        else             animName = lastFlipSign === 1 ? 'card-flip-back-left' : 'card-flip-back';
-      }
-      sleeve.style.animation = animName + ' 0.65s ease-in-out forwards';
-      sleeve.addEventListener('animationend', function onEnd() {
-        sleeve.removeEventListener('animationend', onEnd);
-        sleeve.style.animation = '';
+
+      var frames = buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart);
+      var anim = sleeve.animate(frames, { duration: 650, fill: 'forwards' });
+      anim.onfinish = function () {
         sleeve.style.zIndex = '';
         sleeve.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
+        anim.cancel();
         animating = false;
-      });
+      };
     }
 
     // Flip on click anywhere on the sleeve except text-content zones.

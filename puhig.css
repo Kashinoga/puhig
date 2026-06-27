@@ -289,6 +289,7 @@ section {
   isolation: auto;
   overflow: visible;
   transform-style: preserve-3d;
+  will-change: transform;
   z-index: 0;
 }
 
@@ -313,6 +314,20 @@ section {
   inset: 6px;
   overflow: hidden;
   position: absolute;
+}
+
+/* Antialias the 3D-tilted/flipped faces. A composited layer with
+   backface-visibility:hidden is sampled without edge antialiasing in Chrome, so
+   the opaque rounded --surface fill's hard edge stair-steps under the hover tilt
+   (and during the flip). Wrapping each face in a 1px transparent border and
+   clipping the fill to the padding box leaves a transparent outer ring, so
+   texture sampling alpha-blends the rotated edge and corners read as smooth. */
+.panel-frame--flip .panel-content,
+.panel-back,
+.card-sleeve .card,
+.card-back {
+  border: 1px solid transparent;
+  background-clip: padding-box;
 }
 
 /* WebKit (Safari) only applies backface-visibility:hidden to elements that
@@ -826,6 +841,7 @@ section {
   isolation: auto;
   overflow: visible;
   transform-style: preserve-3d;
+  will-change: transform;
   z-index: 0;
 }
 
