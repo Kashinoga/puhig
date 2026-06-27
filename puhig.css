@@ -571,14 +571,14 @@ section {
   border-bottom: 1px solid var(--rule);
   display: flex;
   flex-shrink: 0;
-  gap: 6px;
-  height: 28px;
-  padding-inline: 10px;
+  gap: clamp(6px, 2.4cqi, 10px);
+  height: clamp(28px, 11.2cqi, 45px);
+  padding-inline: clamp(10px, 4cqi, 16px);
 }
 
 .card-name {
   flex: 1;
-  font-size: 11px;
+  font-size: clamp(11px, 4.4cqi, 18px);
   font-weight: 600;
   letter-spacing: 0.12em;
   line-height: 1;
@@ -597,14 +597,14 @@ section {
   color: var(--dim);
   cursor: pointer;
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: clamp(10px, 4cqi, 16px);
 }
 
 .card-art {
   background-color: var(--mosaic-bg);
   border: 1px solid var(--rule);
   flex-shrink: 0;
-  height: 162px;
+  height: clamp(162px, 64.8cqi, 270px);
   overflow: hidden;
   position: relative;
   -webkit-user-select: none;
@@ -613,7 +613,7 @@ section {
 
 .card-title+.card-art {
   border-top: none;
-  height: 161px;
+  height: clamp(161px, 64.4cqi, 268px);
 }
 
 .card-art+.card-type {
@@ -621,11 +621,11 @@ section {
 }
 
 .card-art-label {
-  bottom: 12px;
+  bottom: clamp(12px, 4.8cqi, 19px);
   color: var(--mosaic-white);
   margin: 0;
   position: absolute;
-  right: 12px;
+  right: clamp(12px, 4.8cqi, 19px);
   z-index: 2;
 }
 
@@ -635,11 +635,11 @@ section {
   cursor: text;
   display: flex;
   flex-shrink: 0;
-  font-size: 11px;
-  gap: 6px;
-  height: 24px;
+  font-size: clamp(11px, 4.4cqi, 18px);
+  gap: clamp(6px, 2.4cqi, 10px);
+  height: clamp(24px, 9.6cqi, 38px);
   letter-spacing: 0.06em;
-  padding-inline: 10px;
+  padding-inline: clamp(10px, 4cqi, 16px);
   -webkit-user-select: text;
   user-select: text;
 }
@@ -653,10 +653,10 @@ section {
   -webkit-user-select: text;
   user-select: text;
   flex: 1;
-  font-size: 11px;
+  font-size: clamp(11px, 4.4cqi, 18px);
   line-height: 1.4;
   overflow: hidden;
-  padding: 8px;
+  padding: clamp(8px, 3.2cqi, 13px);
   position: relative;
 }
 
@@ -667,17 +667,17 @@ section {
 }
 
 .card-text-box .panel-excerpt {
-  font-size: 11px;
+  font-size: clamp(11px, 4.4cqi, 18px);
   line-height: 1.4;
 }
 
 .card-text-box .type-meta {
-  font-size: 9px;
+  font-size: clamp(9px, 3.6cqi, 14px);
 }
 
 /* Compact the section subheadings + samples when reused inside a card text box. */
 .card-text-box .panel-section {
-  margin-block-start: 8px;
+  margin-block-start: clamp(8px, 3.2cqi, 13px);
 }
 
 .card-text-box .panel-section:first-child {
@@ -686,39 +686,39 @@ section {
 
 .card-text-box .section-heading {
   color: var(--dim);
-  font-size: 9px;
+  font-size: clamp(9px, 3.6cqi, 14px);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
 .card-text-box .section-body {
-  margin-block-start: 5px;
+  margin-block-start: clamp(5px, 2cqi, 8px);
 }
 
 .card-text-box .type-scale {
-  gap: 12px;
+  gap: clamp(12px, 4.8cqi, 19px);
 }
 
 /* Weights collapses to a single column inside the narrower card text box
    (mirrors the mobile collapse) so the right-hand samples never clip. */
 .card-text-box .type-weights {
   grid-template-columns: 1fr;
-  gap: 6px;
+  gap: clamp(6px, 2.4cqi, 10px);
 }
 
 .card-text-box .weight-sample,
 .card-text-box .icon-sample {
-  font-size: 18px;
+  font-size: clamp(18px, 7.2cqi, 29px);
 }
 
 .card-text-box .color-grid {
-  gap: 8px;
+  gap: clamp(8px, 3.2cqi, 13px);
 }
 
 .card-text-box .swatch-chip {
-  height: 18px;
-  width: 36px;
+  height: clamp(18px, 7.2cqi, 29px);
+  width: clamp(36px, 14.4cqi, 58px);
 }
 
 .card-footer {
@@ -727,11 +727,11 @@ section {
   cursor: text;
   display: flex;
   flex-shrink: 0;
-  font-size: 7px;
-  height: 24px;
+  font-size: clamp(7px, 2.8cqi, 11px);
+  height: clamp(24px, 9.6cqi, 38px);
   justify-content: space-between;
   letter-spacing: 0.08em;
-  padding: 0 6px;
+  padding: 0 clamp(6px, 2.4cqi, 10px);
   text-transform: uppercase;
   -webkit-user-select: text;
   user-select: text;
@@ -750,7 +750,7 @@ section {
 
 .card-metadata {
   display: flex;
-  gap: 4px;
+  gap: clamp(4px, 1.6cqi, 6px);
 }
 
 .card-frame {
@@ -761,6 +761,15 @@ section {
   flex: 1;
   flex-direction: column;
   overflow: hidden;
+  /* Anchor card-relative sizing. The rows below size off this width via cqi
+     units, so a card stays proportional at any width (264px on desktop,
+     full-width on phones). card-frame holds only flat content, so the
+     containment never reaches the 3D flip faces above it.
+     Base content width is ~250px, so 0.4cqi == 1px at that base; every
+     scaled element uses clamp(<px>, <px*0.4>cqi, <cap>) — the cqi term equals
+     the px floor at base, keeping desktop pixel-identical, and grows on wider
+     phone cards up to the cap. */
+  container-type: inline-size;
 }
 
 .card-frame .card-art {
@@ -790,16 +799,16 @@ section {
   align-items: center;
   display: flex;
   flex-shrink: 0;
-  gap: 3px;
+  gap: clamp(3px, 1.2cqi, 5px);
 }
 
 .card-pip {
   border: 1px solid var(--rule);
   border-radius: 50%;
   display: block;
-  height: 8px;
+  height: clamp(8px, 3.2cqi, 13px);
   opacity: 0.75;
-  width: 8px;
+  width: clamp(8px, 3.2cqi, 13px);
 }
 
 .card-rarity {
@@ -1022,6 +1031,33 @@ h1 {
   font-size: 28px;
 }
 
+/* Heading specimens (and hero labels) scale with the card width so they keep
+   their visual weight on larger phone cards. Scoped to .card-frame so flip
+   backs and other off-card headings are unaffected. */
+.card-frame h1 {
+  font-size: clamp(28px, 11.2cqi, 45px);
+}
+
+.card-frame h2 {
+  font-size: clamp(24px, 9.6cqi, 38px);
+}
+
+.card-frame h3 {
+  font-size: clamp(20px, 8cqi, 32px);
+}
+
+.card-frame h4 {
+  font-size: clamp(18px, 7.2cqi, 29px);
+}
+
+.card-frame h5 {
+  font-size: clamp(16px, 6.4cqi, 26px);
+}
+
+.card-frame h6 {
+  font-size: clamp(14px, 5.6cqi, 22px);
+}
+
 .panel-body {
   -webkit-user-select: text;
   user-select: text;
@@ -1062,7 +1098,7 @@ h1 {
 
 .type-row {
   align-items: baseline;
-  column-gap: 24px;
+  column-gap: clamp(24px, 9.6cqi, 38px);
   display: flex;
   justify-content: space-between;
   min-width: 0;
@@ -1109,7 +1145,7 @@ h1 {
 
 .weight-sample {
   font-family: "Jost", system-ui, sans-serif;
-  font-size: 28px;
+  font-size: clamp(28px, 11.2cqi, 45px);
   line-height: 1;
 }
 
@@ -1118,8 +1154,8 @@ h1 {
 .card-text-box.saga {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding-inline: 6px;
+  gap: clamp(6px, 2.4cqi, 10px);
+  padding-inline: clamp(6px, 2.4cqi, 10px);
 }
 
 .saga-chapters {
@@ -1136,23 +1172,23 @@ h1 {
 /* Vertical rail threading the chapter markers, centred on the 20px badges. */
 .saga-chapters::before {
   background: var(--orange);
-  bottom: 12px;
+  bottom: clamp(12px, 4.8cqi, 19px);
   content: "";
-  left: 10px;
+  left: clamp(10px, 4cqi, 16px);
   opacity: 0.35;
   position: absolute;
-  top: 12px;
-  width: 2px;
+  top: clamp(12px, 4.8cqi, 19px);
+  width: clamp(2px, 0.8cqi, 3px);
   z-index: 0;
 }
 
 .saga-row {
   align-items: center;
   border-top: 1px solid var(--rule);
-  column-gap: 10px;
+  column-gap: clamp(10px, 4cqi, 16px);
   display: grid;
   flex: 1;
-  grid-template-columns: 22px 1fr;
+  grid-template-columns: clamp(22px, 8.8cqi, 35px) 1fr;
   min-height: 0;
 }
 
@@ -1167,33 +1203,33 @@ h1 {
   border-radius: 50%;
   color: var(--orange);
   display: flex;
-  font-size: 8px;
+  font-size: clamp(8px, 3.2cqi, 13px);
   font-weight: 600;
-  height: 20px;
+  height: clamp(20px, 8cqi, 32px);
   justify-content: center;
   justify-self: center;
   letter-spacing: 0;
   line-height: 1;
-  width: 20px;
+  width: clamp(20px, 8cqi, 32px);
   z-index: 1;
 }
 
 .saga-chapter {
   align-items: baseline;
-  column-gap: 12px;
+  column-gap: clamp(12px, 4.8cqi, 19px);
   display: flex;
   justify-content: space-between;
   min-width: 0;
 }
 
 .card-text-box.saga .weight-sample {
-  font-size: 16px;
+  font-size: clamp(16px, 6.4cqi, 26px);
 }
 
 /* Colour swatches as saga specimens — sit at the row's right edge. */
 .card-text-box.saga .swatch-chip {
-  height: 16px;
-  width: 34px;
+  height: clamp(16px, 6.4cqi, 26px);
+  width: clamp(34px, 13.6cqi, 54px);
 }
 
 /* Settings saga — interactive option buttons stack at the chapter's right edge. */
@@ -1205,14 +1241,14 @@ h1 {
   align-items: flex-end;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: clamp(2px, 0.8cqi, 3px);
 }
 
 .saga-row .theme-option {
-  font-size: 11px;
-  gap: 6px;
+  font-size: clamp(11px, 4.4cqi, 18px);
+  gap: clamp(6px, 2.4cqi, 10px);
   letter-spacing: 0.06em;
-  padding: 1px 0;
+  padding: clamp(1px, 0.4cqi, 2px) 0;
 }
 
 .saga-row .theme-option span {
@@ -1279,7 +1315,7 @@ h1 {
 }
 
 .icon-sample {
-  font-size: 28px;
+  font-size: clamp(28px, 11.2cqi, 45px);
   line-height: 1;
 }
 
@@ -1292,7 +1328,7 @@ h1 {
 
 .color-row {
   align-items: flex-start;
-  column-gap: 16px;
+  column-gap: clamp(16px, 6.4cqi, 26px);
   display: flex;
   justify-content: space-between;
 }
@@ -1307,8 +1343,8 @@ h1 {
   border-radius: 3px;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
-  height: 28px;
-  width: 52px;
+  height: clamp(28px, 11.2cqi, 45px);
+  width: clamp(52px, 20.8cqi, 83px);
 }
 
 .wordmark-row {
@@ -1368,6 +1404,24 @@ main .wordmark-row {
 
   .color-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Below ~564px viewport only one 264px card column fits (two need
+   264 + 12 gap + 264 = 540px of track, i.e. 564px viewport after the 12px
+   body padding each side). Stop the lone card sitting at its fixed width and
+   hugging the left with dead space to the right: give it the full column and
+   let the aspect-ratio on .panel-frame scale the height up to match. */
+@media (max-width: 563px) {
+  .panel {
+    grid-template-columns: 1fr;
+    /* Cards are full-width now, so widen the inter-card gap to match their
+       larger scale (panel isn't a container, so this tracks viewport width). */
+    gap: clamp(12px, 3.6vw, 22px);
+  }
+
+  .panel-frame {
+    width: 100%;
   }
 }
 
