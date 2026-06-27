@@ -188,7 +188,10 @@ h2 {
 body {
   padding-top: calc(12px + env(safe-area-inset-top));
   padding-right: 12px;
-  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  /* Reserve a band at the bottom so the fixed .scroll-controls (24px offset +
+     48px tall = 72px) sit in their own clear area, with a ~24px gap above,
+     when the page is scrolled all the way down. */
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
   padding-left: 12px;
 }
 
@@ -1094,6 +1097,128 @@ h1 {
   line-height: 1;
 }
 
+/* Saga card — chapters stacked down a lore-counter rail, MTG Saga style.
+   The art band is dropped so the nine weight "chapters" (I–IX) fill the body. */
+.card-text-box.saga {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-inline: 6px;
+}
+
+.saga-chapters {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  min-height: 0;
+  padding: 0;
+  position: relative;
+}
+
+/* Vertical rail threading the chapter markers, centred on the 20px badges. */
+.saga-chapters::before {
+  background: var(--orange);
+  bottom: 12px;
+  content: "";
+  left: 10px;
+  opacity: 0.35;
+  position: absolute;
+  top: 12px;
+  width: 2px;
+  z-index: 0;
+}
+
+.saga-row {
+  align-items: center;
+  border-top: 1px solid var(--rule);
+  column-gap: 10px;
+  display: grid;
+  flex: 1;
+  grid-template-columns: 22px 1fr;
+  min-height: 0;
+}
+
+.saga-row:first-child {
+  border-top: none;
+}
+
+.saga-marker {
+  align-items: center;
+  background: var(--surface);
+  border: 1.5px solid var(--orange);
+  border-radius: 50%;
+  color: var(--orange);
+  display: flex;
+  font-size: 8px;
+  font-weight: 600;
+  height: 20px;
+  justify-content: center;
+  justify-self: center;
+  letter-spacing: 0;
+  line-height: 1;
+  width: 20px;
+  z-index: 1;
+}
+
+.saga-chapter {
+  align-items: baseline;
+  column-gap: 12px;
+  display: flex;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.card-text-box.saga .weight-sample {
+  font-size: 16px;
+}
+
+/* Colour swatches as saga specimens — sit at the row's right edge. */
+.card-text-box.saga .swatch-chip {
+  height: 16px;
+  width: 34px;
+}
+
+/* Settings saga — interactive option buttons stack at the chapter's right edge. */
+.saga-chapter:has(.settings-options) {
+  align-items: center;
+}
+
+.settings-options {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.saga-row .theme-option {
+  font-size: 11px;
+  gap: 6px;
+  letter-spacing: 0.06em;
+  padding: 1px 0;
+}
+
+.saga-row .theme-option span {
+  margin-inline-start: 0;
+}
+
+.saga-row .theme-option i {
+  font-size: 14px;
+}
+
+/* Heading specimens sit inline in a chapter row — strip default margins and
+   the type-scale underline so they align to the row baseline. */
+.saga-chapter :is(h1, h2, h3, h4, h5, h6, p) {
+  border: none;
+  line-height: 1;
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .panel-quote {
   border-left: 2px solid var(--orange);
   display: flex;
@@ -1355,7 +1480,7 @@ html[data-theme="dark"] .mosaic-overlay {
       transparent 45%);
 }
 
-.theme-switcher {
+.scroll-controls {
   bottom: calc(24px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: row;
@@ -1383,7 +1508,7 @@ html[data-theme="dark"] .mosaic-overlay {
   }
 }
 
-.theme-toggle {
+.scroll-control {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   background-color: color-mix(in srgb, var(--paper) 80%, transparent);
@@ -1425,7 +1550,7 @@ html[data-theme="dark"] .mosaic-overlay {
   z-index: -1;
 }
 
-.theme-toggle.is-bouncing {
+.scroll-control.is-bouncing {
   animation: toggle-bounce 360ms ease-out forwards;
 }
 
