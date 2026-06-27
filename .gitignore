@@ -9,4 +9,6 @@
 !favicon.svg
 !fonts/
 !fonts/**
+!.github/
+!.github/**
 !.gitignore

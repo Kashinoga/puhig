@@ -1,0 +1,55 @@
+name: Deploy Pages
+
+# Builds one Pages site from two branches: `main` at the root and `card-layout`
+# under /card-layout/ as a live preview. Runs on a push to either branch (the
+# workflow must exist on both for both pushes to trigger it) and rebuilds the
+# full site every time, so the output is identical regardless of which branch
+# triggered the run.
+on:
+  push:
+    branches: [main, card-layout]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never run two Pages deploys at once; queue them instead of cancelling.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout main → site root
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: site
+
+      - name: Checkout card-layout → /card-layout preview
+        uses: actions/checkout@v4
+        with:
+          ref: card-layout
+          path: site/card-layout
+
+      - name: Strip git/workflow dirs from the artifact
+        run: rm -rf site/.git site/.github site/card-layout/.git site/card-layout/.github
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
