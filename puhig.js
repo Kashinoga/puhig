@@ -876,7 +876,7 @@ function initCardSleeveFlips() {
     // Flip on click anywhere on the sleeve except text-content zones.
     // card-art is intentionally omitted — no text there, large flip target.
     sleeve.addEventListener('click', function (e) {
-      if (e.target.closest('.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-stats, .card-footer')) return;
+      if (e.target.closest('.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-footer')) return;
       flip(e);
     });
 

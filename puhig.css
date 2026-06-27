@@ -7,18 +7,28 @@
 }
 
 :root {
-  --black: #0a0a0a; /* Penguin black */
-  --white: #f5f5f0; /* Penguin white */
-  --page: #edeef0; /* page */
-  --sub: #888; /* subtext */
-  --border: #090909; /* border */
-  --orange: #f06030; /* Penguin orange */
-  --teal: #18cac0; /* teal */
-  --yellow: #e8d060; /* accent yellow */
-  --pink: #f090a8; /* accent pink */
-  --purple: #9878c0; /* accent purple */
+  --black: #0a0a0a;
+  /* Penguin black */
+  --white: #f5f5f0;
+  /* Penguin white */
+  --page: #edeef0;
+  /* page */
+  --sub: #888;
+  /* subtext */
+  --border: #090909;
+  /* border */
+  --orange: #f06030;
+  /* Penguin orange */
+  --teal: #18cac0;
+  /* teal */
+  --yellow: #e8d060;
+  /* accent yellow */
+  --pink: #f090a8;
+  /* accent pink */
+  --purple: #9878c0;
+  /* accent purple */
   --grain: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.70 0.75' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feColorMatrix type='matrix' values='1.1 0 0 0 0 0 0.95 0 0 0 0 0 0.7 0 0 0 0 0 1 0'/></filter><rect width='200' height='200' filter='url(%23g)' opacity='1'/></svg>");
---ink: var(--black);
+  --ink: var(--black);
   --paper: var(--white);
   --surface: #faf8f4;
   --rule: var(--border);
@@ -53,14 +63,12 @@
   --card-radius: 8px;
   --sleeve-blur: blur(0.5px);
   --sleeve-bg: color-mix(in srgb, var(--paper) 50%, transparent);
-  --sleeve-streak: linear-gradient(
-    135deg,
-    transparent 15%,
-    rgba(0, 0, 0, 0.03) 28%,
-    rgba(255, 255, 255, 0.12) 38%,
-    rgba(255, 255, 255, 0.03) 50%,
-    transparent 65%
-  );
+  --sleeve-streak: linear-gradient(135deg,
+      transparent 15%,
+      rgba(0, 0, 0, 0.03) 28%,
+      rgba(255, 255, 255, 0.12) 38%,
+      rgba(255, 255, 255, 0.03) 50%,
+      transparent 65%);
 }
 
 *,
@@ -179,8 +187,8 @@ h2 {
 
 body {
   padding-top: calc(12px + env(safe-area-inset-top));
-  padding-right: 24px;
-  padding-bottom: calc(36px + env(safe-area-inset-bottom));
+  padding-right: 12px;
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
   padding-left: 12px;
 }
 
@@ -304,60 +312,161 @@ section {
   position: absolute;
 }
 
+/* WebKit (Safari) only applies backface-visibility:hidden to elements that
+   themselves participate in the 3D context via a transform. The resting front
+   faces have no transform of their own — only the parent frame/sleeve is
+   rotated by the flip — so Safari paints their backface and the mirrored front
+   bleeds through the flipped card. A no-op rotateY(0) enrolls each front face
+   in the 3D context so backface-visibility takes effect. The JS only ever
+   transforms the parent (.panel-frame--flip / .card-sleeve), never these, so
+   this is safe. */
+.panel-frame--flip .panel-content,
+.card-sleeve .card {
+  transform: rotateY(0deg);
+}
+
 @keyframes card-flip-forward {
-  0%   { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg) rotateY(0deg)    scale(1); }
-  22%  { transform: perspective(600px) rotateX(8deg)  rotateZ(0deg) rotateY(0deg)    scale(1); }
-  78%  { transform: perspective(600px) rotateX(5deg)  rotateZ(0deg) rotateY(-180deg) scale(1); }
-  100% { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg) rotateY(-180deg) scale(1); }
+  0% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(0deg) scale(1);
+  }
+
+  22% {
+    transform: perspective(600px) rotateX(8deg) rotateZ(0deg) rotateY(0deg) scale(1);
+  }
+
+  78% {
+    transform: perspective(600px) rotateX(5deg) rotateZ(0deg) rotateY(-180deg) scale(1);
+  }
+
+  100% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(-180deg) scale(1);
+  }
 }
 
 @keyframes card-flip-back {
-  0%   { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg) rotateY(-180deg) scale(1); }
-  22%  { transform: perspective(600px) rotateX(8deg)  rotateZ(0deg) rotateY(-180deg) scale(1); }
-  78%  { transform: perspective(600px) rotateX(5deg)  rotateZ(0deg) rotateY(-360deg) scale(1); }
-  100% { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg) rotateY(-360deg) scale(1); }
+  0% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(-180deg) scale(1);
+  }
+
+  22% {
+    transform: perspective(600px) rotateX(8deg) rotateZ(0deg) rotateY(-180deg) scale(1);
+  }
+
+  78% {
+    transform: perspective(600px) rotateX(5deg) rotateZ(0deg) rotateY(-360deg) scale(1);
+  }
+
+  100% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(-360deg) scale(1);
+  }
 }
 
 @keyframes card-flip-forward-left {
-  0%   { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg) rotateY(0deg)    scale(1); }
-  22%  { transform: perspective(600px) rotateX(8deg)  rotateZ(0deg) rotateY(0deg)    scale(1); }
-  78%  { transform: perspective(600px) rotateX(5deg)  rotateZ(0deg) rotateY(180deg)  scale(1); }
-  100% { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg) rotateY(180deg)  scale(1); }
+  0% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(0deg) scale(1);
+  }
+
+  22% {
+    transform: perspective(600px) rotateX(8deg) rotateZ(0deg) rotateY(0deg) scale(1);
+  }
+
+  78% {
+    transform: perspective(600px) rotateX(5deg) rotateZ(0deg) rotateY(180deg) scale(1);
+  }
+
+  100% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(180deg) scale(1);
+  }
 }
 
 @keyframes card-flip-back-left {
-  0%   { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg) rotateY(180deg)  scale(1); }
-  22%  { transform: perspective(600px) rotateX(8deg)  rotateZ(0deg) rotateY(180deg)  scale(1); }
-  78%  { transform: perspective(600px) rotateX(5deg)  rotateZ(0deg) rotateY(360deg)  scale(1); }
-  100% { transform: perspective(600px) rotateX(0deg)  rotateZ(0deg) rotateY(360deg)  scale(1); }
+  0% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(180deg) scale(1);
+  }
+
+  22% {
+    transform: perspective(600px) rotateX(8deg) rotateZ(0deg) rotateY(180deg) scale(1);
+  }
+
+  78% {
+    transform: perspective(600px) rotateX(5deg) rotateZ(0deg) rotateY(360deg) scale(1);
+  }
+
+  100% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(360deg) scale(1);
+  }
 }
 
 @keyframes card-flip-forward-tr {
-  0%   { transform: perspective(600px) rotateX(0deg)   rotateZ(0deg) rotateY(0deg)    scale(1); }
-  22%  { transform: perspective(600px) rotateX(-8deg)  rotateZ(0deg) rotateY(0deg)    scale(1); }
-  78%  { transform: perspective(600px) rotateX(-5deg)  rotateZ(0deg) rotateY(-180deg) scale(1); }
-  100% { transform: perspective(600px) rotateX(0deg)   rotateZ(0deg) rotateY(-180deg) scale(1); }
+  0% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(0deg) scale(1);
+  }
+
+  22% {
+    transform: perspective(600px) rotateX(-8deg) rotateZ(0deg) rotateY(0deg) scale(1);
+  }
+
+  78% {
+    transform: perspective(600px) rotateX(-5deg) rotateZ(0deg) rotateY(-180deg) scale(1);
+  }
+
+  100% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(-180deg) scale(1);
+  }
 }
 
 @keyframes card-flip-back-tr {
-  0%   { transform: perspective(600px) rotateX(0deg)   rotateZ(0deg) rotateY(-180deg) scale(1); }
-  22%  { transform: perspective(600px) rotateX(-8deg)  rotateZ(0deg) rotateY(-180deg) scale(1); }
-  78%  { transform: perspective(600px) rotateX(-5deg)  rotateZ(0deg) rotateY(-360deg) scale(1); }
-  100% { transform: perspective(600px) rotateX(0deg)   rotateZ(0deg) rotateY(-360deg) scale(1); }
+  0% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(-180deg) scale(1);
+  }
+
+  22% {
+    transform: perspective(600px) rotateX(-8deg) rotateZ(0deg) rotateY(-180deg) scale(1);
+  }
+
+  78% {
+    transform: perspective(600px) rotateX(-5deg) rotateZ(0deg) rotateY(-360deg) scale(1);
+  }
+
+  100% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(-360deg) scale(1);
+  }
 }
 
 @keyframes card-flip-forward-tl {
-  0%   { transform: perspective(600px) rotateX(0deg)   rotateZ(0deg) rotateY(0deg)    scale(1); }
-  22%  { transform: perspective(600px) rotateX(-8deg)  rotateZ(0deg) rotateY(0deg)    scale(1); }
-  78%  { transform: perspective(600px) rotateX(-5deg)  rotateZ(0deg) rotateY(180deg)  scale(1); }
-  100% { transform: perspective(600px) rotateX(0deg)   rotateZ(0deg) rotateY(180deg)  scale(1); }
+  0% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(0deg) scale(1);
+  }
+
+  22% {
+    transform: perspective(600px) rotateX(-8deg) rotateZ(0deg) rotateY(0deg) scale(1);
+  }
+
+  78% {
+    transform: perspective(600px) rotateX(-5deg) rotateZ(0deg) rotateY(180deg) scale(1);
+  }
+
+  100% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(180deg) scale(1);
+  }
 }
 
 @keyframes card-flip-back-tl {
-  0%   { transform: perspective(600px) rotateX(0deg)   rotateZ(0deg) rotateY(180deg)  scale(1); }
-  22%  { transform: perspective(600px) rotateX(-8deg)  rotateZ(0deg) rotateY(180deg)  scale(1); }
-  78%  { transform: perspective(600px) rotateX(-5deg)  rotateZ(0deg) rotateY(360deg)  scale(1); }
-  100% { transform: perspective(600px) rotateX(0deg)   rotateZ(0deg) rotateY(360deg)  scale(1); }
+  0% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(180deg) scale(1);
+  }
+
+  22% {
+    transform: perspective(600px) rotateX(-8deg) rotateZ(0deg) rotateY(180deg) scale(1);
+  }
+
+  78% {
+    transform: perspective(600px) rotateX(-5deg) rotateZ(0deg) rotateY(360deg) scale(1);
+  }
+
+  100% {
+    transform: perspective(600px) rotateX(0deg) rotateZ(0deg) rotateY(360deg) scale(1);
+  }
 }
 
 .panel-back {
@@ -375,7 +484,12 @@ section {
   opacity: var(--grain-opacity);
   pointer-events: none;
   position: absolute;
-  z-index: -1;
+  /* z-index:0, not -1: like .card-back, the panel-back is a 3D backface
+     (rotateY(180deg) + backface-visibility:hidden). A negative-z grain layer
+     escapes behind the backface plane, dropping the opaque --surface fill so
+     the front face shows through mirrored. z-index:0 keeps the grain on the
+     surface so the back stays opaque. */
+  z-index: 0;
 }
 
 .panel-frame::after {
@@ -450,10 +564,14 @@ section {
   font-weight: 600;
   letter-spacing: 0.12em;
   line-height: 1;
+  cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .card-name a {
   color: inherit;
+  cursor: pointer;
   text-decoration: none;
 }
 
@@ -475,12 +593,12 @@ section {
   user-select: none;
 }
 
-.card-title + .card-art {
+.card-title+.card-art {
   border-top: none;
   height: 161px;
 }
 
-.card-art + .card-type {
+.card-art+.card-type {
   border-top: none;
 }
 
@@ -496,6 +614,7 @@ section {
 .card-type {
   align-items: center;
   border-bottom: 1px solid var(--rule);
+  cursor: text;
   display: flex;
   flex-shrink: 0;
   font-size: 11px;
@@ -503,6 +622,8 @@ section {
   height: 24px;
   letter-spacing: 0.06em;
   padding-inline: 10px;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .card-type-label {
@@ -585,14 +706,17 @@ section {
 .card-footer {
   border-top: 1px solid var(--rule);
   color: var(--dim);
+  cursor: text;
   display: flex;
   flex-shrink: 0;
   font-size: 7px;
   height: 24px;
   justify-content: space-between;
   letter-spacing: 0.08em;
-  padding: 3px 10px;
+  padding: 0 6px;
   text-transform: uppercase;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 .card-footer-left,
@@ -665,28 +789,27 @@ section {
   font-size: 10px;
 }
 
-.card-rarity[data-rarity="draft"]    { color: var(--dim); }
-.card-rarity[data-rarity="alpha"]    { color: #b0b8c0; }
-.card-rarity[data-rarity="stable"]   { color: #c8a832; }
-.card-rarity[data-rarity="landmark"] { color: var(--teal); }
+.card-rarity[data-rarity="draft"] {
+  color: var(--dim);
+}
+
+.card-rarity[data-rarity="alpha"] {
+  color: #b0b8c0;
+}
+
+.card-rarity[data-rarity="stable"] {
+  color: #c8a832;
+}
+
+.card-rarity[data-rarity="landmark"] {
+  color: var(--teal);
+}
 
 .card-quote {
   color: var(--dim);
   font-size: 11px;
   font-style: italic;
   margin-top: 6px;
-}
-
-.card-stats {
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  bottom: 6px;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  padding: 2px 6px;
-  position: absolute;
-  right: 6px;
 }
 
 .card-number {
@@ -747,7 +870,12 @@ section {
   opacity: var(--grain-opacity);
   pointer-events: none;
   position: absolute;
-  z-index: -1;
+  /* z-index:0, not -1: the card-back is a 3D backface (rotateY(180deg) +
+     backface-visibility:hidden). A negative-z grain layer escapes behind the
+     backface plane, dropping the opaque --surface fill and letting the page
+     mosaic show through. Painting the grain at z-index:0 keeps it composited
+     onto the surface so the back stays opaque, matching the front. */
+  z-index: 0;
 }
 
 .card-back::after {
@@ -771,11 +899,9 @@ section {
 }
 
 .mosaic-overlay {
-  background: linear-gradient(
-    175deg,
-    rgba(255, 255, 255, 0.12) 0%,
-    transparent 45%
-  );
+  background: linear-gradient(175deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      transparent 45%);
   inset: 0;
   pointer-events: none;
   position: absolute;
@@ -813,14 +939,17 @@ section {
     opacity: 0;
     transform: scale(0.8);
   }
+
   55% {
     opacity: 1;
     transform: scale(1.26);
   }
+
   78% {
     opacity: 1;
     transform: scale(0.93);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -832,6 +961,7 @@ section {
     opacity: 1;
     transform: scale(1);
   }
+
   to {
     opacity: 0;
     transform: scale(0.8);
@@ -1153,13 +1283,11 @@ main .wordmark-row {
       inset 0 1px 0 rgba(255, 255, 255, 0.07),
       inset -2px 0 10px -4px rgba(255, 255, 255, 0.04),
       inset -10px -5px 100px 50px rgba(200, 160, 90, 0.03);
-    --sleeve-streak: linear-gradient(
-      135deg,
-      transparent 15%,
-      rgba(255, 255, 255, 0.06) 38%,
-      rgba(255, 255, 255, 0.02) 50%,
-      transparent 65%
-    );
+    --sleeve-streak: linear-gradient(135deg,
+        transparent 15%,
+        rgba(255, 255, 255, 0.06) 38%,
+        rgba(255, 255, 255, 0.02) 50%,
+        transparent 65%);
   }
 
   html:not([data-theme="light"]) header .wordmark-row,
@@ -1170,11 +1298,9 @@ main .wordmark-row {
   }
 
   html:not([data-theme="light"]) .mosaic-overlay {
-    background: linear-gradient(
-      175deg,
-      rgba(255, 255, 255, 0.07) 0%,
-      transparent 45%
-    );
+    background: linear-gradient(175deg,
+        rgba(255, 255, 255, 0.07) 0%,
+        transparent 45%);
   }
 
 }
@@ -1209,13 +1335,11 @@ html[data-theme="dark"] {
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset -2px 0 10px -4px rgba(255, 255, 255, 0.04),
     inset -10px -5px 100px 50px rgba(200, 160, 90, 0.03);
-  --sleeve-streak: linear-gradient(
-    135deg,
-    transparent 15%,
-    rgba(255, 255, 255, 0.06) 38%,
-    rgba(255, 255, 255, 0.02) 50%,
-    transparent 65%
-  );
+  --sleeve-streak: linear-gradient(135deg,
+      transparent 15%,
+      rgba(255, 255, 255, 0.06) 38%,
+      rgba(255, 255, 255, 0.02) 50%,
+      transparent 65%);
 }
 
 html[data-theme="dark"] header .wordmark-row,
@@ -1226,11 +1350,9 @@ html[data-theme="dark"] main .wordmark-row {
 }
 
 html[data-theme="dark"] .mosaic-overlay {
-  background: linear-gradient(
-    175deg,
-    rgba(255, 255, 255, 0.07) 0%,
-    transparent 45%
-  );
+  background: linear-gradient(175deg,
+      rgba(255, 255, 255, 0.07) 0%,
+      transparent 45%);
 }
 
 .theme-switcher {
@@ -1247,12 +1369,15 @@ html[data-theme="dark"] .mosaic-overlay {
   0% {
     transform: scale(0.88);
   }
+
   55% {
     transform: scale(1.14);
   }
+
   78% {
     transform: scale(0.96);
   }
+
   100% {
     transform: scale(1);
   }
@@ -1351,10 +1476,12 @@ html[data-theme="dark"] .mosaic-overlay {
     opacity: 1;
     transform: scale(1);
   }
+
   35% {
     opacity: 1;
     transform: scale(1.1);
   }
+
   100% {
     opacity: 0;
     transform: scale(0.8);
@@ -1437,4 +1564,3 @@ html[data-theme="dark"] .mosaic-overlay {
   overflow-y: auto;
   padding: 12px 16px;
 }
-
