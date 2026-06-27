@@ -496,6 +496,7 @@ function fitMosaics(animate) {
 
     var isCA = p.dataset.mosaicType === "ca";
     var isGridOnly = "mosaicGridOnly" in p.dataset;
+    var isStaticBg = isGridOnly || "mosaicStatic" in p.dataset;
     var palette = p.dataset.mosaicPalette === "miku" ? getMikuPalette() : defaultPalette;
     var H_build = H;
 
@@ -508,10 +509,22 @@ function fitMosaics(animate) {
     }
     var seed = parseInt(p.dataset.mosaicSeed);
 
-    var cols = (p.dataset.mosaicAlign === "left" ? Math.round(W / target) : Math.floor(W / target)) || 1;
-    var rows = (isCA ? Math.floor(H_build / target) : Math.round(H_build / target)) || 1;
-    var tw = W / cols;
-    var th = H_build / rows;
+    var isLeft = p.dataset.mosaicAlign === "left";
+    var cols = (isLeft ? Math.round(W / target) : Math.floor(W / target)) || 1;
+    var tw, th, rows;
+    if (isLeft) {
+      // Card-art mosaics: square tiles. Derive the edge from the width (so
+      // cols*tw === W exactly), then reuse it on both axes so tiles are never
+      // stretched. Rows best-fit the art height; any sub-tile remainder shows
+      // the art background (dead cells are bg too), staying seamless under the
+      // card-art's overflow:hidden.
+      tw = th = W / cols;
+      rows = Math.max(1, Math.round(H_build / tw));
+    } else {
+      rows = (isCA ? Math.floor(H_build / target) : Math.round(H_build / target)) || 1;
+      tw = W / cols;
+      th = H_build / rows;
+    }
     p.dataset.mosaicTw = tw;
     p.dataset.mosaicTh = th;
     p._tw = tw;
@@ -519,7 +532,9 @@ function fitMosaics(animate) {
 
     var existing = p.querySelector(".mosaic-tiles-svg");
     var inViewport = p.getBoundingClientRect().top < window.innerHeight;
-    var playEntry = playAllEntry && inViewport;
+    // Static mosaics (card-art, grid-only backgrounds) appear instantly — no
+    // staggered tile entry animation.
+    var playEntry = playAllEntry && inViewport && !isStaticBg;
     var newSvg = isGridOnly
       ? buildGridSVG(W, H_build, cols, rows, tw, th, gridStroke, mc)
       : (p.dataset.mosaicType === "ca"
@@ -530,7 +545,6 @@ function fitMosaics(animate) {
       newSvg.style.width = W + "px";
     }
 
-    var isStaticBg = isGridOnly || "mosaicStatic" in p.dataset;
     if (!isStaticBg) {
       if (!p._mosaicPressBound) { setupMosaicPress(p); p._mosaicPressBound = true; }
     }
