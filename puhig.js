@@ -173,6 +173,21 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
   }
 }
 
+// Shared SVG shell for all three mosaic builders: the <svg> element, its grid
+// lines, and the per-instance state buckets the press/ripple/drift code reads.
+function createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
+  var ns = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "mosaic-tiles-svg");
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
+  svg._tiles = []; svg._ripples = []; svg._presses = [];
+  svg._tileData = []; svg._mc = mc || {};
+  svg._maxDist = Math.sqrt(cols * cols + rows * rows);
+  return svg;
+}
+
 function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry) {
   var r, c, dr, dc, nr, nc, alive, next;
 
@@ -204,28 +219,14 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, m
   }
 
   var ns = "http://www.w3.org/2000/svg";
-  var svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "mosaic-tiles-svg");
-  svg.setAttribute("width", W);
-  svg.setAttribute("height", H);
-  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
-  svg._tiles = []; svg._ripples = []; svg._presses = [];
-  svg._tileData = []; svg._mc = mc;
-  svg._maxDist = Math.sqrt(cols * cols + rows * rows);
+  var svg = createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc);
   buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201, palette, mc, playEntry);
   return svg;
 }
 
 function buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry) {
   var ns = "http://www.w3.org/2000/svg";
-  var svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "mosaic-tiles-svg");
-  svg.setAttribute("width", W);
-  svg.setAttribute("height", H);
-  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
-  svg._tiles = []; svg._ripples = []; svg._presses = [];
-  svg._tileData = []; svg._mc = mc;
-  svg._maxDist = Math.sqrt(cols * cols + rows * rows);
+  var svg = createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc);
   buildTileLayers(ns, svg, rows, cols, tw, th, seed, function () {
     return true;
   }, 200, palette, mc, playEntry);
@@ -350,11 +351,13 @@ function startDriftLoop(svg, palette) {
 
   function driftTick() {
     if (!svg.isConnected) return;
+    // Don't churn the DOM in a backgrounded tab; poll back and resume on return.
+    if (document.hidden) { svg._driftTimer = setTimeout(driftTick, 1000); return; }
     var live = svg._tiles;
     var dormant = svg._dormantSlots;
 
     var removeCount = Math.min(1 + Math.floor(Math.random() * 4), live.length);
-    var addCount = Math.min(Math.max(1, 1 + Math.floor(Math.random() * 4)), dormant.length);
+    var addCount = Math.min(1 + Math.floor(Math.random() * 4), dormant.length);
 
     var toRemove = sampleN(live, removeCount);
     toRemove.forEach(function (tile, i) {
@@ -413,30 +416,16 @@ function startDriftLoop(svg, palette) {
   svg._driftTimer = setTimeout(driftTick, 1500);
 }
 
-function getMikuPalette() {
+// Reads a 7-swatch themed palette (--miku-1..7, --light-1..7) off :root.
+function getPrefixedPalette(prefix) {
   var s = getComputedStyle(document.documentElement);
   return [1, 2, 3, 4, 5, 6, 7].map(function (n) {
-    return s.getPropertyValue("--miku-" + n).trim();
-  });
-}
-
-function getLightPalette() {
-  var s = getComputedStyle(document.documentElement);
-  return [1, 2, 3, 4, 5, 6, 7].map(function (n) {
-    return s.getPropertyValue("--light-" + n).trim();
+    return s.getPropertyValue("--" + prefix + "-" + n).trim();
   });
 }
 
 function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
-  var ns = "http://www.w3.org/2000/svg";
-  var svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "mosaic-tiles-svg");
-  svg.setAttribute("width", W);
-  svg.setAttribute("height", H);
-  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
-  svg._tiles = []; svg._ripples = []; svg._presses = [];
-  svg._tileData = []; svg._mc = mc || {};
-  return svg;
+  return createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc);
 }
 
 
@@ -509,8 +498,8 @@ function fitMosaics(animate) {
     var isStaticBg = isGridOnly || "mosaicStatic" in p.dataset;
     var isCardArt = p.classList.contains("card-art");
     var isCover = p.classList.contains("card-cover-art");
-    var palette = p.dataset.mosaicPalette === "miku" ? getMikuPalette()
-      : p.dataset.mosaicPalette === "light" ? getLightPalette()
+    var palette = p.dataset.mosaicPalette === "miku" ? getPrefixedPalette("miku")
+      : p.dataset.mosaicPalette === "light" ? getPrefixedPalette("light")
       : defaultPalette;
 
     // Dimensions first — the card-art height is snapped to whole tile rows
