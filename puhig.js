@@ -764,6 +764,52 @@ function buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, cur
   ];
 }
 
+// Press-and-hold tilt for touch devices. A pointer hovers to tilt a card in 3D,
+// but touch has no hover: a quick tap flips (handled by the existing click path),
+// while a sustained press engages the same tilt and finger-drag steers it.
+// Releasing from a hold settles the card flat and suppresses the would-be flip.
+// opts: { isBusy, tilt(clientX, clientY), reset(), onStart(), onEnd(suppressFlip) }.
+function addPressHoldTilt(el, opts) {
+  var HOLD_MS = 280;   // press duration before tilt mode engages (taps stay below it)
+  var MOVE_TOL = 12;   // px of drift that turns an early press into a page scroll
+  var timer = null, tilting = false, moved = false, sx = 0, sy = 0;
+
+  el.addEventListener('touchstart', function (e) {
+    if (opts.isBusy() || e.touches.length > 1) return;
+    if (e.target.closest('button, a, input, select')) return;
+    var t = e.touches[0];
+    sx = t.clientX; sy = t.clientY; moved = false; tilting = false;
+    opts.onStart();
+    timer = setTimeout(function () {
+      timer = null; tilting = true;
+      opts.tilt(sx, sy); // engage from the resting press point
+    }, HOLD_MS);
+  }, { passive: true });
+
+  el.addEventListener('touchmove', function (e) {
+    var t = e.touches[0];
+    if (!moved && (Math.abs(t.clientX - sx) > MOVE_TOL || Math.abs(t.clientY - sy) > MOVE_TOL)) moved = true;
+    if (tilting) {
+      e.preventDefault(); // own the gesture so the page doesn't scroll under the tilt
+      opts.tilt(t.clientX, t.clientY);
+    } else if (moved && timer) {
+      clearTimeout(timer); timer = null; // moved before the hold engaged: let it scroll
+    }
+  }, { passive: false });
+
+  function finish() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    var didTilt = tilting; tilting = false;
+    if (didTilt) opts.reset();
+    // Any hold that engaged tilt settles flat and cancels the flip — a press long
+    // enough to tilt reads as a deliberate hold, not a tap. (Browsers also drop the
+    // synthetic click for a long press, so we can't rely on it to flip anyway.)
+    opts.onEnd(didTilt);
+  }
+  el.addEventListener('touchend', finish);
+  el.addEventListener('touchcancel', finish);
+}
+
 function initFlipCards() {
   document.querySelectorAll('.panel-frame--flip').forEach(function (card) {
     var flipped = false;
@@ -773,6 +819,9 @@ function initFlipCards() {
     var tiltX = 0, tiltY = 0;
     var targetX = 0, targetY = 0;
     var rafId = null;
+    var recentTouch = false;   // ignore the synthetic mouse events a touch emits
+    var clickSuppressed = false; // swallow the flip click that follows a hold-tilt
+    var touchClear = null;
 
     function tiltFrame() {
       tiltX += (targetX - tiltX) * 0.15;
@@ -800,23 +849,40 @@ function initFlipCards() {
       if (!rafId) rafId = requestAnimationFrame(tiltFrame);
     }
 
-    card.addEventListener('mousemove', function (e) {
-      if (animating) return;
+    function setTilt(clientX, clientY) {
       var rect = card.getBoundingClientRect();
-      var rawX = ((e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
-      var rawY = ((e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
+      var rawX = ((clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
+      var rawY = ((clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
       targetX = flipped ? -rawX : rawX;
       targetY = -rawY; // back face is Y-mirrored, so horizontal tilt keeps the same sign
       startTiltLoop();
+    }
+
+    function resetTilt() { targetX = 0; targetY = 0; startTiltLoop(); }
+
+    card.addEventListener('mousemove', function (e) {
+      if (animating || recentTouch) return;
+      setTilt(e.clientX, e.clientY);
     });
 
     card.addEventListener('mouseleave', function () {
-      if (animating) return;
-      targetX = 0; targetY = 0;
-      startTiltLoop();
+      if (animating || recentTouch) return;
+      resetTilt();
+    });
+
+    addPressHoldTilt(card, {
+      isBusy: function () { return animating; },
+      tilt: setTilt,
+      reset: resetTilt,
+      onStart: function () { recentTouch = true; if (touchClear) { clearTimeout(touchClear); touchClear = null; } },
+      onEnd: function (suppressFlip) {
+        if (suppressFlip) clickSuppressed = true;
+        touchClear = setTimeout(function () { recentTouch = false; clickSuppressed = false; }, 700);
+      }
     });
 
     card.addEventListener('click', function (e) {
+      if (clickSuppressed) { clickSuppressed = false; return; }
       if (animating) return;
       if (e.target.closest('button, a, input, select')) return;
       var rect = card.getBoundingClientRect();
@@ -869,6 +935,9 @@ function initCardSleeveFlips() {
     var tiltX = 0, tiltY = 0;
     var targetX = 0, targetY = 0;
     var rafId = null;
+    var recentTouch = false;   // ignore the synthetic mouse events a touch emits
+    var clickSuppressed = false; // swallow the flip click that follows a hold-tilt
+    var touchClear = null;
 
     function tiltFrame() {
       tiltX += (targetX - tiltX) * 0.15;
@@ -896,20 +965,36 @@ function initCardSleeveFlips() {
       if (!rafId) rafId = requestAnimationFrame(tiltFrame);
     }
 
-    sleeve.addEventListener('mousemove', function (e) {
-      if (animating) return;
+    function setTilt(clientX, clientY) {
       var rect = sleeve.getBoundingClientRect();
-      var rawX = ((e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
-      var rawY = ((e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
+      var rawX = ((clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
+      var rawY = ((clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
       targetX = flipped ? -rawX : rawX;
       targetY = -rawY; // back face is Y-mirrored, so horizontal tilt keeps the same sign
       startTiltLoop();
+    }
+
+    function resetTilt() { targetX = 0; targetY = 0; startTiltLoop(); }
+
+    sleeve.addEventListener('mousemove', function (e) {
+      if (animating || recentTouch) return;
+      setTilt(e.clientX, e.clientY);
     });
 
     sleeve.addEventListener('mouseleave', function () {
-      if (animating) return;
-      targetX = 0; targetY = 0;
-      startTiltLoop();
+      if (animating || recentTouch) return;
+      resetTilt();
+    });
+
+    addPressHoldTilt(sleeve, {
+      isBusy: function () { return animating; },
+      tilt: setTilt,
+      reset: resetTilt,
+      onStart: function () { recentTouch = true; if (touchClear) { clearTimeout(touchClear); touchClear = null; } },
+      onEnd: function (suppressFlip) {
+        if (suppressFlip) clickSuppressed = true;
+        touchClear = setTimeout(function () { recentTouch = false; clickSuppressed = false; }, 700);
+      }
     });
 
     function flip(e) {
@@ -949,6 +1034,7 @@ function initCardSleeveFlips() {
     // Flip on click anywhere on the sleeve except text-content zones.
     // card-art is intentionally omitted — no text there, large flip target.
     sleeve.addEventListener('click', function (e) {
+      if (clickSuppressed) { clickSuppressed = false; return; }
       if (e.target.closest('.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-footer')) return;
       flip(e);
     });
@@ -958,6 +1044,7 @@ function initCardSleeveFlips() {
     if (icon) {
       icon.addEventListener('click', function (e) {
         e.stopPropagation();
+        if (clickSuppressed) { clickSuppressed = false; return; }
         flip(e);
       });
     }
