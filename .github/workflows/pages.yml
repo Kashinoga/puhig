@@ -1,13 +1,10 @@
 name: Deploy Pages
 
-# Builds one Pages site from two branches: `main` at the root and `card-layout`
-# under /card-layout/ as a live preview. Runs on a push to either branch (the
-# workflow must exist on both for both pushes to trigger it) and rebuilds the
-# full site every time, so the output is identical regardless of which branch
-# triggered the run.
+# Builds the Pages site from `main` at the root. (The `card-layout` preview was
+# retired once that branch merged into main.)
 on:
   push:
-    branches: [main, card-layout]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -33,14 +30,8 @@ jobs:
           ref: main
           path: site
 
-      - name: Checkout card-layout → /card-layout preview
-        uses: actions/checkout@v4
-        with:
-          ref: card-layout
-          path: site/card-layout
-
       - name: Strip git/workflow dirs from the artifact
-        run: rm -rf site/.git site/.github site/card-layout/.git site/card-layout/.github
+        run: rm -rf site/.git site/.github
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
