@@ -285,12 +285,36 @@ section {
 .panel-frame--flip {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  background-color: transparent;
+  box-shadow: none;
   cursor: pointer;
   isolation: auto;
   overflow: visible;
-  transform-style: preserve-3d;
+  transform-style: flat;
   will-change: transform;
   z-index: 0;
+}
+
+/* The flip frame stays flat and carries z-index + the 2D pick-up grow, so it
+   composites above neighbouring cards by z-index. This inner layer (injected by
+   wrapFlipInner() in puhig.js) holds preserve-3d and receives the 3D flip/tilt
+   rotation, which the flat frame seals into a single 2D layer. Without the
+   split, Firefox renders the rotated card in its own 3D context and paints its
+   receding half *behind* flat neighbours regardless of z-index — the flip
+   clips under nearby cards. Used by both flip-cards and sleeves.
+
+   The sleeve's visible body — fill, drop shadow, rounded corners — lives HERE,
+   not on the frame, so it rotates as one unit with the card faces (the frame is
+   a transparent flat shell). Before the split the whole frame rotated, shadow
+   and all; keeping the body on the rotating inner preserves that unified flip
+   while the flat frame still wins z-index against neighbours. */
+.flip-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  background-color: var(--sleeve-bg);
+  border-radius: var(--sleeve-radius);
+  box-shadow: var(--shadow-panel-frame);
 }
 
 /* While a card flips, drop the (0.5px) sleeve blur on every sibling frame.
@@ -822,7 +846,6 @@ section {
 }
 
 .card-pip {
-  border: 1px solid var(--rule);
   border-radius: 50%;
   display: block;
   height: clamp(12px, 4.6cqi, 18px);
@@ -865,10 +888,12 @@ section {
 .card-sleeve {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
+  background-color: transparent;
+  box-shadow: none;
   cursor: pointer;
   isolation: auto;
   overflow: visible;
-  transform-style: preserve-3d;
+  transform-style: flat;
   will-change: transform;
   z-index: 0;
 }
@@ -1497,7 +1522,7 @@ main .wordmark-row {
     --mosaic-black: oklch(20% 0.018 65);
     --mosaic-bg: oklch(5% 0.008 65);
     --mosaic-press: var(--white);
-    --mosaic-grid: oklch(0% 0 0 / 65%);
+    --mosaic-grid: oklch(0% 0 0 / 30%);
     --mosaic-white: #c8d4dc;
     --shadow-panel-frame:
       inset 0 0 0 1px rgba(255, 255, 255, 0.10),
@@ -1549,7 +1574,7 @@ html[data-theme="dark"] {
   --mosaic-black: oklch(20% 0.018 65);
   --mosaic-bg: oklch(5% 0.008 65);
   --mosaic-press: var(--white);
-  --mosaic-grid: oklch(0% 0 0 / 65%);
+  --mosaic-grid: oklch(0% 0 0 / 30%);
   --mosaic-white: #c8d4dc;
   --shadow-panel-frame:
     inset 0 0 0 1px rgba(255, 255, 255, 0.10),

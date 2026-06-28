@@ -562,29 +562,14 @@ function fitMosaics(animate) {
       if (!p._mosaicPressBound) { setupMosaicPress(p); p._mosaicPressBound = true; }
     }
 
-    if (animate && existing) {
-      if (p._shrinkTimer) clearTimeout(p._shrinkTimer);
-      if (existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
-      (existing._tiles || []).forEach(function (rect) {
-        var d = Math.round((parseInt(rect.getAttribute("data-delay")) || 0) / 3);
-        rect.style.animation = "tile-shrink 150ms ease-in " + d + "ms both";
-      });
-      var capturedPalette = palette;
-      p._shrinkTimer = setTimeout(function () {
-        p._shrinkTimer = null;
-        Array.from(p.querySelectorAll(".mosaic-tiles-svg")).forEach(function (s) { s.remove(); });
-        p.appendChild(newSvg);
-        p._mosaicSvg = newSvg;
-        if (!isStaticBg) startDriftLoop(newSvg, capturedPalette);
-      }, 200);
-    } else {
-      if (p._shrinkTimer) { clearTimeout(p._shrinkTimer); p._shrinkTimer = null; }
-      if (existing && existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
-      if (existing) existing.remove();
-      p.appendChild(newSvg);
-      p._mosaicSvg = newSvg;
-      if (!isStaticBg) startDriftLoop(newSvg, palette);
-    }
+    // Regen (theme/bg change) swaps the SVG instantly — no tile-shrink
+    // transition. New tiles just appear, the same as a layout-only rebuild.
+    if (p._shrinkTimer) { clearTimeout(p._shrinkTimer); p._shrinkTimer = null; }
+    if (existing && existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
+    if (existing) existing.remove();
+    p.appendChild(newSvg);
+    p._mosaicSvg = newSvg;
+    if (!isStaticBg) startDriftLoop(newSvg, palette);
   });
 }
 
@@ -612,10 +597,6 @@ window.addEventListener("resize", function () {
   resizeTimer = setTimeout(function () { fitMosaics(false); }, 100);
 });
 
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
-  fitMosaics(true);
-});
-
 (function () {
   var STORAGE_KEY = 'puhig-theme';
   var UI_THEME_KEY = 'puhig-ui-theme';
@@ -625,7 +606,19 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
   var uiThemeOpts = Array.from(document.querySelectorAll('.theme-option[data-group="ui-theme"]'));
   var bgOpts = Array.from(document.querySelectorAll('.theme-option[data-group="bg"]'));
 
+  // Resolve a preference to the appearance that actually paints, so 'system'
+  // collapses to the OS setting. Switching between two prefs that resolve to the
+  // same appearance (e.g. dark -> system while the OS is dark) uses identical
+  // mosaic colors, so there's nothing to rebuild or re-animate.
+  function resolveAppearance(pref) {
+    if (pref === 'light' || pref === 'dark') return pref;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  var lastAppearance = null;
+  var currentPref = null;
+
   function applyTheme(pref, redraw) {
+    currentPref = pref;
     if (pref === 'light' || pref === 'dark') {
       html.dataset.theme = pref;
     } else {
@@ -634,7 +627,10 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
     appearanceOpts.forEach(function (o) {
       o.setAttribute('aria-pressed', String(o.dataset.value === pref));
     });
-    if (redraw) fitMosaics(true);
+    var resolved = resolveAppearance(pref);
+    var changed = resolved !== lastAppearance;
+    lastAppearance = resolved;
+    if (redraw && changed) fitMosaics(true);
   }
 
   function applyUITheme(pref) {
@@ -688,6 +684,13 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
       val === 'grid' ? localStorage.removeItem(BG_KEY) : localStorage.setItem(BG_KEY, val);
       applyBG(val, true);
     });
+  });
+
+  // An OS appearance flip only repaints the mosaics when 'system' is active and
+  // the resolved appearance actually changes; applyTheme's guard no-ops an
+  // explicit light/dark preference that ignores the OS.
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+    applyTheme(currentPref, true);
   });
 
 }());
@@ -764,6 +767,35 @@ function buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, cur
   ];
 }
 
+// Pick-up grow for the flip: a 2D scale on the flat .panel-frame--flip/.card-sleeve
+// (NOT the 3D inner), peaking over the flip's hump and settling back to rest. The
+// frame scales the whole card (sleeve + faces) uniformly while staying flat, so it
+// keeps compositing above neighbours by z-index — a scale on the 3D inner would
+// clip under neighbours in Firefox, and would also spill the faces past the sleeve.
+function buildGrowFrames() {
+  var GROW = 1.07; // tunable pick-up scale
+  return [
+    { transform: 'scale(1)', offset: 0, easing: 'ease-in-out' },
+    { transform: 'scale(' + GROW + ')', offset: 0.22, easing: 'ease-in-out' },
+    { transform: 'scale(' + GROW + ')', offset: 0.78, easing: 'ease-in-out' },
+    { transform: 'scale(1)', offset: 1 }
+  ];
+}
+
+// Seal a flip element's 3D into a flat-composited layer: move its faces into an
+// inner .flip-inner (preserve-3d) so the frame can stay flat and win z-index
+// against neighbours. Idempotent; returns the inner element. See .flip-inner in
+// puhig.css for why the split is required (Firefox 3D-context clipping).
+function wrapFlipInner(el) {
+  var existing = el.querySelector(':scope > .flip-inner');
+  if (existing) return existing;
+  var inner = document.createElement('div');
+  inner.className = 'flip-inner';
+  while (el.firstChild) inner.appendChild(el.firstChild);
+  el.appendChild(inner);
+  return inner;
+}
+
 // Press-and-hold tilt for touch devices. A pointer hovers to tilt a card in 3D,
 // but touch has no hover: a quick tap flips (handled by the existing click path),
 // while a sustained press engages the same tilt and finger-drag steers it.
@@ -812,6 +844,9 @@ function addPressHoldTilt(el, opts) {
 
 function initFlipCards() {
   document.querySelectorAll('.panel-frame--flip').forEach(function (card) {
+    // The flat frame (card) holds z-index + the 2D grow; this inner layer holds
+    // the 3D flip/tilt rotation, so all rotation transforms target `inner`.
+    var inner = wrapFlipInner(card);
     var flipped = false;
     var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
     var lastFlipTop = false;
@@ -831,21 +866,21 @@ function initFlipCards() {
         ? 'perspective(600px) rotateY(' + (base + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
         : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
       if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
-        card.style.transform = transform;
+        inner.style.transform = transform;
         rafId = requestAnimationFrame(tiltFrame);
       } else {
         tiltX = targetX; tiltY = targetY; rafId = null;
         if (targetX === 0 && targetY === 0) {
-          card.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
+          inner.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
         } else {
-          card.style.transform = transform;
+          inner.style.transform = transform;
         }
       }
     }
 
     function startTiltLoop() {
       if (animating) return;
-      card.style.transition = '';
+      inner.style.transition = '';
       if (!rafId) rafId = requestAnimationFrame(tiltFrame);
     }
 
@@ -904,20 +939,25 @@ function initFlipCards() {
       animating = true;
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
-      card.style.transition = '';
+      inner.style.transition = '';
       card.style.zIndex = '100';
       var panel = card.closest('.panel');
       if (panel) panel.classList.add('panel--flipping');
       var lifted = liftToFront(card);
 
+      // Rotation on the 3D inner; the 2D pick-up grow on the flat frame. Both run
+      // 650ms from the same tick so they stay in lockstep.
       var frames = buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart);
-      var anim = card.animate(frames, { duration: 650, fill: 'forwards' });
+      var anim = inner.animate(frames, { duration: 650, fill: 'forwards' });
+      var growAnim = card.animate(buildGrowFrames(), { duration: 650 });
       anim.onfinish = function () {
         if (panel) panel.classList.remove('panel--flipping');
         restoreFromFront(card, lifted);
         card.style.zIndex = '';
-        card.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
+        card.style.transform = '';
+        inner.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
         anim.cancel();
+        growAnim.cancel();
         animating = false;
       };
     });
@@ -928,6 +968,8 @@ initFlipCards();
 
 function initCardSleeveFlips() {
   document.querySelectorAll('.card-sleeve').forEach(function (sleeve) {
+    // Flat sleeve holds z-index + the 2D grow; this inner holds the 3D rotation.
+    var inner = wrapFlipInner(sleeve);
     var flipped = false;
     var animating = false;
     var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
@@ -947,21 +989,21 @@ function initCardSleeveFlips() {
         ? 'perspective(600px) rotateY(' + (base + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
         : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
       if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
-        sleeve.style.transform = transform;
+        inner.style.transform = transform;
         rafId = requestAnimationFrame(tiltFrame);
       } else {
         tiltX = targetX; tiltY = targetY; rafId = null;
         if (targetX === 0 && targetY === 0) {
-          sleeve.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
+          inner.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
         } else {
-          sleeve.style.transform = transform;
+          inner.style.transform = transform;
         }
       }
     }
 
     function startTiltLoop() {
       if (animating) return;
-      sleeve.style.transition = '';
+      inner.style.transition = '';
       if (!rafId) rafId = requestAnimationFrame(tiltFrame);
     }
 
@@ -1018,15 +1060,20 @@ function initCardSleeveFlips() {
       animating = true;
       if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
       tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
-      sleeve.style.transition = '';
+      inner.style.transition = '';
       sleeve.style.zIndex = '100';
 
+      // Rotation on the 3D inner; the 2D pick-up grow on the flat sleeve. Both run
+      // 650ms from the same tick so they stay in lockstep.
       var frames = buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart);
-      var anim = sleeve.animate(frames, { duration: 650, fill: 'forwards' });
+      var anim = inner.animate(frames, { duration: 650, fill: 'forwards' });
+      var growAnim = sleeve.animate(buildGrowFrames(), { duration: 650 });
       anim.onfinish = function () {
         sleeve.style.zIndex = '';
-        sleeve.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
+        sleeve.style.transform = '';
+        inner.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
         anim.cancel();
+        growAnim.cancel();
         animating = false;
       };
     }
