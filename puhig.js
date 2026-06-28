@@ -1,3 +1,7 @@
+// Module-pattern IIFE: keeps every declaration below off `window` so the page
+// script leaks no globals. Body is intentionally left un-indented so this
+// retrofit stays a 2-line diff rather than re-touching all ~1000 lines.
+(function () {
 function getPalette() {
   var s = getComputedStyle(document.documentElement);
   return [
@@ -1063,3 +1067,4 @@ if (navigator.maxTouchPoints > 0 && !window.matchMedia("(pointer: fine)").matche
     lastTouchEnd = now;
   }, { passive: false });
 }
+}());

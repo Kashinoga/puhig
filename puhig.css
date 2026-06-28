@@ -32,7 +32,7 @@
   --paper: var(--white);
   --surface: #faf8f4;
   --rule: var(--border);
-  --dim: var(--sub);
+  --dim: #717171;
   --grain-opacity: 0.2;
   --mosaic-black: oklch(9% 0.012 65);
   --mosaic-bg: oklch(9% 0.012 65);
@@ -106,7 +106,6 @@
 * {
   margin: 0;
   padding: 0;
-  touch-action: pan-x pan-y;
 }
 
 html {
@@ -167,8 +166,7 @@ p {
 img,
 picture,
 video,
-canvas,
-svg {
+canvas {
   display: block;
   max-width: 100%;
 }
@@ -953,10 +951,18 @@ section {
   font-weight: 200;
   letter-spacing: 0.08em;
   line-height: 1;
-  margin-top: 12px;
   padding-bottom: 0;
   text-align: right;
   text-transform: uppercase;
+}
+
+/* The 12px top margin lifts a hero label off the preceding hero text in normal
+   flow — but the three cover labels also carry .card-art-label, which positions
+   them absolutely in the art corner with no flow margin. Excluding them here (so
+   no margin-top declaration competes with .card-art-label's margin:0 reset)
+   keeps the cascade honest instead of relying on source order (was csslint ●). */
+.hero-label:not(.card-art-label) {
+  margin-top: 12px;
 }
 
 h1 {
