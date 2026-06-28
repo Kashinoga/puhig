@@ -577,7 +577,6 @@ section {
 }
 
 .card-name {
-  flex: 1;
   font-size: clamp(11px, 4.4cqi, 18px);
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -603,6 +602,7 @@ section {
 .card-art {
   background-color: var(--mosaic-bg);
   border: 1px solid var(--rule);
+  cursor: pointer;
   flex-shrink: 0;
   height: clamp(162px, 64.8cqi, 270px);
   overflow: hidden;
@@ -632,24 +632,27 @@ section {
 .card-type {
   align-items: center;
   border-bottom: 1px solid var(--rule);
-  cursor: text;
+  cursor: default;
   display: flex;
   flex-shrink: 0;
   font-size: clamp(11px, 4.4cqi, 18px);
   gap: clamp(6px, 2.4cqi, 10px);
   height: clamp(24px, 9.6cqi, 38px);
+  justify-content: space-between;
   letter-spacing: 0.06em;
   padding-inline: clamp(10px, 4cqi, 16px);
   -webkit-user-select: text;
   user-select: text;
 }
 
+/* Hug the label to its text so the gap before the rarity mark stays an
+   arrow; I-beam appears only over the label itself. */
 .card-type-label {
-  flex: 1;
+  cursor: text;
 }
 
 .card-text-box {
-  cursor: text;
+  cursor: default;
   -webkit-user-select: text;
   user-select: text;
   flex: 1;
@@ -658,6 +661,13 @@ section {
   overflow: hidden;
   padding: clamp(8px, 3.2cqi, 13px);
   position: relative;
+}
+
+/* I-beam only over the actual text runs, not the box's empty space.
+   Decorative glyphs (.icon-sample, .saga-marker) and interactive controls
+   (.theme-option) keep their own cursors. */
+.card-text-box :is(p, blockquote, .type-meta, .section-heading, .weight-sample) {
+  cursor: text;
 }
 
 .card-text-box .panel-quote {
@@ -725,7 +735,7 @@ section {
   align-items: center;
   border-top: 1px solid var(--rule);
   color: var(--dim);
-  cursor: text;
+  cursor: default;
   display: flex;
   flex-shrink: 0;
   font-size: clamp(7px, 2.8cqi, 11px);
@@ -737,6 +747,12 @@ section {
   text-transform: uppercase;
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* I-beam only over the footer's text spans, not the gaps between the
+   left/right groups or the column padding. */
+.card-footer span {
+  cursor: text;
 }
 
 .card-footer-left,
@@ -802,6 +818,7 @@ section {
   display: flex;
   flex-shrink: 0;
   gap: clamp(3px, 1.2cqi, 5px);
+  margin-inline-start: auto;
 }
 
 .card-pip {
