@@ -38,18 +38,18 @@
   --mosaic-bg: oklch(9% 0.012 65);
   --miku-1: oklch(22% 0.06 192);
   --miku-2: oklch(73% 0.11 192);
-  --miku-3: oklch(48% 0.10 192);
+  --miku-3: oklch(48% 0.1 192);
   --miku-4: oklch(90% 0.04 192);
-  --miku-5: oklch(62% 0.10 192);
+  --miku-5: oklch(62% 0.1 192);
   --miku-6: oklch(82% 0.09 188);
   --miku-7: oklch(56% 0.08 198);
   /* Light palette — white + light + assorted light shades for cover art. */
   --light-1: oklch(98% 0.004 230);
-  --light-2: oklch(95% 0.010 215);
+  --light-2: oklch(95% 0.01 215);
   --light-3: oklch(92% 0.014 210);
   --light-4: oklch(89% 0.018 205);
   --light-5: oklch(96% 0.012 95);
-  --light-6: oklch(87% 0.020 200);
+  --light-6: oklch(87% 0.02 200);
   --light-7: oklch(90% 0.016 235);
   --mosaic-hover: #e8d060;
   --mosaic-press: var(--black);
@@ -57,13 +57,11 @@
   --mosaic-white: #f0f4f8;
   color-scheme: light dark;
   --shadow-panel-frame:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.50),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.07),
-    0 2px 6px rgba(0, 0, 0, 0.07), 0 8px 24px rgba(0, 0, 0, 0.05),
-    0 24px 56px rgba(0, 0, 0, 0.04);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.07), 0 2px 6px rgba(0, 0, 0, 0.07),
+    0 8px 24px rgba(0, 0, 0, 0.05), 0 24px 56px rgba(0, 0, 0, 0.04);
   --shadow-panel-content:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset -10px -5px 100px 50px rgba(80, 52, 12, 0.03);
   --card-w: 264px;
   --card-ratio: 66 / 91;
@@ -71,12 +69,14 @@
   --card-radius: 8px;
   --sleeve-blur: blur(0.5px);
   --sleeve-bg: color-mix(in srgb, var(--paper) 50%, transparent);
-  --sleeve-streak: linear-gradient(135deg,
-      transparent 15%,
-      rgba(0, 0, 0, 0.03) 28%,
-      rgba(255, 255, 255, 0.12) 38%,
-      rgba(255, 255, 255, 0.03) 50%,
-      transparent 65%);
+  --sleeve-streak: linear-gradient(
+    135deg,
+    transparent 15%,
+    rgba(0, 0, 0, 0.03) 28%,
+    rgba(255, 255, 255, 0.12) 38%,
+    rgba(255, 255, 255, 0.03) 50%,
+    transparent 65%
+  );
 }
 
 *,
@@ -97,6 +97,21 @@ html {
   user-select: none;
   overscroll-behavior: none;
   touch-action: pan-x pan-y;
+  /* A flipping card (1.07 grow + perspective rotateY) momentarily projects ~17px
+     past the viewport on narrow screens, widening the page and letting it scroll
+     horizontally. The clip MUST be set on BOTH html and body (see body below):
+     Firefox propagates a lone root `overflow-x` to the viewport but leaves the
+     body itself scrollable, so html-only (or body-only) still scrolled ~17px —
+     verified in headless Firefox. Both together clamp scrollWidth to the
+     viewport. `clip`, not `hidden`: `hidden` makes each a scroll container (only
+     suppressing the scrollbar chrome, so the projection stays pannable) and
+     forces the cross-axis to `auto`; `clip` removes the scrollable region
+     outright and leaves `overflow-y: visible`, so vertical page scroll is
+     untouched. No "canal": `overflow` clips at the padding box (the OUTER edge of
+     padding), and neither html nor body has a horizontal margin, so the clip
+     edge is the screen edge — the flip bleeds to the edge with nothing cropped,
+     only the off-screen projection removed. */
+  overflow-x: clip;
 }
 
 html {
@@ -116,6 +131,9 @@ body {
   color: var(--ink);
   position: relative;
   z-index: 0;
+  /* Paired with html's overflow-x:clip — both are required to clamp the flip's
+     horizontal projection (see the html rule above). */
+  overflow-x: clip;
   font-family: "Jost", system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -189,13 +207,12 @@ h2 {
 body {
   padding-top: calc(12px + env(safe-area-inset-top));
   padding-right: 12px;
-  /* Reserve a band at the bottom so the fixed .scroll-controls (24px offset +
-     48px tall = 72px) sit in their own clear area, with a ~24px gap above,
+  /* Reserve a band at the bottom so the fixed .scroll-controls (36px offset +
+     48px tall = 84px) sit in their own clear area, with a ~24px gap above,
      when the page is scrolled all the way down. */
-  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  padding-bottom: calc(108px + env(safe-area-inset-bottom));
   padding-left: 12px;
 }
-
 
 header,
 main,
@@ -268,7 +285,7 @@ section {
 .panel-content--centered {
   align-items: center;
   justify-content: center;
-  font-size: 48px;
+  font-size: 64px;
 }
 
 .panel-frame--flip {
@@ -460,7 +477,7 @@ section {
   color: var(--dim);
   cursor: pointer;
   flex-shrink: 0;
-  font-size: clamp(12px, 4.6cqi, 18px);
+  font-size: clamp(12px, 4.8cqi, 18px);
 }
 
 .card-art {
@@ -475,12 +492,12 @@ section {
   user-select: none;
 }
 
-.card-title+.card-art {
+.card-title + .card-art {
   border-top: none;
   height: clamp(161px, 64.4cqi, 268px);
 }
 
-.card-art+.card-type {
+.card-art + .card-type {
   border-top: none;
 }
 
@@ -787,7 +804,7 @@ section {
   border-radius: var(--card-radius);
   box-shadow: var(--shadow-panel-content);
   display: flex;
-  font-size: 48px;
+  font-size: 64px;
   inset: 6px;
   isolation: isolate;
   justify-content: center;
@@ -832,9 +849,11 @@ section {
 }
 
 .mosaic-overlay {
-  background: linear-gradient(175deg,
-      rgba(255, 255, 255, 0.12) 0%,
-      transparent 45%);
+  background: linear-gradient(
+    175deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    transparent 45%
+  );
   inset: 0;
   pointer-events: none;
   position: absolute;
@@ -969,15 +988,18 @@ h1 {
   position: relative;
 }
 
-/* Vertical rail threading the chapter markers, centred on the 20px badges. */
+/* Vertical rail threading the chapter markers, centred on the 20px badges.
+   top/bottom reach past .saga-chapters (which fills the card-text-box content
+   box) by the box's block padding, so the rail meets the card-text-box's top
+   and bottom edges; the box's overflow:hidden clips it flush there. */
 .saga-chapters::before {
   background: var(--orange);
-  bottom: clamp(12px, 4.8cqi, 19px);
+  bottom: calc(-1 * clamp(8px, 3.2cqi, 13px));
   content: "";
   left: clamp(10px, 4cqi, 16px);
   opacity: 0.35;
   position: absolute;
-  top: clamp(12px, 4.8cqi, 19px);
+  top: calc(-1 * clamp(8px, 3.2cqi, 13px));
   width: clamp(2px, 0.8cqi, 3px);
   z-index: 0;
 }
@@ -989,6 +1011,14 @@ h1 {
   display: grid;
   flex: 1;
   grid-template-columns: clamp(22px, 8.8cqi, 35px) 1fr;
+  /* Stretch the divider rule edge-to-edge so it meets the card frame like the
+     title/type rules above, while keeping the row's content inset. The negative
+     inline margin pulls the row's border-box out past the saga box's
+     padding-inline to the frame; the equal padding-inline pushes the content
+     (marker + chapter) back to its original position, so the rail and markers
+     don't move. */
+  margin-inline: calc(-1 * clamp(6px, 2.4cqi, 10px));
+  padding-inline: clamp(6px, 2.4cqi, 10px);
   min-height: 0;
 }
 
@@ -1208,35 +1238,37 @@ h1 {
        for the dark cover ink + white scrims to stay legible. */
     --light-1: oklch(82% 0.012 230);
     --light-2: oklch(78% 0.016 215);
-    --light-3: oklch(74% 0.020 210);
+    --light-3: oklch(74% 0.02 210);
     --light-4: oklch(70% 0.024 205);
     --light-5: oklch(80% 0.016 95);
     --light-6: oklch(68% 0.026 200);
     --light-7: oklch(72% 0.022 235);
     --shadow-panel-frame:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.24),
-      0 2px 6px rgba(0, 0, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.22),
-      0 24px 56px rgba(0, 0, 0, 0.16);
+      inset 0 -1px 0 rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.28),
+      0 8px 24px rgba(0, 0, 0, 0.22), 0 24px 56px rgba(0, 0, 0, 0.16);
     --shadow-panel-content:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.07),
       inset -2px 0 10px -4px rgba(255, 255, 255, 0.04),
       inset -10px -5px 100px 50px rgba(200, 160, 90, 0.03);
-    --sleeve-streak: linear-gradient(135deg,
-        transparent 15%,
-        rgba(255, 255, 255, 0.06) 38%,
-        rgba(255, 255, 255, 0.02) 50%,
-        transparent 65%);
+    --sleeve-streak: linear-gradient(
+      135deg,
+      transparent 15%,
+      rgba(255, 255, 255, 0.06) 38%,
+      rgba(255, 255, 255, 0.02) 50%,
+      transparent 65%
+    );
   }
 
   html:not([data-theme="light"]) .mosaic-overlay {
-    background: linear-gradient(175deg,
-        rgba(255, 255, 255, 0.07) 0%,
-        transparent 45%);
+    background: linear-gradient(
+      175deg,
+      rgba(255, 255, 255, 0.07) 0%,
+      transparent 45%
+    );
   }
-
 }
 
 html[data-theme="light"] {
@@ -1263,43 +1295,56 @@ html[data-theme="dark"] {
      the dark cover ink + white scrims to stay legible. */
   --light-1: oklch(82% 0.012 230);
   --light-2: oklch(78% 0.016 215);
-  --light-3: oklch(74% 0.020 210);
+  --light-3: oklch(74% 0.02 210);
   --light-4: oklch(70% 0.024 205);
   --light-5: oklch(80% 0.016 95);
   --light-6: oklch(68% 0.026 200);
   --light-7: oklch(72% 0.022 235);
   --shadow-panel-frame:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.24),
     0 2px 6px rgba(0, 0, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.22),
     0 24px 56px rgba(0, 0, 0, 0.16);
   --shadow-panel-content:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset -2px 0 10px -4px rgba(255, 255, 255, 0.04),
     inset -10px -5px 100px 50px rgba(200, 160, 90, 0.03);
-  --sleeve-streak: linear-gradient(135deg,
-      transparent 15%,
-      rgba(255, 255, 255, 0.06) 38%,
-      rgba(255, 255, 255, 0.02) 50%,
-      transparent 65%);
+  --sleeve-streak: linear-gradient(
+    135deg,
+    transparent 15%,
+    rgba(255, 255, 255, 0.06) 38%,
+    rgba(255, 255, 255, 0.02) 50%,
+    transparent 65%
+  );
 }
 
 html[data-theme="dark"] .mosaic-overlay {
-  background: linear-gradient(175deg,
-      rgba(255, 255, 255, 0.07) 0%,
-      transparent 45%);
+  background: linear-gradient(
+    175deg,
+    rgba(255, 255, 255, 0.07) 0%,
+    transparent 45%
+  );
 }
 
 .scroll-controls {
-  bottom: calc(24px + env(safe-area-inset-bottom));
+  bottom: calc(36px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: row;
   gap: 8px;
-  left: calc(24px + env(safe-area-inset-left));
+  left: calc(36px + env(safe-area-inset-left));
   position: fixed;
   z-index: 100;
+}
+
+/* Tuck the fixed scroll controls tighter to the corner on mobile (24 → 12),
+   matching the 12px body edge padding. Placed AFTER the base rule above so it
+   wins the cascade — equal specificity, later source order. */
+@media (max-width: 480px) {
+  .scroll-controls {
+    bottom: calc(6px + env(safe-area-inset-bottom));
+    left: calc(6px + env(safe-area-inset-left));
+  }
 }
 
 @keyframes toggle-bounce {
@@ -1336,6 +1381,15 @@ html[data-theme="dark"] .mosaic-overlay {
   padding: 6px;
   position: relative;
   width: 48px;
+}
+
+/* Slightly larger touch targets on mobile (48 → 52). Placed AFTER the base rule
+   above so it wins the cascade — equal specificity, later source order. */
+@media (max-width: 480px) {
+  .scroll-control {
+    height: 52px;
+    width: 52px;
+  }
 }
 
 .toggle-body {
@@ -1411,4 +1465,3 @@ html[data-theme="dark"] .mosaic-overlay {
 .theme-option[aria-pressed="true"] {
   color: var(--orange);
 }
-
