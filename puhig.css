@@ -7,40 +7,84 @@
 }
 
 :root {
-  --black: #0a0a0a; /* Penguin black */
-  --white: #f5f5f0; /* Penguin white */
-  --page: #edeef0; /* page */
-  --sub: #888; /* subtext */
-  --border: #090909; /* border */
-  --orange: #f06030; /* Penguin orange */
-  --teal: #18cac0; /* teal */
-  --yellow: #e8d060; /* accent yellow */
-  --pink: #f090a8; /* accent pink */
-  --purple: #9878c0; /* accent purple */
+  --black: #0a0a0a;
+  /* Penguin black */
+  --white: #f5f5f0;
+  /* Penguin white */
+  --page: #edeef0;
+  /* page */
+  --sub: #888;
+  /* subtext */
+  --border: #090909;
+  /* border */
+  --orange: #f06030;
+  /* Penguin orange */
+  --teal: #18cac0;
+  /* teal */
+  --yellow: #e8d060;
+  /* accent yellow */
+  --pink: #f090a8;
+  /* accent pink */
+  --purple: #9878c0;
+  /* accent purple */
   --grain: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.70 0.75' numOctaves='4' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feColorMatrix type='matrix' values='1.1 0 0 0 0 0 0.95 0 0 0 0 0 0.7 0 0 0 0 0 1 0'/></filter><rect width='200' height='200' filter='url(%23g)' opacity='1'/></svg>");
---ink: var(--black);
+  --ink: var(--black);
   --paper: var(--white);
   --surface: #faf8f4;
   --rule: var(--border);
   --dim: var(--sub);
   --grain-opacity: 0.2;
-  --mosaic-black: #1c1810;
+  --mosaic-black: oklch(9% 0.012 65);
+  --mosaic-bg: oklch(9% 0.012 65);
+  --miku-1: oklch(22% 0.06 192);
+  --miku-2: oklch(73% 0.11 192);
+  --miku-3: oklch(48% 0.1 192);
+  --miku-4: oklch(90% 0.04 192);
+  --miku-5: oklch(62% 0.1 192);
+  --miku-6: oklch(82% 0.09 188);
+  --miku-7: oklch(56% 0.08 198);
+  /* Light palette — white + light + assorted light shades for cover art. */
+  --light-1: oklch(98% 0.004 230);
+  --light-2: oklch(95% 0.01 215);
+  --light-3: oklch(92% 0.014 210);
+  --light-4: oklch(89% 0.018 205);
+  --light-5: oklch(96% 0.012 95);
+  --light-6: oklch(87% 0.02 200);
+  --light-7: oklch(90% 0.016 235);
+  /* Gray palette — neutral (chroma 0) ramp mirroring miku's lightness spread,
+     skewed darker for a "black + shades of gray" cover. Typography cards. */
+  --gray-1: oklch(18% 0 0);
+  --gray-2: oklch(62% 0 0);
+  --gray-3: oklch(40% 0 0);
+  --gray-4: oklch(78% 0 0);
+  --gray-5: oklch(52% 0 0);
+  --gray-6: oklch(70% 0 0);
+  --gray-7: oklch(30% 0 0);
+  /* Mono palette — higher-contrast neutral ramp reaching true black and near
+     white for a "black and white" cover. Motion card. */
+  --mono-1: oklch(12% 0 0);
+  --mono-2: oklch(96% 0 0);
+  --mono-3: oklch(30% 0 0);
+  --mono-4: oklch(85% 0 0);
+  --mono-5: oklch(50% 0 0);
+  --mono-6: oklch(72% 0 0);
+  --mono-7: oklch(20% 0 0);
   --mosaic-hover: #e8d060;
   --mosaic-press: var(--black);
-  --mosaic-grid: rgba(0, 0, 0, 0.15);
+  --mosaic-grid: oklch(0% 0 0 / 4%);
   --mosaic-white: #f0f4f8;
   color-scheme: light dark;
   --shadow-panel-frame:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.50),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.07),
-    0 2px 6px rgba(0, 0, 0, 0.07), 0 8px 24px rgba(0, 0, 0, 0.05),
-    0 24px 56px rgba(0, 0, 0, 0.04);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.07), 0 2px 6px rgba(0, 0, 0, 0.07),
+    0 8px 24px rgba(0, 0, 0, 0.05), 0 24px 56px rgba(0, 0, 0, 0.04);
   --shadow-panel-content:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.28),
     inset -10px -5px 100px 50px rgba(80, 52, 12, 0.03);
+  --card-w: 264px;
+  --card-ratio: 66 / 91;
   --sleeve-radius: 4px;
-  --card-radius: 16px;
+  --card-radius: 8px;
   --sleeve-blur: blur(0.5px);
   --sleeve-bg: color-mix(in srgb, var(--paper) 50%, transparent);
   --sleeve-streak: linear-gradient(
@@ -71,6 +115,21 @@ html {
   user-select: none;
   overscroll-behavior: none;
   touch-action: pan-x pan-y;
+  /* A flipping card (1.07 grow + perspective rotateY) momentarily projects ~17px
+     past the viewport on narrow screens, widening the page and letting it scroll
+     horizontally. The clip MUST be set on BOTH html and body (see body below):
+     Firefox propagates a lone root `overflow-x` to the viewport but leaves the
+     body itself scrollable, so html-only (or body-only) still scrolled ~17px —
+     verified in headless Firefox. Both together clamp scrollWidth to the
+     viewport. `clip`, not `hidden`: `hidden` makes each a scroll container (only
+     suppressing the scrollbar chrome, so the projection stays pannable) and
+     forces the cross-axis to `auto`; `clip` removes the scrollable region
+     outright and leaves `overflow-y: visible`, so vertical page scroll is
+     untouched. No "canal": `overflow` clips at the padding box (the OUTER edge of
+     padding), and neither html nor body has a horizontal margin, so the clip
+     edge is the screen edge — the flip bleeds to the edge with nothing cropped,
+     only the off-screen projection removed. */
+  overflow-x: clip;
 }
 
 html {
@@ -90,6 +149,9 @@ body {
   color: var(--ink);
   position: relative;
   z-index: 0;
+  /* Paired with html's overflow-x:clip — both are required to clamp the flip's
+     horizontal projection (see the html rule above). */
+  overflow-x: clip;
   font-family: "Jost", system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
@@ -140,75 +202,63 @@ h6 {
   padding-bottom: 4px;
 }
 
-.wordmark {
-  font-size: 16px;
-  letter-spacing: 0.15em;
-  margin-bottom: 24px;
-  text-transform: uppercase;
-}
-
 h6 {
-  font-size: 16px;
+  font-size: 14px;
 }
 
 h5 {
-  font-size: 20px;
+  font-size: 16px;
 }
 
 h4 {
-  font-size: 24px;
+  font-size: 18px;
 }
 
 h3 {
-  font-size: 28px;
+  font-size: 20px;
 }
 
 h2 {
-  font-size: 32px;
+  font-size: 24px;
 }
 
 body {
-  padding-top: calc(36px + env(safe-area-inset-top));
-  padding-bottom: calc(36px + env(safe-area-inset-bottom));
-  padding-inline: 24px;
+  padding-top: calc(12px + env(safe-area-inset-top));
+  padding-right: 12px;
+  /* Reserve a band at the bottom so the fixed .scroll-controls (36px offset +
+     48px tall = 84px) sit in their own clear area, with a ~24px gap above,
+     when the page is scrolled all the way down. */
+  padding-bottom: calc(108px + env(safe-area-inset-bottom));
+  padding-left: 12px;
 }
 
-header {
-  margin-bottom: 24px;
-}
-
-main {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+header,
+main,
+section {
+  display: contents;
 }
 
 .container {
   margin-inline: auto;
-  max-width: 512px;
+  width: 100%;
 }
 
 .panel {
-  display: flex;
-  flex-direction: row;
-  gap: 24px;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, var(--card-w));
   isolation: isolate;
+  justify-content: start;
   padding-inline: 0;
   position: relative;
 }
 
-.mosaic-top {
-  height: 72px;
-  margin-top: env(safe-area-inset-top);
-  margin-bottom: 24px;
-  overflow: hidden;
-  padding-inline: 0;
-  position: relative;
-  -webkit-user-select: none;
-  user-select: none;
+.panel-row-start {
+  grid-column: 1;
 }
 
 .mosaic-divider {
+  background-color: var(--mosaic-bg);
   height: 72px;
   margin-block: 24px;
   overflow: hidden;
@@ -221,21 +271,22 @@ main {
 .panel-frame {
   -webkit-backdrop-filter: var(--sleeve-blur);
   backdrop-filter: var(--sleeve-blur);
+  aspect-ratio: var(--card-ratio);
   background-color: var(--sleeve-bg);
   border-radius: var(--sleeve-radius);
   box-shadow: var(--shadow-panel-frame);
   display: flex;
-  flex: 4;
+  flex: none;
   flex-direction: column;
   isolation: isolate;
-  min-width: 0;
   overflow: hidden;
   padding: 6px;
   position: relative;
+  width: min(var(--card-w), 100%);
+  z-index: 1;
 }
 
 .panel-content {
-  align-items: flex-start;
   background-color: var(--surface);
   border-radius: var(--card-radius);
   box-shadow: var(--shadow-panel-content);
@@ -249,7 +300,143 @@ main {
   position: relative;
 }
 
+.panel-content--centered {
+  align-items: center;
+  justify-content: center;
+  font-size: 64px;
+}
+
+.panel-frame--flip {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  isolation: auto;
+  overflow: visible;
+  transform-style: flat;
+  will-change: transform;
+  z-index: 0;
+}
+
+/* The flip frame stays flat and carries z-index + the 2D pick-up grow, so it
+   composites above neighbouring cards by z-index. This inner layer (injected by
+   wrapFlipInner() in puhig.js) holds preserve-3d and receives the 3D flip/tilt
+   rotation, which the flat frame seals into a single 2D layer. Without the
+   split, Firefox renders the rotated card in its own 3D context and paints its
+   receding half *behind* flat neighbours regardless of z-index — the flip
+   clips under nearby cards. Used by both flip-cards and sleeves.
+
+   The sleeve's visible body — fill, drop shadow, rounded corners — lives HERE,
+   not on the frame, so it rotates as one unit with the card faces (the frame is
+   a transparent flat shell). Before the split the whole frame rotated, shadow
+   and all; keeping the body on the rotating inner preserves that unified flip
+   while the flat frame still wins z-index against neighbours. */
+.flip-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  background-color: var(--sleeve-bg);
+  border-radius: var(--sleeve-radius);
+  box-shadow: var(--shadow-panel-frame);
+}
+
+/* While a card flips, drop the (0.5px) sleeve blur on every sibling frame.
+   backdrop-filter forces each frame onto its own WebKit/Safari compositor
+   layer, and those layers paint above the lifted flip card regardless of its
+   z-index — so the flip appears to slide *under* a neighbor's frame. The blur
+   is imperceptible, so removing it for the ~0.65s animation has no visible
+   effect while restoring reliable "lift off the table" stacking. The animating
+   flip card keeps its own backdrop-filter:none and high z-index, so it stays on
+   top once the competing layers are gone. */
+.panel--flipping .panel-frame {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+.panel-frame--flip .panel-content,
+.panel-back {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: var(--card-radius);
+  inset: 6px;
+  overflow: hidden;
+  position: absolute;
+}
+
+/* Antialias the 3D-tilted/flipped faces. A composited layer with
+   backface-visibility:hidden is sampled without edge antialiasing in Chrome, so
+   the opaque rounded --surface fill's hard edge stair-steps under the hover tilt
+   (and during the flip). Wrapping each face in a 1px transparent border and
+   clipping the fill to the padding box leaves a transparent outer ring, so
+   texture sampling alpha-blends the rotated edge and corners read as smooth. */
+.panel-frame--flip .panel-content,
+.panel-back,
+.card-sleeve .card,
+.card-back {
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+/* WebKit (Safari) only applies backface-visibility:hidden to elements that
+   themselves participate in the 3D context via a transform. The resting front
+   faces have no transform of their own — only the parent frame/sleeve is
+   rotated by the flip — so Safari paints their backface and the mirrored front
+   bleeds through the flipped card. A no-op rotateY(0) enrolls each front face
+   in the 3D context so backface-visibility takes effect. The JS only ever
+   transforms the parent (.panel-frame--flip / .card-sleeve), never these, so
+   this is safe. */
+.panel-frame--flip .panel-content,
+.card-sleeve .card {
+  transform: rotateY(0deg);
+}
+
+.panel-back {
+  background-color: var(--surface);
+  box-shadow: var(--shadow-panel-content);
+  display: flex;
+  isolation: isolate;
+  transform: rotateY(180deg);
+}
+
+.panel-back::before {
+  background-image: var(--grain);
+  content: "";
+  inset: 0;
+  opacity: var(--grain-opacity);
+  pointer-events: none;
+  position: absolute;
+  /* z-index:0, not -1: like .card-back, the panel-back is a 3D backface
+     (rotateY(180deg) + backface-visibility:hidden). A negative-z grain layer
+     escapes behind the backface plane, dropping the opaque --surface fill so
+     the front face shows through mirrored. z-index:0 keeps the grain on the
+     surface so the back stays opaque. */
+  z-index: 0;
+}
+
 .panel-frame::after {
+  background-image: var(--sleeve-streak);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.panel-frame--flip::after {
+  content: none;
+}
+
+.panel-frame--flip .panel-content::after {
+  background-image: var(--sleeve-streak);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.panel-back::after {
   background-image: var(--sleeve-streak);
   content: "";
   inset: 0;
@@ -269,6 +456,7 @@ main {
 }
 
 .panel-mosaic {
+  background-color: var(--mosaic-bg);
   flex: 2;
   min-width: 0;
   overflow: hidden;
@@ -277,12 +465,414 @@ main {
   user-select: none;
 }
 
-.panel-mosaic-blank {
-  flex: 2;
-  min-width: 0;
+.card-title {
+  align-items: center;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  flex-shrink: 0;
+  gap: clamp(6px, 2.4cqi, 10px);
+  height: clamp(28px, 11.2cqi, 45px);
+  padding-inline: clamp(10px, 4cqi, 16px);
 }
 
-header > .panel {
+.card-name {
+  font-size: clamp(11px, 4.4cqi, 18px);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.card-name a {
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.card-title-icon {
+  color: var(--dim);
+  cursor: pointer;
+  flex-shrink: 0;
+  font-size: clamp(12px, 4.8cqi, 18px);
+}
+
+.card-art {
+  background-color: var(--mosaic-bg);
+  border: 1px solid var(--rule);
+  cursor: pointer;
+  flex-shrink: 0;
+  height: clamp(162px, 64.8cqi, 270px);
+  overflow: hidden;
+  position: relative;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.card-title + .card-art {
+  border-top: none;
+  height: clamp(161px, 64.4cqi, 268px);
+}
+
+.card-art + .card-type {
+  border-top: none;
+}
+
+.card-art-label {
+  bottom: clamp(12px, 4.8cqi, 19px);
+  color: var(--mosaic-white);
+  margin: 0;
+  position: absolute;
+  right: clamp(12px, 4.8cqi, 19px);
+  z-index: 2;
+}
+
+/* Full-art "cover" card — borderless MTG special treatment. The mosaic fills
+   the whole frame edge-to-edge; the title and collector line float over it on
+   gradient scrims. No type line, no text box: the card is a section divider.
+   Reuses .card-title / .card-footer so the chrome stays proportional, then
+   strips their rules and recolours the text for legibility over the art. */
+.card-frame--cover {
+  position: relative;
+}
+
+/* Full-bleed: the mosaic build (isCover branch) derives row height from the
+   frame so the tiles fill top-to-bottom exactly — no border strip, no clip. */
+.card-cover-art {
+  background-color: var(--mosaic-bg);
+  inset: 0;
+  overflow: hidden;
+  position: absolute;
+}
+
+/* Top + bottom scrims darken just enough to seat the white text over any
+   palette while leaving the centre of the mosaic untouched. */
+.card-cover-top,
+.card-cover-bottom {
+  inset-inline: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.card-cover-top {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+  top: 0;
+}
+
+.card-cover-bottom {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+  bottom: 0;
+}
+
+/* Scoped under .card-frame--cover so these beat the base .card-title /
+   .card-footer rules (which appear later in the file) regardless of order —
+   otherwise the base border-top reappears on the cover footer. */
+.card-frame--cover .card-title--cover {
+  border-bottom: none;
+  color: var(--mosaic-white);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+.card-title--cover .card-title-icon {
+  color: inherit;
+}
+
+.card-frame--cover .card-footer--cover {
+  border-top: none;
+  color: var(--mosaic-white);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+/* Light-art cover (pale mosaic, e.g. the light palette): white text would
+   wash out, so flip to dark ink and lighten the scrims to white. Works in
+   both themes because the light palette is theme-independent. */
+.card-frame--cover-light .card-cover-top {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), transparent);
+}
+
+.card-frame--cover-light .card-cover-bottom {
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.65), transparent);
+}
+
+.card-frame--cover-light .card-title--cover,
+.card-frame--cover-light .card-footer--cover {
+  color: var(--black);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.55);
+}
+
+.card-type {
+  align-items: center;
+  border-bottom: 1px solid var(--rule);
+  cursor: default;
+  display: flex;
+  flex-shrink: 0;
+  font-size: clamp(11px, 4.4cqi, 18px);
+  gap: clamp(6px, 2.4cqi, 10px);
+  height: clamp(24px, 9.6cqi, 38px);
+  justify-content: space-between;
+  letter-spacing: 0.06em;
+  padding-inline: clamp(10px, 4cqi, 16px);
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* Hug the label to its text so the gap before the rarity mark stays an
+   arrow; I-beam appears only over the label itself. */
+.card-type-label {
+  cursor: text;
+}
+
+.card-text-box {
+  cursor: default;
+  -webkit-user-select: text;
+  user-select: text;
+  flex: 1;
+  font-size: clamp(11px, 4.4cqi, 18px);
+  line-height: 1.4;
+  overflow: hidden;
+  padding: clamp(8px, 3.2cqi, 13px);
+  position: relative;
+}
+
+/* I-beam only over the actual text runs, not the box's empty space.
+   Decorative glyphs (.icon-sample, .saga-marker) and interactive controls
+   (.theme-option) keep their own cursors. */
+.card-text-box :is(p, blockquote, .type-meta, .weight-sample) {
+  cursor: text;
+}
+
+.card-text-box .panel-quote {
+  border-left: none;
+  margin-block: 0;
+  padding-inline-start: 0;
+}
+
+.card-text-box .panel-excerpt {
+  font-size: clamp(11px, 4.4cqi, 18px);
+  line-height: 1.4;
+}
+
+.card-text-box .type-meta {
+  font-size: clamp(9px, 3.6cqi, 14px);
+}
+
+.card-text-box .weight-sample,
+.card-text-box .icon-sample {
+  font-size: clamp(18px, 7.2cqi, 29px);
+}
+
+.card-text-box .swatch-chip {
+  height: clamp(18px, 7.2cqi, 29px);
+  width: clamp(36px, 14.4cqi, 58px);
+}
+
+.card-footer {
+  align-items: center;
+  border-top: 1px solid var(--rule);
+  color: var(--dim);
+  cursor: default;
+  display: flex;
+  flex-shrink: 0;
+  font-size: clamp(7px, 2.8cqi, 11px);
+  height: clamp(24px, 9.6cqi, 38px);
+  justify-content: space-between;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  padding: 0 clamp(6px, 2.4cqi, 10px);
+  text-transform: uppercase;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* I-beam only over the footer's text spans, not the gaps between the
+   left/right groups or the column padding. */
+.card-footer span {
+  cursor: text;
+}
+
+.card-footer-left,
+.card-footer-right {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.card-footer-right {
+  align-items: flex-end;
+}
+
+.card-metadata {
+  display: flex;
+  gap: clamp(4px, 1.6cqi, 6px);
+}
+
+.card-frame {
+  border: 1px solid var(--rule);
+  border-radius: var(--card-radius);
+  cursor: default;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  overflow: hidden;
+  /* Anchor card-relative sizing. The rows below size off this width via cqi
+     units, so a card stays proportional at any width (264px on desktop,
+     full-width on phones). card-frame holds only flat content, so the
+     containment never reaches the 3D flip faces above it.
+     Base content width is ~250px, so 0.4cqi == 1px at that base; every
+     scaled element uses clamp(<px>, <px*0.4>cqi, <cap>) — the cqi term equals
+     the px floor at base, keeping desktop pixel-identical, and grows on wider
+     phone cards up to the cap. */
+  container-type: inline-size;
+}
+
+.card-frame .card-art {
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+.card-cost {
+  align-items: center;
+  display: flex;
+  flex-shrink: 0;
+  gap: clamp(3px, 1.2cqi, 5px);
+  margin-inline-start: auto;
+}
+
+.card-pip {
+  border-radius: 50%;
+  display: block;
+  height: clamp(12px, 4.6cqi, 18px);
+  opacity: 0.75;
+  width: clamp(12px, 4.6cqi, 18px);
+}
+
+.card-rarity {
+  flex-shrink: 0;
+  font-size: clamp(12px, 4.6cqi, 18px);
+}
+
+.card-rarity[data-rarity="draft"] {
+  color: var(--dim);
+}
+
+.card-rarity[data-rarity="alpha"] {
+  color: #b0b8c0;
+}
+
+.card-rarity[data-rarity="stable"] {
+  color: #c8a832;
+}
+
+.card-rarity[data-rarity="landmark"] {
+  color: var(--teal);
+}
+
+/* Per-section accent: the rarity gem follows its section's pip/art colour
+   instead of the per-tier rarity colour, so pips and rarity read as one palette
+   per row. Equal specificity to the [data-rarity] rules above, so source order
+   (these come later) wins. (Header + colorography keep the tier colour: header
+   is the meta row; colorography is intentionally all-colour.) */
+[data-row="typography"] .card-rarity {
+  color: var(--dim);
+}
+
+[data-row="iconography"] .card-rarity {
+  color: var(--teal);
+}
+
+[data-row="motion"] .card-rarity {
+  color: var(--dim);
+}
+
+.card-quote {
+  color: var(--dim);
+  font-size: 11px;
+  font-style: italic;
+  margin-top: 6px;
+}
+
+.card-number {
+  letter-spacing: 0.12em;
+}
+
+.card-sleeve {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  isolation: auto;
+  overflow: visible;
+  transform-style: flat;
+  will-change: transform;
+  z-index: 0;
+}
+
+.card-sleeve::after {
+  content: none;
+}
+
+.card-sleeve .card {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  inset: 6px;
+  position: absolute;
+}
+
+.card-sleeve .card::after {
+  background-image: var(--sleeve-streak);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.card-back {
+  align-items: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background-color: var(--surface);
+  border-radius: var(--card-radius);
+  box-shadow: var(--shadow-panel-content);
+  display: flex;
+  font-size: 64px;
+  inset: 6px;
+  isolation: isolate;
+  justify-content: center;
+  overflow: hidden;
+  position: absolute;
+  transform: rotateY(180deg);
+}
+
+.card-back::before {
+  background-image: var(--grain);
+  content: "";
+  inset: 0;
+  opacity: var(--grain-opacity);
+  pointer-events: none;
+  position: absolute;
+  /* z-index:0, not -1: the card-back is a 3D backface (rotateY(180deg) +
+     backface-visibility:hidden). A negative-z grain layer escapes behind the
+     backface plane, dropping the opaque --surface fill and letting the page
+     mosaic show through. Painting the grain at z-index:0 keeps it composited
+     onto the surface so the back stays opaque, matching the front. */
+  z-index: 0;
+}
+
+.card-back::after {
+  background-image: var(--sleeve-streak);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+}
+
+.container.panel {
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
@@ -319,27 +909,26 @@ header > .panel {
   transform-box: fill-box;
 }
 
-.mosaic-dot {
-  animation: tile-grow 360ms ease-out forwards;
-  animation-delay: var(--delay, 0ms);
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
+.mosaic-tile--instant {
+  animation: none;
 }
-
 
 @keyframes tile-grow {
   0% {
     opacity: 0;
     transform: scale(0.8);
   }
+
   55% {
     opacity: 1;
     transform: scale(1.26);
   }
+
   78% {
     opacity: 1;
     transform: scale(0.93);
   }
+
   100% {
     opacity: 1;
     transform: scale(1);
@@ -351,29 +940,11 @@ header > .panel {
     opacity: 1;
     transform: scale(1);
   }
+
   to {
     opacity: 0;
     transform: scale(0.8);
   }
-}
-
-.hero-block {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-}
-
-.hero-block h2 {
-  border-bottom: none;
-  margin-top: 24px;
-  text-align: right;
-  text-transform: uppercase;
-}
-
-.hero-rule {
-  border: none;
-  border-top: 2px solid var(--orange);
-  margin-block: 12px;
 }
 
 .hero-label {
@@ -382,61 +953,41 @@ header > .panel {
   font-weight: 200;
   letter-spacing: 0.08em;
   line-height: 1;
-  margin-top: 24px;
+  margin-top: 12px;
   padding-bottom: 0;
   text-align: right;
   text-transform: uppercase;
 }
 
 h1 {
-  font-size: 36px;
+  font-size: 28px;
 }
 
-.panel-body {
-  -webkit-user-select: text;
-  user-select: text;
-  padding: 24px;
-  width: 100%;
+/* Heading specimens (and hero labels) scale with the card width so they keep
+   their visual weight on larger phone cards. Scoped to .card-frame so flip
+   backs and other off-card headings are unaffected. */
+.card-frame h1 {
+  font-size: clamp(28px, 11.2cqi, 45px);
 }
 
-.section-label {
-  align-items: center;
-  color: var(--dim);
-  display: flex;
-  font-size: 14px;
-  letter-spacing: 0.2em;
-  margin-bottom: 24px;
-  min-height: 24px;
-  text-transform: uppercase;
+.card-frame h2 {
+  font-size: clamp(24px, 9.6cqi, 38px);
 }
 
-.panel-section {
-  margin-block-start: 24px;
+.card-frame h3 {
+  font-size: clamp(20px, 8cqi, 32px);
 }
 
-.section-heading {
-  border-bottom: none;
-  padding-bottom: 0;
+.card-frame h4 {
+  font-size: clamp(18px, 7.2cqi, 29px);
 }
 
-.section-body {
-  margin-block-start: 24px;
+.card-frame h5 {
+  font-size: clamp(16px, 6.4cqi, 26px);
 }
 
-.type-scale {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  width: 100%;
-}
-
-.type-row {
-  align-items: baseline;
-  column-gap: 24px;
-  display: flex;
-  justify-content: space-between;
-  min-width: 0;
-  padding-block: 0;
+.card-frame h6 {
+  font-size: clamp(14px, 5.6cqi, 22px);
 }
 
 .type-meta {
@@ -446,50 +997,179 @@ h1 {
   white-space: nowrap;
 }
 
-.type-headings {
-  align-items: start;
-  display: grid;
-  grid-template-columns: auto 1fr;
-}
-
-.type-specimen {
-  display: flex;
-  flex-direction: column;
-}
-
-.type-body-sample {
-  font-size: 14px;
-  margin-top: 24px;
-}
-
-.type-headings h1,
-.type-headings h2,
-.type-headings h3,
-.type-headings h4,
-.type-headings h5,
-.type-headings h6 {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.type-weights {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
-
 .weight-sample {
   font-family: "Jost", system-ui, sans-serif;
-  font-size: 36px;
+  font-size: clamp(28px, 11.2cqi, 45px);
   line-height: 1;
+}
+
+/* Saga card — chapters stacked down a lore-counter rail, MTG Saga style.
+   The art band is dropped so the nine weight "chapters" (I–IX) fill the body. */
+.card-text-box.saga {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(6px, 2.4cqi, 10px);
+  padding-inline: clamp(6px, 2.4cqi, 10px);
+}
+
+.saga-chapters {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  min-height: 0;
+  padding: 0;
+  position: relative;
+}
+
+/* Vertical rail threading the chapter markers, centred on the 20px badges.
+   top/bottom reach past .saga-chapters (which fills the card-text-box content
+   box) by the box's block padding, so the rail meets the card-text-box's top
+   and bottom edges; the box's overflow:hidden clips it flush there. */
+.saga-chapters::before {
+  background: var(--orange);
+  bottom: calc(-1 * clamp(8px, 3.2cqi, 13px));
+  content: "";
+  left: clamp(10px, 4cqi, 16px);
+  opacity: 0.35;
+  position: absolute;
+  top: calc(-1 * clamp(8px, 3.2cqi, 13px));
+  width: clamp(2px, 0.8cqi, 3px);
+  z-index: 0;
+}
+
+.saga-row {
+  align-items: center;
+  border-top: 1px solid var(--rule);
+  column-gap: clamp(10px, 4cqi, 16px);
+  display: grid;
+  flex: 1;
+  grid-template-columns: clamp(22px, 8.8cqi, 35px) 1fr;
+  /* Stretch the divider rule edge-to-edge so it meets the card frame like the
+     title/type rules above, while keeping the row's content inset. The negative
+     inline margin pulls the row's border-box out past the saga box's
+     padding-inline to the frame; the equal padding-inline pushes the content
+     (marker + chapter) back to its original position, so the rail and markers
+     don't move. */
+  margin-inline: calc(-1 * clamp(6px, 2.4cqi, 10px));
+  padding-inline: clamp(6px, 2.4cqi, 10px);
+  min-height: 0;
+}
+
+.saga-row:first-child {
+  border-top: none;
+}
+
+.saga-marker {
+  align-items: center;
+  background: var(--surface);
+  border: 1.5px solid var(--orange);
+  border-radius: 50%;
+  color: var(--orange);
+  display: flex;
+  font-size: clamp(8px, 3.2cqi, 13px);
+  font-weight: 600;
+  height: clamp(20px, 8cqi, 32px);
+  justify-content: center;
+  justify-self: center;
+  letter-spacing: 0;
+  line-height: 1;
+  width: clamp(20px, 8cqi, 32px);
+  z-index: 1;
+}
+
+.saga-chapter {
+  align-items: baseline;
+  column-gap: clamp(12px, 4.8cqi, 19px);
+  display: flex;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.card-text-box.saga .weight-sample {
+  font-size: clamp(16px, 6.4cqi, 26px);
+}
+
+/* Colour swatches as saga specimens — stretch to the chapter's full height so
+   the chip fills the row (matching the two-line name/hex label), and widen the
+   block so the colour reads clearly. */
+.card-text-box.saga .swatch-chip {
+  align-self: stretch;
+  height: auto;
+  margin-block: clamp(3px, 1.2cqi, 5px);
+  width: clamp(44px, 17.6cqi, 70px);
+}
+
+/* Stack the colour name over its hexcode on two tight rows. The same
+   margin-block as the swatch chip, plus a snug line-height and no gap, makes
+   the label's text box equal in height to the chip and inset by the same
+   amount — so the name's top stroke and the hexcode's bottom stroke line up
+   with the swatch's top and bottom edges. */
+.swatch-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  line-height: 1.1;
+  margin-block: clamp(3px, 1.2cqi, 5px);
+}
+
+.swatch-hex {
+  opacity: 0.7;
+}
+
+/* Colour rows: stretch both label and chip to the chapter so their equal
+   margin-block insets align top/bottom (overrides the default baseline). */
+.saga-chapter:has(.swatch-chip) {
+  align-items: stretch;
+}
+
+/* Settings saga — interactive option buttons stack at the chapter's right edge. */
+.saga-chapter:has(.settings-options) {
+  align-items: center;
+}
+
+.settings-options {
+  align-items: flex-end;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(2px, 0.8cqi, 3px);
+}
+
+.saga-row .theme-option {
+  font-size: clamp(11px, 4.4cqi, 18px);
+  gap: clamp(6px, 2.4cqi, 10px);
+  letter-spacing: 0.06em;
+  padding: clamp(1px, 0.4cqi, 2px) 0;
+}
+
+.saga-row .theme-option span {
+  margin-inline-start: 0;
+}
+
+.saga-row .theme-option i {
+  font-size: 14px;
+}
+
+/* Heading specimens sit inline in a chapter row — strip default margins and
+   the type-scale underline so they align to the row baseline. */
+.saga-chapter :is(h1, h2, h3, h4, h5, h6, p) {
+  border: none;
+  line-height: 1;
+  margin: 0;
+  overflow: hidden;
+  padding: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .panel-quote {
   border-left: 2px solid var(--orange);
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  margin-block: 24px;
-  padding-inline-start: 24px;
+  gap: 8px;
+  margin-block: 8px;
+  padding-inline-start: 12px;
 }
 
 .panel-excerpt {
@@ -527,94 +1207,33 @@ h1 {
 }
 
 .icon-sample {
-  font-size: 36px;
+  font-size: clamp(28px, 11.2cqi, 45px);
   line-height: 1;
-}
-
-.color-grid {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: 1fr 1fr;
-  width: 100%;
-}
-
-.color-row {
-  align-items: flex-start;
-  column-gap: 16px;
-  display: flex;
-  justify-content: space-between;
-}
-
-.color-row .type-meta {
-  flex: 1;
-  text-align: justify;
-  text-align-last: justify;
 }
 
 .swatch-chip {
   border-radius: 3px;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
   flex-shrink: 0;
-  height: 28px;
-  width: 52px;
+  height: clamp(28px, 11.2cqi, 45px);
+  width: clamp(52px, 20.8cqi, 83px);
 }
 
-.wordmark-row {
-  align-items: flex-start;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 24px;
-}
-
-header .wordmark-row,
-main .wordmark-row {
-  background: var(--white);
-  border-inline: 1px solid rgba(0, 0, 0, 0.1);
-  margin-inline: -24px;
-  padding: 12px 24px;
-}
-
-.wordmark-row .wordmark {
-  margin-bottom: 0;
-}
-
-.tag-group {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-}
-
-.dev-tag {
-  background: var(--orange);
-  border-radius: 9999px;
-  color: var(--white);
-  font-size: 14px;
-  padding: 4px 8px;
-}
-
-.dev-tag--version {
-  text-transform: none;
-}
-
-.mosaic-bottom {
-  height: 72px;
-  margin-top: 24px;
-  overflow: hidden;
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-inline: 0;
-  position: relative;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-@media (max-width: 768px) {
-  .type-weights {
+/* Below ~564px viewport only one 264px card column fits (two need
+   264 + 12 gap + 264 = 540px of track, i.e. 564px viewport after the 12px
+   body padding each side). Stop the lone card sitting at its fixed width and
+   hugging the left with dead space to the right: give it the full column and
+   let the aspect-ratio on .panel-frame scale the height up to match. */
+@media (max-width: 563px) {
+  .panel {
     grid-template-columns: 1fr;
+    /* Cards are full-width now, so widen the inter-card gap to match their
+       larger scale (panel isn't a container, so this tracks viewport width). */
+    gap: clamp(12px, 3.6vw, 22px);
   }
 
-  .color-grid {
-    grid-template-columns: 1fr;
+  .panel-frame {
+    width: 100%;
   }
 }
 
@@ -629,19 +1248,8 @@ main .wordmark-row {
     padding-inline: 0;
   }
 
-  .panel-mosaic,
-  .panel-mosaic-blank {
+  .panel-mosaic {
     display: none;
-  }
-
-  .type-headings {
-    align-items: start;
-    grid-template-columns: 1fr;
-    row-gap: 4px;
-  }
-
-  .type-headings .type-meta:not(:first-child) {
-    margin-top: 24px;
   }
 }
 
@@ -655,18 +1263,28 @@ main .wordmark-row {
     --orange: #c84820;
     --teal: #5cdcd4;
     --grain-opacity: 0.1;
-    --mosaic-black: #3a3020;
+    --mosaic-black: oklch(20% 0.018 65);
+    --mosaic-bg: oklch(5% 0.008 65);
     --mosaic-press: var(--white);
-    --mosaic-grid: rgba(255, 255, 255, 0.1);
+    --mosaic-grid: oklch(0% 0 0 / 30%);
     --mosaic-white: #c8d4dc;
+    /* Dim the light cover palette so A 000 reads as a soft muted-light mosaic
+       on the dark page instead of a glaring white block; still light enough
+       for the dark cover ink + white scrims to stay legible. */
+    --light-1: oklch(82% 0.012 230);
+    --light-2: oklch(78% 0.016 215);
+    --light-3: oklch(74% 0.02 210);
+    --light-4: oklch(70% 0.024 205);
+    --light-5: oklch(80% 0.016 95);
+    --light-6: oklch(68% 0.026 200);
+    --light-7: oklch(72% 0.022 235);
     --shadow-panel-frame:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.14),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.24),
-      0 2px 6px rgba(0, 0, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.22),
-      0 24px 56px rgba(0, 0, 0, 0.16);
+      inset 0 -1px 0 rgba(0, 0, 0, 0.24), 0 2px 6px rgba(0, 0, 0, 0.28),
+      0 8px 24px rgba(0, 0, 0, 0.22), 0 24px 56px rgba(0, 0, 0, 0.16);
     --shadow-panel-content:
-      inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
       inset 0 1px 0 rgba(255, 255, 255, 0.07),
       inset -2px 0 10px -4px rgba(255, 255, 255, 0.04),
       inset -10px -5px 100px 50px rgba(200, 160, 90, 0.03);
@@ -679,13 +1297,6 @@ main .wordmark-row {
     );
   }
 
-  html:not([data-theme="light"]) header .wordmark-row,
-  html:not([data-theme="light"]) main .wordmark-row {
-    background: #222630;
-    border-inline-color: rgba(255, 255, 255, 0.06);
-    color: var(--white);
-  }
-
   html:not([data-theme="light"]) .mosaic-overlay {
     background: linear-gradient(
       175deg,
@@ -693,7 +1304,6 @@ main .wordmark-row {
       transparent 45%
     );
   }
-
 }
 
 html[data-theme="light"] {
@@ -710,18 +1320,28 @@ html[data-theme="dark"] {
   --orange: #c84820;
   --teal: #5cdcd4;
   --grain-opacity: 0.1;
-  --mosaic-black: #3a3020;
+  --mosaic-black: oklch(20% 0.018 65);
+  --mosaic-bg: oklch(5% 0.008 65);
   --mosaic-press: var(--white);
-  --mosaic-grid: rgba(255, 255, 255, 0.1);
+  --mosaic-grid: oklch(0% 0 0 / 30%);
   --mosaic-white: #c8d4dc;
+  /* Dim the light cover palette so A 000 reads as a soft muted-light mosaic
+     on the dark page instead of a glaring white block; still light enough for
+     the dark cover ink + white scrims to stay legible. */
+  --light-1: oklch(82% 0.012 230);
+  --light-2: oklch(78% 0.016 215);
+  --light-3: oklch(74% 0.02 210);
+  --light-4: oklch(70% 0.024 205);
+  --light-5: oklch(80% 0.016 95);
+  --light-6: oklch(68% 0.026 200);
+  --light-7: oklch(72% 0.022 235);
   --shadow-panel-frame:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.24),
     0 2px 6px rgba(0, 0, 0, 0.28), 0 8px 24px rgba(0, 0, 0, 0.22),
     0 24px 56px rgba(0, 0, 0, 0.16);
   --shadow-panel-content:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     inset -2px 0 10px -4px rgba(255, 255, 255, 0.04),
     inset -10px -5px 100px 50px rgba(200, 160, 90, 0.03);
@@ -734,13 +1354,6 @@ html[data-theme="dark"] {
   );
 }
 
-html[data-theme="dark"] header .wordmark-row,
-html[data-theme="dark"] main .wordmark-row {
-  background: #222630;
-  border-inline-color: rgba(255, 255, 255, 0.06);
-  color: var(--white);
-}
-
 html[data-theme="dark"] .mosaic-overlay {
   background: linear-gradient(
     175deg,
@@ -749,29 +1362,45 @@ html[data-theme="dark"] .mosaic-overlay {
   );
 }
 
-.theme-switcher {
-  bottom: calc(24px + env(safe-area-inset-bottom));
-  left: calc(24px + env(safe-area-inset-left));
+.scroll-controls {
+  bottom: calc(36px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  left: calc(36px + env(safe-area-inset-left));
   position: fixed;
   z-index: 100;
+}
+
+/* Tuck the fixed scroll controls tighter to the corner on mobile (24 → 12),
+   matching the 12px body edge padding. Placed AFTER the base rule above so it
+   wins the cascade — equal specificity, later source order. */
+@media (max-width: 480px) {
+  .scroll-controls {
+    bottom: calc(6px + env(safe-area-inset-bottom));
+    left: calc(6px + env(safe-area-inset-left));
+  }
 }
 
 @keyframes toggle-bounce {
   0% {
     transform: scale(0.88);
   }
+
   55% {
     transform: scale(1.14);
   }
+
   78% {
     transform: scale(0.96);
   }
+
   100% {
     transform: scale(1);
   }
 }
 
-.theme-toggle {
+.scroll-control {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   background-color: color-mix(in srgb, var(--paper) 80%, transparent);
@@ -787,6 +1416,15 @@ html[data-theme="dark"] .mosaic-overlay {
   padding: 6px;
   position: relative;
   width: 48px;
+}
+
+/* Slightly larger touch targets on mobile (48 → 52). Placed AFTER the base rule
+   above so it wins the cascade — equal specificity, later source order. */
+@media (max-width: 480px) {
+  .scroll-control {
+    height: 52px;
+    width: 52px;
+  }
 }
 
 .toggle-body {
@@ -813,72 +1451,18 @@ html[data-theme="dark"] .mosaic-overlay {
   z-index: -1;
 }
 
-.theme-toggle.is-bouncing {
+.scroll-control.is-bouncing {
   animation: toggle-bounce 360ms ease-out forwards;
 }
 
-.theme-flyout {
-  -webkit-backdrop-filter: var(--sleeve-blur);
-  backdrop-filter: var(--sleeve-blur);
-  background-color: var(--sleeve-bg);
-  border: none;
-  border-radius: var(--sleeve-radius);
-  box-shadow: var(--shadow-panel-frame);
-  bottom: calc(100% + 8px);
-  display: none;
-  flex-direction: column;
-  left: 0;
-  min-width: 256px;
-  overflow: hidden;
-  padding: 8px;
-  position: absolute;
-  transform-origin: bottom left;
-}
-
-.flyout-body {
-  background-color: var(--surface);
-  border-radius: var(--card-radius);
-  box-shadow: var(--shadow-panel-content);
-  display: flex;
-  flex-direction: column;
-  isolation: isolate;
-  overflow: hidden;
-  padding: 16px;
-  position: relative;
-}
-
-.flyout-body::before {
-  background-image: var(--grain);
-  content: "";
-  inset: 0;
-  opacity: var(--grain-opacity);
-  pointer-events: none;
-  position: absolute;
-  z-index: -1;
-}
-
-@keyframes flyout-pop-out {
-  0% {
-    opacity: 1;
-    transform: scale(1);
+/* Honour the OS reduce-motion setting: drop the auto-playing tile entry and the
+   press bounce. (puhig.js also skips the staggered entry build and the drift
+   loop; user-initiated flips/tilts remain.) */
+@media (prefers-reduced-motion: reduce) {
+  .mosaic-tile,
+  .scroll-control.is-bouncing {
+    animation: none;
   }
-  35% {
-    opacity: 1;
-    transform: scale(1.1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-}
-
-.theme-flyout.is-open {
-  animation: toggle-bounce 360ms ease-out forwards;
-  display: flex;
-}
-
-.theme-flyout.is-closing {
-  animation: flyout-pop-out 200ms ease-in forwards;
 }
 
 .theme-option {
@@ -901,14 +1485,6 @@ html[data-theme="dark"] .mosaic-overlay {
   z-index: 1;
 }
 
-.theme-flyout button:first-of-type {
-  padding-top: 0;
-}
-
-.theme-flyout button:last-of-type {
-  padding-bottom: 0;
-}
-
 .theme-option i {
   font-size: 16px;
 }
@@ -924,20 +1500,3 @@ html[data-theme="dark"] .mosaic-overlay {
 .theme-option[aria-pressed="true"] {
   color: var(--orange);
 }
-
-.flyout-label {
-  color: var(--dim);
-  display: block;
-  font-size: 12px;
-  letter-spacing: 0.12em;
-  padding: 0 0 4px;
-  position: relative;
-  text-transform: uppercase;
-  z-index: 1;
-}
-
-.flyout-divider {
-  border-top: 1px solid color-mix(in srgb, var(--ink) 8%, transparent);
-  margin: 8px 0;
-}
-

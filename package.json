@@ -1,0 +1,13 @@
+{
+  "name": "puhig-tools",
+  "private": true,
+  "type": "module",
+  "description": "Local dev tooling for Pocket Universe (not shipped with the framework)",
+  "scripts": {
+    "shot": "node tools/screenshot.mjs",
+    "csslint": "node tools/csslint.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
+}

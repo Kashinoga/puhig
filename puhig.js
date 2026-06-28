@@ -22,6 +22,10 @@ function getMosaicColors() {
 var resizeTimer = null;
 var lastResizeW = window.innerWidth;
 var mosaicInitDone = false;
+var mosaicEntryPlayed = false;
+// Honour the OS "reduce motion" setting for auto-playing motion (the staggered
+// tile entry and the perpetual drift loop). Checked live at each use site.
+var reduceMotionMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
 var pressRegistry = [];
 document.addEventListener("pointerup", function () {
   pressRegistry.forEach(function (fn) { fn(); });
@@ -116,7 +120,7 @@ function ensureOverlays(svg) {
   });
 }
 
-function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt, palette, mc) {
+function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt, palette, mc, playEntry) {
   var colorOrder = palette.map(function (_, i) { return i; });
   for (var i = colorOrder.length - 1; i > 0; i--) {
     var j = Math.floor(tileRand(i, 0, shuffleSalt, seed) * (i + 1));
@@ -127,7 +131,6 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       if (!isAlive(c, r)) continue;
       var colorIdx = Math.floor(tileRand(c, r, 1, seed) * palette.length);
       var color = palette[colorIdx];
-      var delay = colorOrder[colorIdx] * 220 + Math.floor(tileRand(c, r, 4, seed) * 80);
       var ox = Math.round(20 + tileRand(c, r, 5, seed) * 60);
       var oy = Math.round(20 + tileRand(c, r, 6, seed) * 60);
       var x = (c * tw).toFixed(2);
@@ -141,14 +144,19 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
       rect.setAttribute("height", h);
       rect.setAttribute("fill", color);
       rect.setAttribute("class", "mosaic-tile");
-      rect.setAttribute("data-delay", delay);
       rect.setAttribute("data-col", c);
       rect.setAttribute("data-row", r);
-      rect.style.setProperty("--delay", delay + "ms");
       rect.style.transformOrigin = ox + "% " + oy + "%";
-      // opacity:0 replaces animation-fill-mode backwards — hides tile during its
-      // delay without holding a compositor layer in the pre-animation state.
-      rect.style.opacity = "0";
+      if (playEntry) {
+        var delay = colorOrder[colorIdx] * 220 + Math.floor(tileRand(c, r, 4, seed) * 80);
+        rect.setAttribute("data-delay", delay);
+        rect.style.setProperty("--delay", delay + "ms");
+        // opacity:0 replaces animation-fill-mode backwards — hides tile during its
+        // delay without holding a compositor layer in the pre-animation state.
+        rect.style.opacity = "0";
+      } else {
+        rect.setAttribute("class", "mosaic-tile mosaic-tile--instant");
+      }
       rect._col = c; rect._row = r;
       svg._tiles.push(rect);
       svg.appendChild(rect);
@@ -158,8 +166,7 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
   svg._dormantSlots = [];
   for (var rd = 0; rd < rows; rd++) {
     for (var cd = 0; cd < cols; cd++) {
-      var isEdgeDormant = cd === 0 || cd === cols - 1 || rd === 0 || rd === rows - 1;
-      if (isEdgeDormant || isAlive(cd, rd)) continue;
+      if (isAlive(cd, rd)) continue;
       svg._dormantSlots.push({
         col: cd, row: rd,
         x: (cd * tw).toFixed(2), y: (rd * th).toFixed(2),
@@ -169,15 +176,31 @@ function buildTileLayers(ns, svg, rows, cols, tw, th, seed, isAlive, shuffleSalt
   }
 }
 
-function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
+// Shared SVG shell for all three mosaic builders: the <svg> element, its grid
+// lines, and the per-instance state buckets the press/ripple/drift code reads.
+function createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
+  var ns = "http://www.w3.org/2000/svg";
+  var svg = document.createElementNS(ns, "svg");
+  svg.setAttribute("class", "mosaic-tiles-svg");
+  svg.setAttribute("width", W);
+  svg.setAttribute("height", H);
+  svg.setAttribute("aria-hidden", "true"); // decorative art — no info for AT
+  svg.setAttribute("focusable", "false");
+  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
+  svg._tiles = []; svg._ripples = []; svg._presses = [];
+  svg._tileData = []; svg._mc = mc || {};
+  svg._maxDist = Math.sqrt(cols * cols + rows * rows);
+  return svg;
+}
+
+function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry) {
   var r, c, dr, dc, nr, nc, alive, next;
 
   var grid = [];
   for (r = 0; r < rows; r++) {
     grid[r] = [];
     for (c = 0; c < cols; c++) {
-      var isEdge = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
-      grid[r][c] = isEdge ? 0 : (tileRand(c, r, 50, seed) < 0.45 ? 1 : 0);
+      grid[r][c] = tileRand(c, r, 50, seed) < 0.90 ? 1 : 0;
     }
   }
   for (var iter = 0; iter < 4; iter++) {
@@ -185,8 +208,6 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, m
     for (r = 0; r < rows; r++) {
       next[r] = [];
       for (c = 0; c < cols; c++) {
-        var isEdge2 = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
-        if (isEdge2) { next[r][c] = 0; continue; }
         alive = 0;
         for (dr = -1; dr <= 1; dr++) {
           for (dc = -1; dc <= 1; dc++) {
@@ -203,33 +224,17 @@ function buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, m
   }
 
   var ns = "http://www.w3.org/2000/svg";
-  var svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "mosaic-tiles-svg");
-  svg.setAttribute("width", W);
-  svg.setAttribute("height", H);
-  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
-  svg._tiles = []; svg._ripples = []; svg._presses = [];
-  svg._tileData = []; svg._mc = mc;
-  svg._maxDist = Math.sqrt(cols * cols + rows * rows);
-  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201, palette, mc);
+  var svg = createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc);
+  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) { return !!grid[r][c]; }, 201, palette, mc, playEntry);
   return svg;
 }
 
-function buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc) {
+function buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry) {
   var ns = "http://www.w3.org/2000/svg";
-  var svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "mosaic-tiles-svg");
-  svg.setAttribute("width", W);
-  svg.setAttribute("height", H);
-  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
-  svg._tiles = []; svg._ripples = []; svg._presses = [];
-  svg._tileData = []; svg._mc = mc;
-  svg._maxDist = Math.sqrt(cols * cols + rows * rows);
-  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function (c, r) {
-    var isEdge = c === 0 || c === cols - 1 || r === 0 || r === rows - 1;
-    var dropChance = isEdge ? 0.85 : organicDrop(c, r, seed) * 0.5;
-    return tileRand(c, r, 0, seed) >= dropChance;
-  }, 200, palette, mc);
+  var svg = createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc);
+  buildTileLayers(ns, svg, rows, cols, tw, th, seed, function () {
+    return true;
+  }, 200, palette, mc, playEntry);
   return svg;
 }
 
@@ -351,11 +356,13 @@ function startDriftLoop(svg, palette) {
 
   function driftTick() {
     if (!svg.isConnected) return;
+    // Don't churn the DOM in a backgrounded tab; poll back and resume on return.
+    if (document.hidden) { svg._driftTimer = setTimeout(driftTick, 1000); return; }
     var live = svg._tiles;
     var dormant = svg._dormantSlots;
 
     var removeCount = Math.min(1 + Math.floor(Math.random() * 4), live.length);
-    var addCount = Math.min(Math.max(1, 1 + Math.floor(Math.random() * 4)), dormant.length);
+    var addCount = Math.min(1 + Math.floor(Math.random() * 4), dormant.length);
 
     var toRemove = sampleN(live, removeCount);
     toRemove.forEach(function (tile, i) {
@@ -414,20 +421,24 @@ function startDriftLoop(svg, palette) {
   svg._driftTimer = setTimeout(driftTick, 1500);
 }
 
+// Reads a 7-swatch themed palette (--miku-1..7, --light-1..7) off :root.
+function getPrefixedPalette(prefix) {
+  var s = getComputedStyle(document.documentElement);
+  return [1, 2, 3, 4, 5, 6, 7].map(function (n) {
+    return s.getPropertyValue("--" + prefix + "-" + n).trim();
+  });
+}
+
 function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
-  var ns = "http://www.w3.org/2000/svg";
-  var svg = document.createElementNS(ns, "svg");
-  svg.setAttribute("class", "mosaic-tiles-svg");
-  svg.setAttribute("width", W);
-  svg.setAttribute("height", H);
-  buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
-  svg._tiles = []; svg._ripples = []; svg._presses = [];
-  svg._tileData = []; svg._mc = mc || {};
-  return svg;
+  return createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc);
 }
 
 
 function fitMosaics(animate) {
+  // Entry animation plays only once, only for mosaics in the viewport at page load.
+  var playAllEntry = animate && !mosaicEntryPlayed && !reduceMotionMQ.matches;
+  if (playAllEntry) mosaicEntryPlayed = true;
+
   // Sidebar width: largest multiple of 24px where content col stays >= 2× wider.
   //   (containerW - mosaicW) / mosaicW >= 2  →  mosaicCols <= containerW / 72
   // Applied at all viewports so tw=24 is consistent between sidebar and divider.
@@ -445,7 +456,7 @@ function fitMosaics(animate) {
     mosaicW = mosaicCols * 24;
   }
 
-  var palette = getPalette();
+  var defaultPalette = getPalette();
   var mc = getMosaicColors();
   var gridStroke = mc.grid;
 
@@ -457,6 +468,9 @@ function fitMosaics(animate) {
     var isSidebar = p.classList.contains("panel-mosaic");
     p.style.width = "";
     p.style.flex = "";
+    // Clear any prior height snap so pass 2 reads the natural (clamp) art
+    // height and re-snaps it for the current width.
+    if (p.classList.contains("card-art")) p.style.height = "";
     if (mosaicW !== null && isSidebar) {
       p.style.flex = "none";
       p.style.width = mosaicW + "px";
@@ -474,19 +488,63 @@ function fitMosaics(animate) {
     if (mosaicW !== null && isSidebar) {
       W = mosaicW;
     } else {
-      W_full = p.offsetWidth;
+      W_full = p.clientWidth;
       W = p.dataset.mosaicAlign === "left"
         ? W_full
         : Math.floor(W_full / target) * target;
     }
     if (!W) W = target;
 
-    var H = p.offsetHeight;
+    var H = p.clientHeight;
     if (!H) return;
 
     var isCA = p.dataset.mosaicType === "ca";
     var isGridOnly = "mosaicGridOnly" in p.dataset;
-    var H_build = H;
+    var isStaticBg = isGridOnly || "mosaicStatic" in p.dataset;
+    var isCardArt = p.classList.contains("card-art");
+    var isCover = p.classList.contains("card-cover-art");
+    var palette = p.dataset.mosaicPalette === "miku" ? getPrefixedPalette("miku")
+      : p.dataset.mosaicPalette === "light" ? getPrefixedPalette("light")
+      : p.dataset.mosaicPalette === "gray" ? getPrefixedPalette("gray")
+      : p.dataset.mosaicPalette === "mono" ? getPrefixedPalette("mono")
+      : defaultPalette;
+
+    // Dimensions first — the card-art height is snapped to whole tile rows
+    // before the cache check so the snap survives a cache-hit early return.
+    var isLeft = p.dataset.mosaicAlign === "left";
+    var cols = (isLeft ? Math.round(W / target) : Math.floor(W / target)) || 1;
+    var tw, th, rows, H_build;
+    if (isLeft) {
+      // Card-art mosaics: square tiles. Derive the edge from the width (so
+      // cols*tw === W exactly), then reuse it on both axes so tiles are never
+      // stretched. For card-art, snap the art height to a whole number of those
+      // square rows — no partial bottom row, no art-background band, and
+      // matching-width cards get matching art heights. The full-bleed grid
+      // background keeps its natural (viewport) height.
+      tw = th = W / cols;
+      rows = Math.max(1, Math.round(H / tw));
+      if (isCover) {
+        // Full-bleed cover art: tiles fill the frame on BOTH axes. Width tiles
+        // stay square-derived (cols*tw === W); row height is taken from the
+        // frame so rows*th === H exactly — no bottom remainder, no overflow clip.
+        th = H / rows;
+        H_build = H;
+      } else if (isCardArt) {
+        H_build = rows * tw;
+        p.style.height = H_build + "px";
+      } else {
+        H_build = H;
+      }
+    } else {
+      H_build = H;
+      rows = (isCA ? Math.floor(H_build / target) : Math.round(H_build / target)) || 1;
+      tw = W / cols;
+      th = H_build / rows;
+    }
+    p.dataset.mosaicTw = tw;
+    p.dataset.mosaicTh = th;
+    p._tw = tw;
+    p._th = th;
 
     var dimsKey = W + "x" + H_build;
     if (!animate && p.dataset.mosaicDims === dimsKey) return;
@@ -497,54 +555,33 @@ function fitMosaics(animate) {
     }
     var seed = parseInt(p.dataset.mosaicSeed);
 
-    var cols = (p.dataset.mosaicAlign === "left" ? Math.round(W / target) : Math.floor(W / target)) || 1;
-    var rows = (isCA ? Math.floor(H_build / target) : Math.round(H_build / target)) || 1;
-    var tw = W / cols;
-    var th = H_build / rows;
-    p.dataset.mosaicTw = tw;
-    p.dataset.mosaicTh = th;
-    p._tw = tw;
-    p._th = th;
-
     var existing = p.querySelector(".mosaic-tiles-svg");
+    var inViewport = p.getBoundingClientRect().top < window.innerHeight;
+    // Static mosaics (card-art, grid-only backgrounds) appear instantly — no
+    // staggered tile entry animation.
+    var playEntry = playAllEntry && inViewport && !isStaticBg;
     var newSvg = isGridOnly
       ? buildGridSVG(W, H_build, cols, rows, tw, th, gridStroke, mc)
       : (p.dataset.mosaicType === "ca"
-          ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc)
-          : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc));
+          ? buildCAMosaicSVG(W, H_build, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry)
+          : buildMosaicSVG(W, H_build, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry));
     if (!isSidebar && W_full !== undefined && W_full > W && p.dataset.mosaicAlign !== "left") {
       newSvg.style.left = (W_full - W) + "px";
       newSvg.style.width = W + "px";
     }
 
-    var isStaticBg = isGridOnly;
     if (!isStaticBg) {
       if (!p._mosaicPressBound) { setupMosaicPress(p); p._mosaicPressBound = true; }
     }
 
-    if (animate && existing) {
-      if (p._shrinkTimer) clearTimeout(p._shrinkTimer);
-      if (existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
-      (existing._tiles || []).forEach(function (rect) {
-        var d = Math.round((parseInt(rect.getAttribute("data-delay")) || 0) / 3);
-        rect.style.animation = "tile-shrink 150ms ease-in " + d + "ms both";
-      });
-      var capturedPalette = palette;
-      p._shrinkTimer = setTimeout(function () {
-        p._shrinkTimer = null;
-        Array.from(p.querySelectorAll(".mosaic-tiles-svg")).forEach(function (s) { s.remove(); });
-        p.appendChild(newSvg);
-        p._mosaicSvg = newSvg;
-        if (!isGridOnly) startDriftLoop(newSvg, capturedPalette);
-      }, 200);
-    } else {
-      if (p._shrinkTimer) { clearTimeout(p._shrinkTimer); p._shrinkTimer = null; }
-      if (existing && existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
-      if (existing) existing.remove();
-      p.appendChild(newSvg);
-      p._mosaicSvg = newSvg;
-      if (!isGridOnly) startDriftLoop(newSvg, palette);
-    }
+    // Regen (theme/bg change) swaps the SVG instantly — no tile-shrink
+    // transition. New tiles just appear, the same as a layout-only rebuild.
+    if (p._shrinkTimer) { clearTimeout(p._shrinkTimer); p._shrinkTimer = null; }
+    if (existing && existing._driftTimer) { clearTimeout(existing._driftTimer); existing._driftTimer = null; }
+    if (existing) existing.remove();
+    p.appendChild(newSvg);
+    p._mosaicSvg = newSvg;
+    if (!isStaticBg && !reduceMotionMQ.matches) startDriftLoop(newSvg, palette);
   });
 }
 
@@ -572,24 +609,28 @@ window.addEventListener("resize", function () {
   resizeTimer = setTimeout(function () { fitMosaics(false); }, 100);
 });
 
-window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
-  fitMosaics(true);
-});
-
 (function () {
   var STORAGE_KEY = 'puhig-theme';
   var UI_THEME_KEY = 'puhig-ui-theme';
   var BG_KEY = 'puhig-bg';
   var html = document.documentElement;
-  var switcher = document.querySelector('.theme-switcher');
-  if (!switcher) return;
-  var toggle = switcher.querySelector('.theme-toggle');
-  var flyout = switcher.querySelector('.theme-flyout');
-  var appearanceOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="appearance"]'));
-  var uiThemeOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="ui-theme"]'));
-  var bgOpts = Array.from(switcher.querySelectorAll('.theme-option[data-group="bg"]'));
+  var appearanceOpts = Array.from(document.querySelectorAll('.theme-option[data-group="appearance"]'));
+  var uiThemeOpts = Array.from(document.querySelectorAll('.theme-option[data-group="ui-theme"]'));
+  var bgOpts = Array.from(document.querySelectorAll('.theme-option[data-group="bg"]'));
+
+  // Resolve a preference to the appearance that actually paints, so 'system'
+  // collapses to the OS setting. Switching between two prefs that resolve to the
+  // same appearance (e.g. dark -> system while the OS is dark) uses identical
+  // mosaic colors, so there's nothing to rebuild or re-animate.
+  function resolveAppearance(pref) {
+    if (pref === 'light' || pref === 'dark') return pref;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  var lastAppearance = null;
+  var currentPref = null;
 
   function applyTheme(pref, redraw) {
+    currentPref = pref;
     if (pref === 'light' || pref === 'dark') {
       html.dataset.theme = pref;
     } else {
@@ -598,7 +639,10 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
     appearanceOpts.forEach(function (o) {
       o.setAttribute('aria-pressed', String(o.dataset.value === pref));
     });
-    if (redraw) fitMosaics(true);
+    var resolved = resolveAppearance(pref);
+    var changed = resolved !== lastAppearance;
+    lastAppearance = resolved;
+    if (redraw && changed) fitMosaics(true);
   }
 
   function applyUITheme(pref) {
@@ -630,42 +674,6 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
   var savedBG = localStorage.getItem(BG_KEY) || 'grid';
   applyBG(savedBG, false);
 
-  function closeFlyout() {
-    if (!flyout.classList.contains('is-open') || flyout.classList.contains('is-closing')) return;
-    flyout.classList.add('is-closing');
-    flyout.addEventListener('animationend', function () {
-      flyout.classList.remove('is-open', 'is-closing');
-    }, { once: true });
-  }
-
-  toggle.addEventListener('click', function (e) {
-    e.stopPropagation();
-    if (flyout.classList.contains('is-open')) {
-      closeFlyout();
-    } else {
-      flyout.classList.remove('is-closing');
-      flyout.classList.add('is-open');
-    }
-  });
-
-  toggle.addEventListener('pointerdown', function (e) {
-    toggle.setPointerCapture(e.pointerId);
-    toggle.classList.remove('is-bouncing');
-    toggle.style.transition = 'transform 60ms ease';
-    toggle.style.transform = 'scale(0.88)';
-  });
-
-  toggle.addEventListener('pointerup', function (e) {
-    toggle.releasePointerCapture(e.pointerId);
-    toggle.style.transition = '';
-    toggle.style.transform = '';
-    toggle.classList.add('is-bouncing');
-  });
-
-  toggle.addEventListener('animationend', function () {
-    toggle.classList.remove('is-bouncing');
-  });
-
   appearanceOpts.forEach(function (o) {
     o.addEventListener('click', function () {
       var val = o.dataset.value;
@@ -690,16 +698,357 @@ window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", fun
     });
   });
 
-  document.addEventListener('click', function () {
-    closeFlyout();
+  // An OS appearance flip only repaints the mosaics when 'system' is active and
+  // the resolved appearance actually changes; applyTheme's guard no-ops an
+  // explicit light/dark preference that ignores the OS.
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+    applyTheme(currentPref, true);
   });
 
-  document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') closeFlyout();
+}());
+
+// Move el to last child of its .panel so it paints above all siblings
+// regardless of compositor layer ordering (Safari backdrop-filter issue).
+// WebKit returns "auto" from getComputedStyle for auto-placed grid items,
+// so derive the explicit row/column from the element's visual offset instead.
+// The element may live inside a display:contents wrapper (header/section), so
+// save its true originalParent (not the panel) for correct DOM restoration.
+function liftToFront(el) {
+  var panel = el.closest('.panel');
+  if (!panel) return null;
+  var ps = window.getComputedStyle(panel);
+  var gap = parseFloat(ps.gap) || parseFloat(ps.columnGap) || 12;
+  var padL = parseFloat(ps.paddingLeft) || 0;
+  var padT = parseFloat(ps.paddingTop) || 0;
+  var col = Math.round((el.offsetLeft - padL) / (el.offsetWidth + gap)) + 1;
+  var row = Math.round((el.offsetTop - padT) / (el.offsetHeight + gap)) + 1;
+  var originalParent = el.parentNode;
+  var originalNext = el.nextSibling;
+  el.style.gridRow = row;
+  el.style.gridColumn = col;
+  panel.appendChild(el);
+  return { panel: panel, originalParent: originalParent, originalNext: originalNext };
+}
+
+function restoreFromFront(el, lifted) {
+  if (!lifted) return;
+  el.style.gridRow = '';
+  el.style.gridColumn = '';
+  lifted.originalParent.insertBefore(el, lifted.originalNext);
+}
+
+// Builds Web Animations API keyframes for a flip that BEGINS at the card's
+// current tilt pose (curTransform) instead of snapping to a flat 0% frame, so a
+// hover-tilted card flips from exactly where it sits. Mirrors the CSS @keyframes
+// profiles: a rotateX hump (8deg then 5deg, negated for top-edge flips) brackets
+// the rotateY turn, which happens between 22% and 78%. Per-frame ease-in-out
+// matches the CSS animation-timing-function (which eases each segment, unlike a
+// single WAAPI options.easing). `flipped` is the state AFTER the toggle; prevBase
+// is the card's resting yaw (deg) BEFORE this flip; curYaw is its live yaw
+// (resting yaw + the hover tilt's rotateY) at the instant of the click.
+//
+// The lift frame (22%) holds rotateY at curYaw — NOT at a flat yStart. Snapping
+// to yStart would unwind the hover tilt's yaw back to 0 before the turn begins,
+// and at a corner that unwind runs opposite the flip, reading as a slight
+// counter-rotation ("clockwise wobble") before the card reverses into the flip.
+// Holding curYaw keeps rotateY monotonic from the tilt straight into the turn.
+//
+// `backStart` (the card was showing its back) selects the rotateX/rotateY order.
+// The back tilt is written rotateY-then-rotateX (it's Y-mirrored), the front tilt
+// rotateX-then-rotateY. Every frame in a flip MUST use the same order as its
+// entry pose: WAAPI only interpolates rotations component-wise when the function
+// lists match — a mismatch falls back to matrix decomposition, which injects a
+// twist (the back-flip wobble). The hump sign is also negated for back flips so
+// the lift continues the back tilt's (sign-flipped) rotateX instead of fighting it.
+function buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart) {
+  var xs = fromTop ? -1 : 1;            // top-edge flips hump the opposite way
+  if (backStart) xs = -xs;             // back tilt negates rotateX; match it so the lift doesn't reverse
+  var yStart = flipped ? 0 : prevBase;  // forward starts at front (0); back unwinds from its real yaw
+  var yEnd = yStart + flipSign * 180;
+  var P = 'perspective(600px) ';
+  function pose(x, y) {
+    return backStart
+      ? P + 'rotateY(' + y + 'deg) rotateX(' + x + 'deg)'
+      : P + 'rotateX(' + x + 'deg) rotateY(' + y + 'deg)';
+  }
+  return [
+    { transform: curTransform, offset: 0, easing: 'ease-in-out' },
+    { transform: pose(8 * xs, curYaw.toFixed(2)), offset: 0.22, easing: 'ease-in-out' },
+    { transform: pose(5 * xs, yEnd), offset: 0.78, easing: 'ease-in-out' },
+    { transform: pose(0, yEnd), offset: 1 }
+  ];
+}
+
+// Pick-up grow for the flip: a 2D scale on the flat .panel-frame--flip/.card-sleeve
+// (NOT the 3D inner), peaking over the flip's hump and settling back to rest. The
+// frame scales the whole card (sleeve + faces) uniformly while staying flat, so it
+// keeps compositing above neighbours by z-index — a scale on the 3D inner would
+// clip under neighbours in Firefox, and would also spill the faces past the sleeve.
+function buildGrowFrames() {
+  var GROW = 1.07; // tunable pick-up scale
+  return [
+    { transform: 'scale(1)', offset: 0, easing: 'ease-in-out' },
+    { transform: 'scale(' + GROW + ')', offset: 0.22, easing: 'ease-in-out' },
+    { transform: 'scale(' + GROW + ')', offset: 0.78, easing: 'ease-in-out' },
+    { transform: 'scale(1)', offset: 1 }
+  ];
+}
+
+// Seal a flip element's 3D into a flat-composited layer: move its faces into an
+// inner .flip-inner (preserve-3d) so the frame can stay flat and win z-index
+// against neighbours. Idempotent; returns the inner element. See .flip-inner in
+// puhig.css for why the split is required (Firefox 3D-context clipping).
+function wrapFlipInner(el) {
+  var existing = el.querySelector(':scope > .flip-inner');
+  if (existing) return existing;
+  var inner = document.createElement('div');
+  inner.className = 'flip-inner';
+  while (el.firstChild) inner.appendChild(el.firstChild);
+  el.appendChild(inner);
+  return inner;
+}
+
+// Press-and-hold tilt for touch devices. A pointer hovers to tilt a card in 3D,
+// but touch has no hover: a quick tap flips (handled by the existing click path),
+// while a sustained press engages the same tilt and finger-drag steers it.
+// Releasing from a hold settles the card flat and suppresses the would-be flip.
+// opts: { isBusy, tilt(clientX, clientY), reset(), onStart(), onEnd(suppressFlip) }.
+function addPressHoldTilt(el, opts) {
+  var HOLD_MS = 280;   // press duration before tilt mode engages (taps stay below it)
+  var MOVE_TOL = 12;   // px of drift that turns an early press into a page scroll
+  var timer = null, tilting = false, moved = false, sx = 0, sy = 0;
+
+  el.addEventListener('touchstart', function (e) {
+    if (opts.isBusy() || e.touches.length > 1) return;
+    if (e.target.closest('button, a, input, select')) return;
+    var t = e.touches[0];
+    sx = t.clientX; sy = t.clientY; moved = false; tilting = false;
+    opts.onStart();
+    timer = setTimeout(function () {
+      timer = null; tilting = true;
+      opts.tilt(sx, sy); // engage from the resting press point
+    }, HOLD_MS);
+  }, { passive: true });
+
+  el.addEventListener('touchmove', function (e) {
+    var t = e.touches[0];
+    if (!moved && (Math.abs(t.clientX - sx) > MOVE_TOL || Math.abs(t.clientY - sy) > MOVE_TOL)) moved = true;
+    if (tilting) {
+      e.preventDefault(); // own the gesture so the page doesn't scroll under the tilt
+      opts.tilt(t.clientX, t.clientY);
+    } else if (moved && timer) {
+      clearTimeout(timer); timer = null; // moved before the hold engaged: let it scroll
+    }
+  }, { passive: false });
+
+  function finish() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    var didTilt = tilting; tilting = false;
+    if (didTilt) opts.reset();
+    // Any hold that engaged tilt settles flat and cancels the flip — a press long
+    // enough to tilt reads as a deliberate hold, not a tap. (Browsers also drop the
+    // synthetic click for a long press, so we can't rely on it to flip anyway.)
+    opts.onEnd(didTilt);
+  }
+  el.addEventListener('touchend', finish);
+  el.addEventListener('touchcancel', finish);
+}
+
+// One flip controller for both the settings panel (.panel-frame--flip) and the
+// card sleeves (.card-sleeve): they share identical hover-tilt + press-hold +
+// flip machinery and differ only via opts — (1) opts.lift: the settings panel
+// lifts to the front of its grid mid-flip so it paints above neighbours, while
+// sleeves must NOT (lifting collapses their 3-col grid row); (2) opts.exclude:
+// the inner zones that suppress the flip click; (3) opts.titleIcon: give the
+// title icon its own flip handler. See buildFlipFrames / wrapFlipInner for the
+// 3D/flat split and the documented wobble fixes.
+function initFlip(el, opts) {
+  // The flat element holds z-index + the 2D grow; this inner layer holds the
+  // 3D flip/tilt rotation, so all rotation transforms target `inner`.
+  var inner = wrapFlipInner(el);
+  var flipped = false;
+  var animating = false;
+  var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
+  var tiltX = 0, tiltY = 0;
+  var targetX = 0, targetY = 0;
+  var rafId = null;
+  var recentTouch = false;   // ignore the synthetic mouse events a touch emits
+  var clickSuppressed = false; // swallow the flip click that follows a hold-tilt
+  var touchClear = null;
+
+  function tiltFrame() {
+    tiltX += (targetX - tiltX) * 0.15;
+    tiltY += (targetY - tiltY) * 0.15;
+    var base = lastFlipSign * 180;
+    var transform = flipped
+      ? 'perspective(600px) rotateY(' + (base + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
+      : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+    if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
+      inner.style.transform = transform;
+      rafId = requestAnimationFrame(tiltFrame);
+    } else {
+      tiltX = targetX; tiltY = targetY; rafId = null;
+      if (targetX === 0 && targetY === 0) {
+        inner.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
+      } else {
+        inner.style.transform = transform;
+      }
+    }
+  }
+
+  function startTiltLoop() {
+    if (animating) return;
+    inner.style.transition = '';
+    if (!rafId) rafId = requestAnimationFrame(tiltFrame);
+  }
+
+  function setTilt(clientX, clientY) {
+    var rect = el.getBoundingClientRect();
+    var rawX = ((clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
+    var rawY = ((clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
+    targetX = flipped ? -rawX : rawX;
+    targetY = -rawY; // back face is Y-mirrored, so horizontal tilt keeps the same sign
+    startTiltLoop();
+  }
+
+  function resetTilt() { targetX = 0; targetY = 0; startTiltLoop(); }
+
+  el.addEventListener('mousemove', function (e) {
+    if (animating || recentTouch) return;
+    setTilt(e.clientX, e.clientY);
   });
 
-  flyout.addEventListener('click', function (e) { e.stopPropagation(); });
+  el.addEventListener('mouseleave', function () {
+    if (animating || recentTouch) return;
+    resetTilt();
+  });
 
+  addPressHoldTilt(el, {
+    isBusy: function () { return animating; },
+    tilt: setTilt,
+    reset: resetTilt,
+    onStart: function () { recentTouch = true; if (touchClear) { clearTimeout(touchClear); touchClear = null; } },
+    onEnd: function (suppressFlip) {
+      if (suppressFlip) clickSuppressed = true;
+      touchClear = setTimeout(function () { recentTouch = false; clickSuppressed = false; }, 700);
+    }
+  });
+
+  function flip(e) {
+    if (animating) return;
+    var rect = el.getBoundingClientRect();
+    var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
+    var fromTop = e.clientY < rect.top + rect.height / 2;
+
+    // Snapshot the live tilt pose BEFORE mutating state, so the flip starts
+    // exactly where the hover tilt left the card (no snap to a flat 0% frame).
+    var prevBase = lastFlipSign * 180;
+    var backStart = flipped;
+    var curYaw = (flipped ? prevBase : 0) + tiltY;
+    var curTransform = flipped
+      ? 'perspective(600px) rotateY(' + (prevBase + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
+      : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+
+    lastFlipSign = flipSign;
+    flipped = !flipped;
+    animating = true;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
+    inner.style.transition = '';
+    el.style.zIndex = '100';
+
+    var panel = null, lifted = null;
+    if (opts.lift) {
+      panel = el.closest('.panel');
+      if (panel) panel.classList.add('panel--flipping');
+      lifted = liftToFront(el);
+    }
+
+    // Rotation on the 3D inner; the 2D pick-up grow on the flat element. Both run
+    // 650ms from the same tick so they stay in lockstep.
+    var frames = buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart);
+    var anim = inner.animate(frames, { duration: 650, fill: 'forwards' });
+    var growAnim = el.animate(buildGrowFrames(), { duration: 650 });
+    anim.onfinish = function () {
+      if (opts.lift) {
+        if (panel) panel.classList.remove('panel--flipping');
+        restoreFromFront(el, lifted);
+      }
+      el.style.zIndex = '';
+      el.style.transform = '';
+      inner.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
+      anim.cancel();
+      growAnim.cancel();
+      animating = false;
+    };
+  }
+
+  // Flip on click anywhere except the interactive controls and text zones
+  // (opts.exclude). card-art is intentionally not excluded — no text there,
+  // large flip target.
+  el.addEventListener('click', function (e) {
+    if (clickSuppressed) { clickSuppressed = false; return; }
+    if (e.target.closest(opts.exclude)) return;
+    flip(e);
+  });
+
+  // Title icon: stop propagation so the click handler above doesn't double-fire.
+  if (opts.titleIcon) {
+    var icon = el.querySelector('.card-title-icon');
+    if (icon) {
+      icon.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (clickSuppressed) { clickSuppressed = false; return; }
+        flip(e);
+      });
+    }
+  }
+}
+
+// Text/control zones that should not trigger a flip when clicked.
+var FLIP_EXCLUDE = '.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-footer';
+
+document.querySelectorAll('.panel-frame--flip').forEach(function (el) {
+  initFlip(el, { lift: true, titleIcon: false, exclude: 'button, a, input, select, ' + FLIP_EXCLUDE });
+});
+
+document.querySelectorAll('.card-sleeve').forEach(function (el) {
+  initFlip(el, { lift: false, titleIcon: true, exclude: FLIP_EXCLUDE });
+});
+
+// Hide purely-decorative chrome from assistive tech: the Phosphor icon glyphs,
+// the cost pips, and the mosaic art layers carry no information the adjacent
+// text doesn't already convey.
+document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pip')
+  .forEach(function (el) { el.setAttribute('aria-hidden', 'true'); });
+
+(function () {
+  function setupScrollBtn(btn, action) {
+    if (!btn) return;
+    btn.addEventListener('click', action);
+    btn.addEventListener('pointerdown', function (e) {
+      btn.setPointerCapture(e.pointerId);
+      btn.classList.remove('is-bouncing');
+      btn.style.transition = 'transform 60ms ease';
+      btn.style.transform = 'scale(0.88)';
+    });
+    btn.addEventListener('pointerup', function (e) {
+      btn.releasePointerCapture(e.pointerId);
+      btn.style.transition = '';
+      btn.style.transform = '';
+      btn.classList.add('is-bouncing');
+    });
+    btn.addEventListener('animationend', function () {
+      btn.classList.remove('is-bouncing');
+    });
+  }
+
+  setupScrollBtn(document.getElementById('scroll-top-btn'), function () {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  setupScrollBtn(document.getElementById('scroll-bottom-btn'), function () {
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  });
 }());
 
 if (navigator.maxTouchPoints > 0 && !window.matchMedia("(pointer: fine)").matches) {
