@@ -18,3 +18,7 @@
 !package.json
 !tools/
 !tools/*.mjs
+
+# Re-ignore macOS metadata even inside un-ignored dirs (e.g. .github/, fonts/).
+.DS_Store
+**/.DS_Store
