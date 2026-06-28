@@ -863,9 +863,8 @@ function addPressHoldTilt(el, opts) {
 // flip machinery and differ only via opts — (1) opts.lift: the settings panel
 // lifts to the front of its grid mid-flip so it paints above neighbours, while
 // sleeves must NOT (lifting collapses their 3-col grid row); (2) opts.exclude:
-// the inner zones that suppress the flip click; (3) opts.titleIcon: give the
-// title icon its own flip handler. See buildFlipFrames / wrapFlipInner for the
-// 3D/flat split and the documented wobble fixes.
+// the inner zones that suppress the flip click. See buildFlipFrames /
+// wrapFlipInner for the 3D/flat split and the documented wobble fixes.
 function initFlip(el, opts) {
   // The flat element holds z-index + the 2D grow; this inner layer holds the
   // 3D flip/tilt rotation, so all rotation transforms target `inner`.
@@ -995,29 +994,17 @@ function initFlip(el, opts) {
     if (e.target.closest(opts.exclude)) return;
     flip(e);
   });
-
-  // Title icon: stop propagation so the click handler above doesn't double-fire.
-  if (opts.titleIcon) {
-    var icon = el.querySelector('.card-title-icon');
-    if (icon) {
-      icon.addEventListener('click', function (e) {
-        e.stopPropagation();
-        if (clickSuppressed) { clickSuppressed = false; return; }
-        flip(e);
-      });
-    }
-  }
 }
 
 // Text/control zones that should not trigger a flip when clicked.
 var FLIP_EXCLUDE = '.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-footer';
 
 document.querySelectorAll('.panel-frame--flip').forEach(function (el) {
-  initFlip(el, { lift: true, titleIcon: false, exclude: 'button, a, input, select, ' + FLIP_EXCLUDE });
+  initFlip(el, { lift: true, exclude: 'button, a, input, select, ' + FLIP_EXCLUDE });
 });
 
 document.querySelectorAll('.card-sleeve').forEach(function (el) {
-  initFlip(el, { lift: false, titleIcon: true, exclude: FLIP_EXCLUDE });
+  initFlip(el, { lift: false, exclude: FLIP_EXCLUDE });
 });
 
 // Hide purely-decorative chrome from assistive tech: the Phosphor icon glyphs,

@@ -470,7 +470,7 @@ section {
   flex-shrink: 0;
   gap: clamp(6px, 2.4cqi, 10px);
   height: clamp(28px, 11.2cqi, 45px);
-  padding-inline: clamp(10px, 4cqi, 16px);
+  padding-inline: var(--card-pad-x);
 }
 
 .card-name {
@@ -487,13 +487,6 @@ section {
   color: inherit;
   cursor: pointer;
   text-decoration: none;
-}
-
-.card-title-icon {
-  color: var(--dim);
-  cursor: pointer;
-  flex-shrink: 0;
-  font-size: clamp(12px, 4.8cqi, 18px);
 }
 
 .card-art {
@@ -573,10 +566,6 @@ section {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 
-.card-title--cover .card-title-icon {
-  color: inherit;
-}
-
 .card-frame--cover .card-footer--cover {
   border-top: none;
   color: var(--mosaic-white);
@@ -611,7 +600,7 @@ section {
   height: clamp(24px, 9.6cqi, 38px);
   justify-content: space-between;
   letter-spacing: 0.06em;
-  padding-inline: clamp(10px, 4cqi, 16px);
+  padding-inline: var(--card-pad-x);
   -webkit-user-select: text;
   user-select: text;
 }
@@ -630,7 +619,10 @@ section {
   font-size: clamp(11px, 4.4cqi, 18px);
   line-height: 1.4;
   overflow: hidden;
-  padding: clamp(8px, 3.2cqi, 13px);
+  /* Block padding keeps its own vertical rhythm; inline matches the shared
+     text inset so body text aligns with the title/type/footer text. */
+  padding-block: clamp(8px, 3.2cqi, 13px);
+  padding-inline: var(--card-pad-x);
   position: relative;
 }
 
@@ -678,7 +670,7 @@ section {
   justify-content: space-between;
   letter-spacing: 0.08em;
   line-height: 1.3;
-  padding: 0 clamp(6px, 2.4cqi, 10px);
+  padding: 0 var(--card-pad-x);
   text-transform: uppercase;
   -webkit-user-select: text;
   user-select: text;
@@ -707,6 +699,10 @@ section {
 }
 
 .card-frame {
+  /* Shared left/right text inset for every chrome row (title, type, text box,
+     footer) so their text aligns to one vertical guide on both edges. cqi
+     resolves against this same card-frame container in each consumer. */
+  --card-pad-x: clamp(10px, 4cqi, 16px);
   border: 1px solid var(--rule);
   border-radius: var(--card-radius);
   cursor: default;
@@ -1015,7 +1011,13 @@ h1 {
   display: flex;
   flex-direction: column;
   gap: clamp(6px, 2.4cqi, 10px);
-  padding-inline: clamp(6px, 2.4cqi, 10px);
+  /* Same shared text inset as the other rows; the rail/marker offset is
+     independent of this value (both shift with it), so alignment is preserved. */
+  padding-inline: var(--card-pad-x);
+  /* Drop the inherited block padding so the first band meets the card-type rule
+     and the last band meets the footer rule — the even dividers carry the
+     rhythm, so the end gaps read only as dead space. */
+  padding-block: 0;
 }
 
 .saga-chapters {
@@ -1030,17 +1032,16 @@ h1 {
 }
 
 /* Vertical rail threading the chapter markers, centred on the 20px badges.
-   top/bottom reach past .saga-chapters (which fills the card-text-box content
-   box) by the box's block padding, so the rail meets the card-text-box's top
-   and bottom edges; the box's overflow:hidden clips it flush there. */
+   With the saga box's block padding removed, .saga-chapters fills the box
+   edge-to-edge, so top/bottom:0 meets the card-type rule and the footer rule. */
 .saga-chapters::before {
   background: var(--orange);
-  bottom: calc(-1 * clamp(8px, 3.2cqi, 13px));
+  bottom: 0;
   content: "";
   left: clamp(10px, 4cqi, 16px);
   opacity: 0.35;
   position: absolute;
-  top: calc(-1 * clamp(8px, 3.2cqi, 13px));
+  top: 0;
   width: clamp(2px, 0.8cqi, 3px);
   z-index: 0;
 }
@@ -1058,8 +1059,8 @@ h1 {
      padding-inline to the frame; the equal padding-inline pushes the content
      (marker + chapter) back to its original position, so the rail and markers
      don't move. */
-  margin-inline: calc(-1 * clamp(6px, 2.4cqi, 10px));
-  padding-inline: clamp(6px, 2.4cqi, 10px);
+  margin-inline: calc(-1 * var(--card-pad-x));
+  padding-inline: var(--card-pad-x);
   min-height: 0;
 }
 
@@ -1086,7 +1087,7 @@ h1 {
 }
 
 .saga-chapter {
-  align-items: baseline;
+  align-items: center;
   column-gap: clamp(12px, 4.8cqi, 19px);
   display: flex;
   justify-content: space-between;
@@ -1206,10 +1207,15 @@ h1 {
   text-transform: uppercase;
 }
 
+/* Scale with the surrounding text (not a fixed 16px) and centre on its
+   midline, so the inline-flex box never out-grows the line box — a fixed icon
+   taller than the text inflates the line and drags the run's baseline down,
+   skewing the whole card title (e.g. A101's linked typeface name vs A102). */
 .external-link-icon {
   color: var(--teal);
   display: inline-flex;
-  font-size: 16px;
+  font-size: 0.9em;
+  vertical-align: middle;
 }
 
 .icon-sample {
