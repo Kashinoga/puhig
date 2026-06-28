@@ -467,6 +467,9 @@ function fitMosaics(animate) {
     var isSidebar = p.classList.contains("panel-mosaic");
     p.style.width = "";
     p.style.flex = "";
+    // Clear any prior height snap so pass 2 reads the natural (clamp) art
+    // height and re-snaps it for the current width.
+    if (p.classList.contains("card-art")) p.style.height = "";
     if (mosaicW !== null && isSidebar) {
       p.style.flex = "none";
       p.style.width = mosaicW + "px";
@@ -497,8 +500,39 @@ function fitMosaics(animate) {
     var isCA = p.dataset.mosaicType === "ca";
     var isGridOnly = "mosaicGridOnly" in p.dataset;
     var isStaticBg = isGridOnly || "mosaicStatic" in p.dataset;
+    var isCardArt = p.classList.contains("card-art");
     var palette = p.dataset.mosaicPalette === "miku" ? getMikuPalette() : defaultPalette;
-    var H_build = H;
+
+    // Dimensions first — the card-art height is snapped to whole tile rows
+    // before the cache check so the snap survives a cache-hit early return.
+    var isLeft = p.dataset.mosaicAlign === "left";
+    var cols = (isLeft ? Math.round(W / target) : Math.floor(W / target)) || 1;
+    var tw, th, rows, H_build;
+    if (isLeft) {
+      // Card-art mosaics: square tiles. Derive the edge from the width (so
+      // cols*tw === W exactly), then reuse it on both axes so tiles are never
+      // stretched. For card-art, snap the art height to a whole number of those
+      // square rows — no partial bottom row, no art-background band, and
+      // matching-width cards get matching art heights. The full-bleed grid
+      // background keeps its natural (viewport) height.
+      tw = th = W / cols;
+      rows = Math.max(1, Math.round(H / tw));
+      if (isCardArt) {
+        H_build = rows * tw;
+        p.style.height = H_build + "px";
+      } else {
+        H_build = H;
+      }
+    } else {
+      H_build = H;
+      rows = (isCA ? Math.floor(H_build / target) : Math.round(H_build / target)) || 1;
+      tw = W / cols;
+      th = H_build / rows;
+    }
+    p.dataset.mosaicTw = tw;
+    p.dataset.mosaicTh = th;
+    p._tw = tw;
+    p._th = th;
 
     var dimsKey = W + "x" + H_build;
     if (!animate && p.dataset.mosaicDims === dimsKey) return;
@@ -509,27 +543,6 @@ function fitMosaics(animate) {
     }
     var seed = parseInt(p.dataset.mosaicSeed);
 
-    var isLeft = p.dataset.mosaicAlign === "left";
-    var cols = (isLeft ? Math.round(W / target) : Math.floor(W / target)) || 1;
-    var tw, th, rows;
-    if (isLeft) {
-      // Card-art mosaics: square tiles. Derive the edge from the width (so
-      // cols*tw === W exactly), then reuse it on both axes so tiles are never
-      // stretched. Rows best-fit the art height; any sub-tile remainder shows
-      // the art background (dead cells are bg too), staying seamless under the
-      // card-art's overflow:hidden.
-      tw = th = W / cols;
-      rows = Math.max(1, Math.round(H_build / tw));
-    } else {
-      rows = (isCA ? Math.floor(H_build / target) : Math.round(H_build / target)) || 1;
-      tw = W / cols;
-      th = H_build / rows;
-    }
-    p.dataset.mosaicTw = tw;
-    p.dataset.mosaicTh = th;
-    p._tw = tw;
-    p._th = th;
-
     var existing = p.querySelector(".mosaic-tiles-svg");
     var inViewport = p.getBoundingClientRect().top < window.innerHeight;
     // Static mosaics (card-art, grid-only backgrounds) appear instantly — no
@@ -538,8 +551,8 @@ function fitMosaics(animate) {
     var newSvg = isGridOnly
       ? buildGridSVG(W, H_build, cols, rows, tw, th, gridStroke, mc)
       : (p.dataset.mosaicType === "ca"
-          ? buildCAMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry)
-          : buildMosaicSVG(W, H, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry));
+          ? buildCAMosaicSVG(W, H_build, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry)
+          : buildMosaicSVG(W, H_build, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry));
     if (!isSidebar && W_full !== undefined && W_full > W && p.dataset.mosaicAlign !== "left") {
       newSvg.style.left = (W_full - W) + "px";
       newSvg.style.width = W + "px";
