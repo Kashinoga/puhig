@@ -505,6 +505,8 @@ function fitMosaics(animate) {
     var isCover = p.classList.contains("card-cover-art");
     var palette = p.dataset.mosaicPalette === "miku" ? getPrefixedPalette("miku")
       : p.dataset.mosaicPalette === "light" ? getPrefixedPalette("light")
+      : p.dataset.mosaicPalette === "gray" ? getPrefixedPalette("gray")
+      : p.dataset.mosaicPalette === "mono" ? getPrefixedPalette("mono")
       : defaultPalette;
 
     // Dimensions first — the card-art height is snapped to whole tile rows

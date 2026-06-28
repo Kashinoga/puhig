@@ -51,6 +51,24 @@
   --light-5: oklch(96% 0.012 95);
   --light-6: oklch(87% 0.02 200);
   --light-7: oklch(90% 0.016 235);
+  /* Gray palette — neutral (chroma 0) ramp mirroring miku's lightness spread,
+     skewed darker for a "black + shades of gray" cover. Typography cards. */
+  --gray-1: oklch(18% 0 0);
+  --gray-2: oklch(62% 0 0);
+  --gray-3: oklch(40% 0 0);
+  --gray-4: oklch(78% 0 0);
+  --gray-5: oklch(52% 0 0);
+  --gray-6: oklch(70% 0 0);
+  --gray-7: oklch(30% 0 0);
+  /* Mono palette — higher-contrast neutral ramp reaching true black and near
+     white for a "black and white" cover. Motion card. */
+  --mono-1: oklch(12% 0 0);
+  --mono-2: oklch(96% 0 0);
+  --mono-3: oklch(30% 0 0);
+  --mono-4: oklch(85% 0 0);
+  --mono-5: oklch(50% 0 0);
+  --mono-6: oklch(72% 0 0);
+  --mono-7: oklch(20% 0 0);
   --mosaic-hover: #e8d060;
   --mosaic-press: var(--black);
   --mosaic-grid: oklch(0% 0 0 / 4%);
@@ -750,6 +768,23 @@ section {
 
 .card-rarity[data-rarity="landmark"] {
   color: var(--teal);
+}
+
+/* Per-section accent: the rarity gem follows its section's pip/art colour
+   instead of the per-tier rarity colour, so pips and rarity read as one palette
+   per row. Equal specificity to the [data-rarity] rules above, so source order
+   (these come later) wins. (Header + colorography keep the tier colour: header
+   is the meta row; colorography is intentionally all-colour.) */
+[data-row="typography"] .card-rarity {
+  color: var(--dim);
+}
+
+[data-row="iconography"] .card-rarity {
+  color: var(--teal);
+}
+
+[data-row="motion"] .card-rarity {
+  color: var(--dim);
 }
 
 .card-quote {
