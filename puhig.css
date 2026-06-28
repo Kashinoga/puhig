@@ -1510,6 +1510,16 @@ html[data-theme="dark"] .mosaic-overlay {
   animation: toggle-bounce 360ms ease-out forwards;
 }
 
+/* Honour the OS reduce-motion setting: drop the auto-playing tile entry and the
+   press bounce. (puhig.js also skips the staggered entry build and the drift
+   loop; user-initiated flips/tilts remain.) */
+@media (prefers-reduced-motion: reduce) {
+  .mosaic-tile,
+  .scroll-control.is-bouncing {
+    animation: none;
+  }
+}
+
 .theme-option {
   align-items: center;
   background: none;

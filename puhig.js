@@ -23,6 +23,9 @@ var resizeTimer = null;
 var lastResizeW = window.innerWidth;
 var mosaicInitDone = false;
 var mosaicEntryPlayed = false;
+// Honour the OS "reduce motion" setting for auto-playing motion (the staggered
+// tile entry and the perpetual drift loop). Checked live at each use site.
+var reduceMotionMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
 var pressRegistry = [];
 document.addEventListener("pointerup", function () {
   pressRegistry.forEach(function (fn) { fn(); });
@@ -181,6 +184,8 @@ function createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
   svg.setAttribute("class", "mosaic-tiles-svg");
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
+  svg.setAttribute("aria-hidden", "true"); // decorative art — no info for AT
+  svg.setAttribute("focusable", "false");
   buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
   svg._tiles = []; svg._ripples = []; svg._presses = [];
   svg._tileData = []; svg._mc = mc || {};
@@ -431,7 +436,7 @@ function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
 
 function fitMosaics(animate) {
   // Entry animation plays only once, only for mosaics in the viewport at page load.
-  var playAllEntry = animate && !mosaicEntryPlayed;
+  var playAllEntry = animate && !mosaicEntryPlayed && !reduceMotionMQ.matches;
   if (playAllEntry) mosaicEntryPlayed = true;
 
   // Sidebar width: largest multiple of 24px where content col stays >= 2× wider.
@@ -574,7 +579,7 @@ function fitMosaics(animate) {
     if (existing) existing.remove();
     p.appendChild(newSvg);
     p._mosaicSvg = newSvg;
-    if (!isStaticBg) startDriftLoop(newSvg, palette);
+    if (!isStaticBg && !reduceMotionMQ.matches) startDriftLoop(newSvg, palette);
   });
 }
 
@@ -1008,6 +1013,12 @@ document.querySelectorAll('.panel-frame--flip').forEach(function (el) {
 document.querySelectorAll('.card-sleeve').forEach(function (el) {
   initFlip(el, { lift: false, titleIcon: true, exclude: FLIP_EXCLUDE });
 });
+
+// Hide purely-decorative chrome from assistive tech: the Phosphor icon glyphs,
+// the cost pips, and the mosaic art layers carry no information the adjacent
+// text doesn't already convey.
+document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pip')
+  .forEach(function (el) { el.setAttribute('aria-hidden', 'true'); });
 
 (function () {
   function setupScrollBtn(btn, action) {
