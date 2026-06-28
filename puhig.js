@@ -847,254 +847,147 @@ function addPressHoldTilt(el, opts) {
   el.addEventListener('touchcancel', finish);
 }
 
-function initFlipCards() {
-  document.querySelectorAll('.panel-frame--flip').forEach(function (card) {
-    // The flat frame (card) holds z-index + the 2D grow; this inner layer holds
-    // the 3D flip/tilt rotation, so all rotation transforms target `inner`.
-    var inner = wrapFlipInner(card);
-    var flipped = false;
-    var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
-    var lastFlipTop = false;
-    var animating = false;
-    var tiltX = 0, tiltY = 0;
-    var targetX = 0, targetY = 0;
-    var rafId = null;
-    var recentTouch = false;   // ignore the synthetic mouse events a touch emits
-    var clickSuppressed = false; // swallow the flip click that follows a hold-tilt
-    var touchClear = null;
+// One flip controller for both the settings panel (.panel-frame--flip) and the
+// card sleeves (.card-sleeve): they share identical hover-tilt + press-hold +
+// flip machinery and differ only via opts — (1) opts.lift: the settings panel
+// lifts to the front of its grid mid-flip so it paints above neighbours, while
+// sleeves must NOT (lifting collapses their 3-col grid row); (2) opts.exclude:
+// the inner zones that suppress the flip click; (3) opts.titleIcon: give the
+// title icon its own flip handler. See buildFlipFrames / wrapFlipInner for the
+// 3D/flat split and the documented wobble fixes.
+function initFlip(el, opts) {
+  // The flat element holds z-index + the 2D grow; this inner layer holds the
+  // 3D flip/tilt rotation, so all rotation transforms target `inner`.
+  var inner = wrapFlipInner(el);
+  var flipped = false;
+  var animating = false;
+  var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
+  var tiltX = 0, tiltY = 0;
+  var targetX = 0, targetY = 0;
+  var rafId = null;
+  var recentTouch = false;   // ignore the synthetic mouse events a touch emits
+  var clickSuppressed = false; // swallow the flip click that follows a hold-tilt
+  var touchClear = null;
 
-    function tiltFrame() {
-      tiltX += (targetX - tiltX) * 0.15;
-      tiltY += (targetY - tiltY) * 0.15;
-      var base = lastFlipSign * 180;
-      var transform = flipped
-        ? 'perspective(600px) rotateY(' + (base + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
-        : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
-      if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
-        inner.style.transform = transform;
-        rafId = requestAnimationFrame(tiltFrame);
+  function tiltFrame() {
+    tiltX += (targetX - tiltX) * 0.15;
+    tiltY += (targetY - tiltY) * 0.15;
+    var base = lastFlipSign * 180;
+    var transform = flipped
+      ? 'perspective(600px) rotateY(' + (base + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
+      : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+    if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
+      inner.style.transform = transform;
+      rafId = requestAnimationFrame(tiltFrame);
+    } else {
+      tiltX = targetX; tiltY = targetY; rafId = null;
+      if (targetX === 0 && targetY === 0) {
+        inner.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
       } else {
-        tiltX = targetX; tiltY = targetY; rafId = null;
-        if (targetX === 0 && targetY === 0) {
-          inner.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
-        } else {
-          inner.style.transform = transform;
-        }
+        inner.style.transform = transform;
       }
     }
+  }
 
-    function startTiltLoop() {
-      if (animating) return;
-      inner.style.transition = '';
-      if (!rafId) rafId = requestAnimationFrame(tiltFrame);
-    }
+  function startTiltLoop() {
+    if (animating) return;
+    inner.style.transition = '';
+    if (!rafId) rafId = requestAnimationFrame(tiltFrame);
+  }
 
-    function setTilt(clientX, clientY) {
-      var rect = card.getBoundingClientRect();
-      var rawX = ((clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
-      var rawY = ((clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
-      targetX = flipped ? -rawX : rawX;
-      targetY = -rawY; // back face is Y-mirrored, so horizontal tilt keeps the same sign
-      startTiltLoop();
-    }
+  function setTilt(clientX, clientY) {
+    var rect = el.getBoundingClientRect();
+    var rawX = ((clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
+    var rawY = ((clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
+    targetX = flipped ? -rawX : rawX;
+    targetY = -rawY; // back face is Y-mirrored, so horizontal tilt keeps the same sign
+    startTiltLoop();
+  }
 
-    function resetTilt() { targetX = 0; targetY = 0; startTiltLoop(); }
+  function resetTilt() { targetX = 0; targetY = 0; startTiltLoop(); }
 
-    card.addEventListener('mousemove', function (e) {
-      if (animating || recentTouch) return;
-      setTilt(e.clientX, e.clientY);
-    });
-
-    card.addEventListener('mouseleave', function () {
-      if (animating || recentTouch) return;
-      resetTilt();
-    });
-
-    addPressHoldTilt(card, {
-      isBusy: function () { return animating; },
-      tilt: setTilt,
-      reset: resetTilt,
-      onStart: function () { recentTouch = true; if (touchClear) { clearTimeout(touchClear); touchClear = null; } },
-      onEnd: function (suppressFlip) {
-        if (suppressFlip) clickSuppressed = true;
-        touchClear = setTimeout(function () { recentTouch = false; clickSuppressed = false; }, 700);
-      }
-    });
-
-    card.addEventListener('click', function (e) {
-      if (clickSuppressed) { clickSuppressed = false; return; }
-      if (animating) return;
-      // Flip only on the frame chrome (border + title bar), not the interactive
-      // controls or the text/footer content zones — mirrors initCardSleeveFlips.
-      if (e.target.closest('button, a, input, select, .card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-footer')) return;
-      var rect = card.getBoundingClientRect();
-      var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
-      var fromTop = e.clientY < rect.top + rect.height / 2;
-
-      // Snapshot the live tilt pose BEFORE mutating state, so the flip starts
-      // exactly where the hover tilt left the card (no snap to a flat 0% frame).
-      var prevBase = lastFlipSign * 180;
-      var backStart = flipped;
-      var curYaw = (flipped ? prevBase : 0) + tiltY;
-      var curTransform = flipped
-        ? 'perspective(600px) rotateY(' + (prevBase + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
-        : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
-
-      lastFlipSign = flipSign;
-      lastFlipTop = fromTop;
-      flipped = !flipped;
-      animating = true;
-      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-      tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
-      inner.style.transition = '';
-      card.style.zIndex = '100';
-      var panel = card.closest('.panel');
-      if (panel) panel.classList.add('panel--flipping');
-      var lifted = liftToFront(card);
-
-      // Rotation on the 3D inner; the 2D pick-up grow on the flat frame. Both run
-      // 650ms from the same tick so they stay in lockstep.
-      var frames = buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart);
-      var anim = inner.animate(frames, { duration: 650, fill: 'forwards' });
-      var growAnim = card.animate(buildGrowFrames(), { duration: 650 });
-      anim.onfinish = function () {
-        if (panel) panel.classList.remove('panel--flipping');
-        restoreFromFront(card, lifted);
-        card.style.zIndex = '';
-        card.style.transform = '';
-        inner.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
-        anim.cancel();
-        growAnim.cancel();
-        animating = false;
-      };
-    });
+  el.addEventListener('mousemove', function (e) {
+    if (animating || recentTouch) return;
+    setTilt(e.clientX, e.clientY);
   });
-}
 
-initFlipCards();
+  el.addEventListener('mouseleave', function () {
+    if (animating || recentTouch) return;
+    resetTilt();
+  });
 
-function initCardSleeveFlips() {
-  document.querySelectorAll('.card-sleeve').forEach(function (sleeve) {
-    // Flat sleeve holds z-index + the 2D grow; this inner holds the 3D rotation.
-    var inner = wrapFlipInner(sleeve);
-    var flipped = false;
-    var animating = false;
-    var lastFlipSign = -1; // -1 = right-edge flip (Y negative), +1 = left-edge flip (Y positive)
-    var lastFlipTop = false;
-    var tiltX = 0, tiltY = 0;
-    var targetX = 0, targetY = 0;
-    var rafId = null;
-    var recentTouch = false;   // ignore the synthetic mouse events a touch emits
-    var clickSuppressed = false; // swallow the flip click that follows a hold-tilt
-    var touchClear = null;
+  addPressHoldTilt(el, {
+    isBusy: function () { return animating; },
+    tilt: setTilt,
+    reset: resetTilt,
+    onStart: function () { recentTouch = true; if (touchClear) { clearTimeout(touchClear); touchClear = null; } },
+    onEnd: function (suppressFlip) {
+      if (suppressFlip) clickSuppressed = true;
+      touchClear = setTimeout(function () { recentTouch = false; clickSuppressed = false; }, 700);
+    }
+  });
 
-    function tiltFrame() {
-      tiltX += (targetX - tiltX) * 0.15;
-      tiltY += (targetY - tiltY) * 0.15;
-      var base = lastFlipSign * 180;
-      var transform = flipped
-        ? 'perspective(600px) rotateY(' + (base + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
-        : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
-      if (Math.abs(tiltX - targetX) > 0.05 || Math.abs(tiltY - targetY) > 0.05) {
-        inner.style.transform = transform;
-        rafId = requestAnimationFrame(tiltFrame);
-      } else {
-        tiltX = targetX; tiltY = targetY; rafId = null;
-        if (targetX === 0 && targetY === 0) {
-          inner.style.transform = flipped ? 'perspective(600px) rotateY(' + base + 'deg)' : '';
-        } else {
-          inner.style.transform = transform;
-        }
+  function flip(e) {
+    if (animating) return;
+    var rect = el.getBoundingClientRect();
+    var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
+    var fromTop = e.clientY < rect.top + rect.height / 2;
+
+    // Snapshot the live tilt pose BEFORE mutating state, so the flip starts
+    // exactly where the hover tilt left the card (no snap to a flat 0% frame).
+    var prevBase = lastFlipSign * 180;
+    var backStart = flipped;
+    var curYaw = (flipped ? prevBase : 0) + tiltY;
+    var curTransform = flipped
+      ? 'perspective(600px) rotateY(' + (prevBase + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
+      : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
+
+    lastFlipSign = flipSign;
+    flipped = !flipped;
+    animating = true;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
+    inner.style.transition = '';
+    el.style.zIndex = '100';
+
+    var panel = null, lifted = null;
+    if (opts.lift) {
+      panel = el.closest('.panel');
+      if (panel) panel.classList.add('panel--flipping');
+      lifted = liftToFront(el);
+    }
+
+    // Rotation on the 3D inner; the 2D pick-up grow on the flat element. Both run
+    // 650ms from the same tick so they stay in lockstep.
+    var frames = buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart);
+    var anim = inner.animate(frames, { duration: 650, fill: 'forwards' });
+    var growAnim = el.animate(buildGrowFrames(), { duration: 650 });
+    anim.onfinish = function () {
+      if (opts.lift) {
+        if (panel) panel.classList.remove('panel--flipping');
+        restoreFromFront(el, lifted);
       }
-    }
+      el.style.zIndex = '';
+      el.style.transform = '';
+      inner.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
+      anim.cancel();
+      growAnim.cancel();
+      animating = false;
+    };
+  }
 
-    function startTiltLoop() {
-      if (animating) return;
-      inner.style.transition = '';
-      if (!rafId) rafId = requestAnimationFrame(tiltFrame);
-    }
+  // Flip on click anywhere except the interactive controls and text zones
+  // (opts.exclude). card-art is intentionally not excluded — no text there,
+  // large flip target.
+  el.addEventListener('click', function (e) {
+    if (clickSuppressed) { clickSuppressed = false; return; }
+    if (e.target.closest(opts.exclude)) return;
+    flip(e);
+  });
 
-    function setTilt(clientX, clientY) {
-      var rect = sleeve.getBoundingClientRect();
-      var rawX = ((clientY - (rect.top + rect.height / 2)) / (rect.height / 2)) * 6;
-      var rawY = ((clientX - (rect.left + rect.width / 2)) / (rect.width / 2)) * 6;
-      targetX = flipped ? -rawX : rawX;
-      targetY = -rawY; // back face is Y-mirrored, so horizontal tilt keeps the same sign
-      startTiltLoop();
-    }
-
-    function resetTilt() { targetX = 0; targetY = 0; startTiltLoop(); }
-
-    sleeve.addEventListener('mousemove', function (e) {
-      if (animating || recentTouch) return;
-      setTilt(e.clientX, e.clientY);
-    });
-
-    sleeve.addEventListener('mouseleave', function () {
-      if (animating || recentTouch) return;
-      resetTilt();
-    });
-
-    addPressHoldTilt(sleeve, {
-      isBusy: function () { return animating; },
-      tilt: setTilt,
-      reset: resetTilt,
-      onStart: function () { recentTouch = true; if (touchClear) { clearTimeout(touchClear); touchClear = null; } },
-      onEnd: function (suppressFlip) {
-        if (suppressFlip) clickSuppressed = true;
-        touchClear = setTimeout(function () { recentTouch = false; clickSuppressed = false; }, 700);
-      }
-    });
-
-    function flip(e) {
-      if (animating) return;
-      var rect = sleeve.getBoundingClientRect();
-      var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
-      var fromTop = e.clientY < rect.top + rect.height / 2;
-
-      // Snapshot the live tilt pose BEFORE mutating state, so the flip starts
-      // exactly where the hover tilt left the card (no snap to a flat 0% frame).
-      var prevBase = lastFlipSign * 180;
-      var backStart = flipped;
-      var curYaw = (flipped ? prevBase : 0) + tiltY;
-      var curTransform = flipped
-        ? 'perspective(600px) rotateY(' + (prevBase + tiltY).toFixed(2) + 'deg) rotateX(' + tiltX.toFixed(2) + 'deg)'
-        : 'perspective(600px) rotateX(' + tiltX.toFixed(2) + 'deg) rotateY(' + tiltY.toFixed(2) + 'deg)';
-
-      lastFlipSign = flipSign;
-      lastFlipTop = fromTop;
-      flipped = !flipped;
-      animating = true;
-      if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-      tiltX = 0; tiltY = 0; targetX = 0; targetY = 0;
-      inner.style.transition = '';
-      sleeve.style.zIndex = '100';
-
-      // Rotation on the 3D inner; the 2D pick-up grow on the flat sleeve. Both run
-      // 650ms from the same tick so they stay in lockstep.
-      var frames = buildFlipFrames(curTransform, flipped, flipSign, fromTop, prevBase, curYaw, backStart);
-      var anim = inner.animate(frames, { duration: 650, fill: 'forwards' });
-      var growAnim = sleeve.animate(buildGrowFrames(), { duration: 650 });
-      anim.onfinish = function () {
-        sleeve.style.zIndex = '';
-        sleeve.style.transform = '';
-        inner.style.transform = flipped ? 'perspective(600px) rotateY(' + (lastFlipSign * 180) + 'deg)' : '';
-        anim.cancel();
-        growAnim.cancel();
-        animating = false;
-      };
-    }
-
-    // Flip on click anywhere on the sleeve except text-content zones.
-    // card-art is intentionally omitted — no text there, large flip target.
-    sleeve.addEventListener('click', function (e) {
-      if (clickSuppressed) { clickSuppressed = false; return; }
-      if (e.target.closest('.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-footer')) return;
-      flip(e);
-    });
-
-    // Title icon: stop propagation so the sleeve handler above doesn't double-fire.
-    var icon = sleeve.querySelector('.card-title-icon');
+  // Title icon: stop propagation so the click handler above doesn't double-fire.
+  if (opts.titleIcon) {
+    var icon = el.querySelector('.card-title-icon');
     if (icon) {
       icon.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -1102,10 +995,19 @@ function initCardSleeveFlips() {
         flip(e);
       });
     }
-  });
+  }
 }
 
-initCardSleeveFlips();
+// Text/control zones that should not trigger a flip when clicked.
+var FLIP_EXCLUDE = '.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-footer';
+
+document.querySelectorAll('.panel-frame--flip').forEach(function (el) {
+  initFlip(el, { lift: true, titleIcon: false, exclude: 'button, a, input, select, ' + FLIP_EXCLUDE });
+});
+
+document.querySelectorAll('.card-sleeve').forEach(function (el) {
+  initFlip(el, { lift: false, titleIcon: true, exclude: FLIP_EXCLUDE });
+});
 
 (function () {
   function setupScrollBtn(btn, action) {
