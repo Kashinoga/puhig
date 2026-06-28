@@ -43,6 +43,14 @@
   --miku-5: oklch(62% 0.10 192);
   --miku-6: oklch(82% 0.09 188);
   --miku-7: oklch(56% 0.08 198);
+  /* Light palette — white + light + assorted light shades for cover art. */
+  --light-1: oklch(98% 0.004 230);
+  --light-2: oklch(95% 0.010 215);
+  --light-3: oklch(92% 0.014 210);
+  --light-4: oklch(89% 0.018 205);
+  --light-5: oklch(96% 0.012 95);
+  --light-6: oklch(87% 0.020 200);
+  --light-7: oklch(90% 0.016 235);
   --mosaic-hover: #e8d060;
   --mosaic-press: var(--black);
   --mosaic-grid: oklch(0% 0 0 / 4%);
@@ -651,6 +659,80 @@ section {
   position: absolute;
   right: clamp(12px, 4.8cqi, 19px);
   z-index: 2;
+}
+
+/* Full-art "cover" card — borderless MTG special treatment. The mosaic fills
+   the whole frame edge-to-edge; the title and collector line float over it on
+   gradient scrims. No type line, no text box: the card is a section divider.
+   Reuses .card-title / .card-footer so the chrome stays proportional, then
+   strips their rules and recolours the text for legibility over the art. */
+.card-frame--cover {
+  position: relative;
+}
+
+/* Full-bleed: the mosaic build (isCover branch) derives row height from the
+   frame so the tiles fill top-to-bottom exactly — no border strip, no clip. */
+.card-cover-art {
+  background-color: var(--mosaic-bg);
+  inset: 0;
+  overflow: hidden;
+  position: absolute;
+}
+
+/* Top + bottom scrims darken just enough to seat the white text over any
+   palette while leaving the centre of the mosaic untouched. */
+.card-cover-top,
+.card-cover-bottom {
+  inset-inline: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+}
+
+.card-cover-top {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent);
+  top: 0;
+}
+
+.card-cover-bottom {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent);
+  bottom: 0;
+}
+
+/* Scoped under .card-frame--cover so these beat the base .card-title /
+   .card-footer rules (which appear later in the file) regardless of order —
+   otherwise the base border-top reappears on the cover footer. */
+.card-frame--cover .card-title--cover {
+  border-bottom: none;
+  color: var(--mosaic-white);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+.card-title--cover .card-title-icon {
+  color: inherit;
+}
+
+.card-frame--cover .card-footer--cover {
+  border-top: none;
+  color: var(--mosaic-white);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+/* Light-art cover (pale mosaic, e.g. the light palette): white text would
+   wash out, so flip to dark ink and lighten the scrims to white. Works in
+   both themes because the light palette is theme-independent. */
+.card-frame--cover-light .card-cover-top {
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), transparent);
+}
+
+.card-frame--cover-light .card-cover-bottom {
+  background: linear-gradient(to top, rgba(255, 255, 255, 0.65), transparent);
+}
+
+.card-frame--cover-light .card-title--cover,
+.card-frame--cover-light .card-footer--cover {
+  color: var(--black);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.55);
 }
 
 .card-type {
@@ -1270,23 +1352,37 @@ h1 {
   font-size: clamp(16px, 6.4cqi, 26px);
 }
 
-/* Colour swatches as saga specimens — sit at the row's top-right edge. */
+/* Colour swatches as saga specimens — stretch to the chapter's full height so
+   the chip fills the row (matching the two-line name/hex label), and widen the
+   block so the colour reads clearly. */
 .card-text-box.saga .swatch-chip {
-  align-self: flex-start;
-  height: clamp(16px, 6.4cqi, 26px);
-  margin-top: clamp(2px, 0.8cqi, 4px);
-  width: clamp(34px, 13.6cqi, 54px);
+  align-self: stretch;
+  height: auto;
+  margin-block: clamp(3px, 1.2cqi, 5px);
+  width: clamp(44px, 17.6cqi, 70px);
 }
 
-/* Stack the colour name over its hexcode on two rows. */
+/* Stack the colour name over its hexcode on two tight rows. The same
+   margin-block as the swatch chip, plus a snug line-height and no gap, makes
+   the label's text box equal in height to the chip and inset by the same
+   amount — so the name's top stroke and the hexcode's bottom stroke line up
+   with the swatch's top and bottom edges. */
 .swatch-label {
   display: flex;
   flex-direction: column;
-  gap: clamp(1px, 0.4cqi, 2px);
+  gap: 0;
+  line-height: 1.1;
+  margin-block: clamp(3px, 1.2cqi, 5px);
 }
 
 .swatch-hex {
   opacity: 0.7;
+}
+
+/* Colour rows: stretch both label and chip to the chapter so their equal
+   margin-block insets align top/bottom (overrides the default baseline). */
+.saga-chapter:has(.swatch-chip) {
+  align-items: stretch;
 }
 
 /* Settings saga — interactive option buttons stack at the chapter's right edge. */
@@ -1524,6 +1620,16 @@ main .wordmark-row {
     --mosaic-press: var(--white);
     --mosaic-grid: oklch(0% 0 0 / 30%);
     --mosaic-white: #c8d4dc;
+    /* Dim the light cover palette so A 000 reads as a soft muted-light mosaic
+       on the dark page instead of a glaring white block; still light enough
+       for the dark cover ink + white scrims to stay legible. */
+    --light-1: oklch(82% 0.012 230);
+    --light-2: oklch(78% 0.016 215);
+    --light-3: oklch(74% 0.020 210);
+    --light-4: oklch(70% 0.024 205);
+    --light-5: oklch(80% 0.016 95);
+    --light-6: oklch(68% 0.026 200);
+    --light-7: oklch(72% 0.022 235);
     --shadow-panel-frame:
       inset 0 0 0 1px rgba(255, 255, 255, 0.10),
       inset 0 1px 0 rgba(255, 255, 255, 0.14),
@@ -1576,6 +1682,16 @@ html[data-theme="dark"] {
   --mosaic-press: var(--white);
   --mosaic-grid: oklch(0% 0 0 / 30%);
   --mosaic-white: #c8d4dc;
+  /* Dim the light cover palette so A 000 reads as a soft muted-light mosaic
+     on the dark page instead of a glaring white block; still light enough for
+     the dark cover ink + white scrims to stay legible. */
+  --light-1: oklch(82% 0.012 230);
+  --light-2: oklch(78% 0.016 215);
+  --light-3: oklch(74% 0.020 210);
+  --light-4: oklch(70% 0.024 205);
+  --light-5: oklch(80% 0.016 95);
+  --light-6: oklch(68% 0.026 200);
+  --light-7: oklch(72% 0.022 235);
   --shadow-panel-frame:
     inset 0 0 0 1px rgba(255, 255, 255, 0.10),
     inset 0 1px 0 rgba(255, 255, 255, 0.14),

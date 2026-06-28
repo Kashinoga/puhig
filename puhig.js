@@ -420,6 +420,13 @@ function getMikuPalette() {
   });
 }
 
+function getLightPalette() {
+  var s = getComputedStyle(document.documentElement);
+  return [1, 2, 3, 4, 5, 6, 7].map(function (n) {
+    return s.getPropertyValue("--light-" + n).trim();
+  });
+}
+
 function buildGridSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
   var ns = "http://www.w3.org/2000/svg";
   var svg = document.createElementNS(ns, "svg");
@@ -501,7 +508,10 @@ function fitMosaics(animate) {
     var isGridOnly = "mosaicGridOnly" in p.dataset;
     var isStaticBg = isGridOnly || "mosaicStatic" in p.dataset;
     var isCardArt = p.classList.contains("card-art");
-    var palette = p.dataset.mosaicPalette === "miku" ? getMikuPalette() : defaultPalette;
+    var isCover = p.classList.contains("card-cover-art");
+    var palette = p.dataset.mosaicPalette === "miku" ? getMikuPalette()
+      : p.dataset.mosaicPalette === "light" ? getLightPalette()
+      : defaultPalette;
 
     // Dimensions first — the card-art height is snapped to whole tile rows
     // before the cache check so the snap survives a cache-hit early return.
@@ -517,7 +527,13 @@ function fitMosaics(animate) {
       // background keeps its natural (viewport) height.
       tw = th = W / cols;
       rows = Math.max(1, Math.round(H / tw));
-      if (isCardArt) {
+      if (isCover) {
+        // Full-bleed cover art: tiles fill the frame on BOTH axes. Width tiles
+        // stay square-derived (cols*tw === W); row height is taken from the
+        // frame so rows*th === H exactly — no bottom remainder, no overflow clip.
+        th = H / rows;
+        H_build = H;
+      } else if (isCardArt) {
         H_build = rows * tw;
         p.style.height = H_build + "px";
       } else {
@@ -919,7 +935,9 @@ function initFlipCards() {
     card.addEventListener('click', function (e) {
       if (clickSuppressed) { clickSuppressed = false; return; }
       if (animating) return;
-      if (e.target.closest('button, a, input, select')) return;
+      // Flip only on the frame chrome (border + title bar), not the interactive
+      // controls or the text/footer content zones — mirrors initCardSleeveFlips.
+      if (e.target.closest('button, a, input, select, .card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-footer')) return;
       var rect = card.getBoundingClientRect();
       var flipSign = e.clientX < rect.left + rect.width / 2 ? 1 : -1;
       var fromTop = e.clientY < rect.top + rect.height / 2;
