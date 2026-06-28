@@ -12,3 +12,9 @@
 !.github/
 !.github/**
 !.gitignore
+
+# Un-ignore local dev tooling (the helper script + its manifest), but not the
+# generated screenshots under tools/shots/ or installed deps.
+!package.json
+!tools/
+!tools/*.mjs
