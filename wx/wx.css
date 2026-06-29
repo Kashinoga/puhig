@@ -35,3 +35,26 @@
 .wx-note-title {
   font-weight: 500;
 }
+
+/* Reveal-count stepper: −/＋ around a live count, set beside the Cached
+   button on the Location card to cap how many result cards (forecast +
+   alerts) are dealt. The buttons are real .btn--outline specimens; only
+   the value readout and the icon-only sizing are new. */
+.wx-stepper {
+  align-items: center;
+  display: inline-flex;
+  gap: clamp(4px, 1.6cqi, 7px);
+}
+
+/* Icon-only buttons read as square; the shared .btn padding makes them
+   wider than tall, so match the horizontal pad to the vertical one. */
+.wx-stepper-btn {
+  padding-inline: clamp(5px, 2cqi, 8px);
+}
+
+.wx-stepper-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  min-width: 1.4em;
+  text-align: center;
+}

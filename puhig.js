@@ -615,6 +615,25 @@ window.addEventListener("resize", function () {
   resizeTimer = setTimeout(function () { fitMosaics(false); }, 100);
 });
 
+// Keep the full-bleed grid background as tall as the document. #mosaic-bg is an
+// absolute inset:0 layer, so it grows with the page — but its tiled SVG is only
+// re-cut when fitMosaics re-reads the new height. Content added after load (the
+// WX app dealing in result cards, any runtime growth) makes the page taller than
+// it was when the grid was first built, leaving bare space below on scroll. A
+// ResizeObserver on the body covers every height source generically; it's
+// debounced and guarded on the measured height so a burst of growth (or a
+// transform-only flip, which never changes layout) rebuilds at most once.
+if (window.ResizeObserver) {
+  var bgFitTimer, lastDocH = 0;
+  new ResizeObserver(function () {
+    var h = document.body.scrollHeight;
+    if (h === lastDocH) return;
+    lastDocH = h;
+    clearTimeout(bgFitTimer);
+    bgFitTimer = setTimeout(function () { fitMosaics(false); }, 100);
+  }).observe(document.body);
+}
+
 (function () {
   var STORAGE_KEY = 'puhig-theme';
   var UI_THEME_KEY = 'puhig-ui-theme';

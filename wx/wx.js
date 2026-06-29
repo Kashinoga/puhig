@@ -80,6 +80,10 @@
   var currentAlerts = [];
   // Animations from the in-flight deal, cancelled when a new deal supersedes it.
   var dealAnims = [];
+  // How many result cards (forecast + alerts) to deal, set by the -/+ stepper.
+  var REVEAL_MIN = 1, REVEAL_MAX = 8, revealLimit = 4;
+  // The last data shown, so the stepper can re-deal at the new limit.
+  var lastShown = null;
 
   // ---- small helpers -------------------------------------------------------
 
@@ -245,9 +249,9 @@
   // the WX cover (the deck) one at a time, fanning straight to its right (the
   // cover stays on top, so they read as slid out from beneath it), while the
   // static row-1 cards (about + location) nudge aside to make room. The fan
-  // shows at most four — a fifth-and-beyond pile sits under a single faded
-  // fourth card. After a brief hold the cards fly to their grid slots
-  // back-to-front (the faded back of the fan first, the top card last).
+  // shows at most four — a fifth-and-beyond pile sits under the fourth card,
+  // all at full opacity. After a brief hold the cards fly to their grid slots
+  // back-to-front (the back of the fan first, the top card last).
   // FLIP-style: the cards already occupy their final slots, so only transform +
   // opacity animate (no reflow); the static cards' nudge returns to rest.
   // Skipped under prefers-reduced-motion.
@@ -275,7 +279,7 @@
 
     // One shared timeline of absolute times, mapped to per-card keyframe offsets.
     // Cards emerge one at a time (staggered forward), the fan caps at four (the
-    // fourth-and-beyond share one faded slot), all hold, then they fly to their
+    // fourth-and-beyond share one slot), all hold, then they fly to their
     // slots back-to-front (highest index first).
     var lastIdx = cards.length - 1;
     var emergeStep = 125; // gap between successive cards sliding out
@@ -283,7 +287,7 @@
     var holdDur = 280;    // the pause once the fan is laid out
     var flyStep = 135;    // gap between successive cards flying off
     var flyDur = 480;     // one card's flight to its slot
-    var maxFanIdx = 3;    // fan positions 0..3; index >= 3 share slot 3, faded
+    var maxFanIdx = 3;    // fan positions 0..3; index >= 3 share slot 3
     var peek = 50;        // px of each card shown past the one in front (its right edge / pips)
     var slide = 30;       // px the cover eases left during the reveal, opening room
 
@@ -336,7 +340,6 @@
     cards.forEach(function (card, i) {
       var r = rects[i];
       var fanIdx = Math.min(i, maxFanIdx);
-      var faded = i >= maxFanIdx;            // the 4th and any behind it read faded
       var coverDX = base.left - r.left;
       var coverDY = base.top - r.top;
       // Fan straight out to the cover's right (x-axis only); held at the cover's
@@ -356,7 +359,7 @@
       // Full size throughout — the revealed cards match the cover, never shrunk.
       var coverT = "translate(" + coverDX + "px, " + coverDY + "px)";
       var fanT = "translate(" + emDX + "px, " + emDY + "px)";
-      var fanOpacity = faded ? 0.4 : 1;
+      var fanOpacity = 1;
 
       // offset 0 → (hold on cover) → emerge to fan → (hold) → fly to slot → (hold)
       var frames = [];
@@ -371,7 +374,7 @@
       frames.push({ transform: "none", opacity: 1, offset: flyEnd / total });
       if (flyEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
 
-      card.style.zIndex = String(100 - i); // first card out sits in front; the faded back sits behind
+      card.style.zIndex = String(100 - i); // first card out sits in front; the back of the fan sits behind
       var anim = card.animate(frames, { duration: total, easing: "linear" });
       dealAnims.push(anim);
       anim.onfinish = function () {
@@ -393,6 +396,8 @@
   // Render the forecast + alerts (or the appropriate note) and deal them in.
   // Shared by the live fetch and the cached test fixture.
   function showResults(stateName, forecast, alerts) {
+    lastShown = { stateName: stateName, forecast: forecast, alerts: alerts };
+
     if (!forecast && !alerts) {
       render(noteCard(
         "ph-cloud-slash",
@@ -403,6 +408,7 @@
       return;
     }
 
+    // Cap the deal at the stepper's reveal limit (forecast counts as one card).
     var cards = [];
     if (forecast && forecast.period) {
       cards.push(forecastCard(forecast.place, forecast.period, true));
@@ -410,7 +416,7 @@
 
     if (alerts && alerts.length) {
       currentAlerts = alerts;
-      for (var i = 0; i < alerts.length; i++) {
+      for (var i = 0; i < alerts.length && cards.length < revealLimit; i++) {
         cards.push(alertCard(alerts[i], i, cards.length === 0));
       }
     } else if (alerts) {
@@ -465,6 +471,24 @@
         areaDesc: "Polk, IA; Warren, IA; Madison, IA; Jasper, IA",
         parameters: { NWSheadline: ["FLOOD WATCH REMAINS IN EFFECT THROUGH LATE TONIGHT"] },
         effective: "2026-06-29T14:00:00-05:00", expires: "2026-06-30T01:00:00-05:00"
+      } },
+      { properties: {
+        event: "Tornado Watch", severity: "Severe",
+        areaDesc: "Polk, IA; Dallas, IA; Marion, IA; Jasper, IA",
+        parameters: { NWSheadline: ["TORNADO WATCH IN EFFECT UNTIL 9 PM CDT"] },
+        effective: "2026-06-29T15:30:00-05:00", expires: "2026-06-29T21:00:00-05:00"
+      } },
+      { properties: {
+        event: "Heat Advisory", severity: "Minor",
+        areaDesc: "Polk, IA; Story, IA; Boone, IA; Marshall, IA",
+        parameters: { NWSheadline: ["HEAT ADVISORY REMAINS IN EFFECT UNTIL 8 PM CDT"] },
+        effective: "2026-06-29T12:00:00-05:00", expires: "2026-06-29T20:00:00-05:00"
+      } },
+      { properties: {
+        event: "Flash Flood Warning", severity: "Severe",
+        areaDesc: "Polk, IA; Warren, IA; Madison, IA",
+        parameters: { NWSheadline: ["FLASH FLOOD WARNING IN EFFECT UNTIL 7 PM CDT"] },
+        effective: "2026-06-29T16:45:00-05:00", expires: "2026-06-29T19:00:00-05:00"
       } }
     ]
   };
@@ -502,9 +526,32 @@
     selectEl.appendChild(frag);
   }
 
+  // The -/+ stepper sets how many result cards are dealt; nudging it re-deals
+  // the last-shown reading at the new limit so the change is visible at once.
+  var countEl = document.getElementById("wx-reveal-count");
+  var lessBtn = document.getElementById("wx-reveal-less");
+  var moreBtn = document.getElementById("wx-reveal-more");
+
+  function syncStepper() {
+    if (countEl) countEl.textContent = String(revealLimit);
+    if (lessBtn) lessBtn.disabled = revealLimit <= REVEAL_MIN;
+    if (moreBtn) moreBtn.disabled = revealLimit >= REVEAL_MAX;
+  }
+
+  function stepReveal(delta) {
+    var next = Math.min(REVEAL_MAX, Math.max(REVEAL_MIN, revealLimit + delta));
+    if (next === revealLimit) return;
+    revealLimit = next;
+    syncStepper();
+    if (lastShown) showResults(lastShown.stateName, lastShown.forecast, lastShown.alerts);
+  }
+
   populate();
   selectEl.addEventListener("change", onSelect);
   var cachedBtn = document.getElementById("wx-cached");
   if (cachedBtn) cachedBtn.addEventListener("click", loadCached);
+  if (lessBtn) lessBtn.addEventListener("click", function () { stepReveal(-1); });
+  if (moreBtn) moreBtn.addEventListener("click", function () { stepReveal(1); });
+  syncStepper();
   renderEmpty();
 })();
