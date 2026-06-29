@@ -245,16 +245,18 @@
     resultsEl.innerHTML = html;
   }
 
-  // Deal animation: after a selection, the result cards are drawn out from under
-  // the WX cover (the deck) one at a time, fanning straight to its right (the
-  // cover stays on top, so they read as slid out from beneath it), while the
-  // static row-1 cards (about + location) nudge aside to make room. The fan
-  // shows at most four — a fifth-and-beyond pile sits under the fourth card,
-  // all at full opacity. After a brief hold the cards fly to their grid slots
-  // front-to-back (the top card — the first revealed — first, the back of the
-  // fan last), mirroring the gather's first-card-leads order.
+  // Deal animation: after a selection, the deck cycles open in three beats.
+  // (1) The WX cover — sitting on top of the freshly-rendered stack — drops to
+  //     the bottom of the pile (a short dip down and tuck under, its z-index
+  //     falling below the cards mid-dip), revealing the first result card on top.
+  // (2) The revealed cards slide out to the cover's right one at a time, fanning
+  //     up to four (a fifth-and-beyond pile sits under the fourth), all at full
+  //     opacity, while the static row-1 cards (about + location) nudge aside.
+  // (3) After a brief hold the cards fly to their grid slots front-to-back (the
+  //     top card — first revealed — first, the back of the fan last), mirroring
+  //     the gather's first-card-leads order.
   // FLIP-style: the cards already occupy their final slots, so only transform +
-  // opacity animate (no reflow); the static cards' nudge returns to rest.
+  // opacity animate (no reflow); the cover and static cards return to rest.
   // Skipped under prefers-reduced-motion.
   var reduceMotionMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -279,10 +281,11 @@
     var base = coverSleeve ? coverSleeve.getBoundingClientRect() : rects[0];
 
     // One shared timeline of absolute times, mapped to per-card keyframe offsets.
-    // Cards emerge one at a time (staggered forward), the fan caps at four (the
-    // fourth-and-beyond share one slot), all hold, then they fly to their
-    // slots back-to-front (highest index first).
+    // Reveal beat first (cover → bottom, first card shown), then cards emerge one
+    // at a time (staggered forward), the fan caps at four (the fourth-and-beyond
+    // share one slot), all hold, then fly to their slots back-to-front.
     var lastIdx = cards.length - 1;
+    var revealDur = 300; // beat 1: cover drops to the bottom, first card shown
     var emergeStep = 125; // gap between successive cards sliding out
     var emergeDur = 340;  // one card's slide-out
     var holdDur = 280;    // the pause once the fan is laid out
@@ -290,10 +293,11 @@
     var flyDur = 480;     // one card's flight to its slot
     var maxFanIdx = 3;    // fan positions 0..3; index >= 3 share slot 3
     var peek = 50;        // px of each card shown past the one in front (its right edge / pips)
-    var slide = 30;       // px the cover eases left during the reveal, opening room
+    var dip = 22;         // px the cover dips down as it tucks to the bottom
 
     var lastEmergeIdx = Math.min(lastIdx, maxFanIdx);
-    var flyPhaseStart = lastEmergeIdx * emergeStep + emergeDur + holdDur;
+    var fanLaidOutTime = revealDur + lastEmergeIdx * emergeStep + emergeDur;
+    var flyPhaseStart = fanLaidOutTime + holdDur;
     var total = flyPhaseStart + lastIdx * flyStep + flyDur;
 
     // Nudge the static row-1 cards (everything to the cover's right: the about +
@@ -309,11 +313,12 @@
     var EASE = "cubic-bezier(0.2, 0.7, 0.25, 1)";
 
     var pushPx = 56;
-    var fanLaidOut = (lastEmergeIdx * emergeStep + emergeDur) / total;
+    var fanLaidOut = fanLaidOutTime / total;
     rightSiblings.forEach(function (s) {
       dealAnims.push(s.animate(
         [
           { transform: "none", offset: 0, easing: "ease-in-out" },
+          { transform: "none", offset: revealDur / total, easing: "ease-in-out" },
           { transform: "translateX(" + pushPx + "px)", offset: fanLaidOut },
           { transform: "translateX(" + pushPx + "px)", offset: flyPhaseStart / total, easing: "ease-in-out" },
           { transform: "none", offset: 1 }
@@ -322,16 +327,21 @@
       ));
     });
 
-    // Keep the cover above the emerging cards so they slide out from beneath it,
-    // and ease it slightly left through the reveal to open room for the fan,
-    // settling back as the cards fly off.
+    // Beat 1: the cover starts on top of the stack, then moves to the bottom —
+    // a dip down and tuck back under, its z-index falling below the cards partway
+    // through (a no-op timer animation drops it on cancel-safe onfinish), so the
+    // first card is revealed on top of the deck. It then rests at base beneath
+    // the dealt cards, which now lie over it.
     if (coverSleeve) {
       coverSleeve.style.zIndex = "200";
+      var zDrop = coverSleeve.animate([{ opacity: 1 }, { opacity: 1 }], { duration: revealDur * 0.45 });
+      zDrop.onfinish = function () { coverSleeve.style.zIndex = ""; };
+      dealAnims.push(zDrop);
       dealAnims.push(coverSleeve.animate(
         [
-          { transform: "none", offset: 0, easing: "ease-in-out" },
-          { transform: "translateX(-" + slide + "px)", offset: fanLaidOut },
-          { transform: "translateX(-" + slide + "px)", offset: flyPhaseStart / total, easing: "ease-in-out" },
+          { transform: "none", offset: 0, easing: "ease-in" },
+          { transform: "translateY(" + dip + "px)", offset: (revealDur * 0.5) / total, easing: "ease-out" },
+          { transform: "none", offset: revealDur / total },
           { transform: "none", offset: 1 }
         ],
         { duration: total, easing: "linear" }
@@ -344,15 +354,14 @@
       var coverDX = base.left - r.left;
       var coverDY = base.top - r.top;
       // Fan straight out to the cover's right (x-axis only); held at the cover's
-      // own vertical band, behind it, so the cards read as drawn from under it.
-      // Each shows only `peek` past the one in front — its right edge and pips.
-      // Measured from the cover's slid-left position so the peeks stay uniform.
-      var emergeLeft = (base.left - slide) + peek * (fanIdx + 1);
+      // own vertical band, over it, so the cards read as dealt off the top of the
+      // deck. Each shows only `peek` past the one in front — its right edge / pips.
+      var emergeLeft = base.left + peek * (fanIdx + 1);
       var emergeTop = base.top;
       var emDX = emergeLeft - r.left;
       var emDY = emergeTop - r.top;
 
-      var emergeStart = fanIdx * emergeStep;
+      var emergeStart = revealDur + fanIdx * emergeStep;
       var emergeEnd = emergeStart + emergeDur;
       var flyStart = flyPhaseStart + i * flyStep; // top card (first revealed) flies first
       var flyEnd = flyStart + flyDur;
@@ -360,28 +369,23 @@
       // Full size throughout — the revealed cards match the cover, never shrunk.
       var coverT = "translate(" + coverDX + "px, " + coverDY + "px)";
       var fanT = "translate(" + emDX + "px, " + emDY + "px)";
-      var fanOpacity = 1;
+      // The first card is shown the moment the cover drops away (opacity 1 from
+      // the start); the rest stay hidden behind the stack until they emerge.
+      var startOpacity = i === 0 ? 1 : 0;
 
-      // offset 0 → (hold on cover) → emerge to fan → (hold) → fly to slot → (hold)
+      // offset 0 → (hold on deck) → emerge to fan → (hold) → fly to slot → (hold)
       var frames = [];
-      if (emergeStart > 0) {
-        frames.push({ transform: coverT, opacity: 0, offset: 0 });
-        frames.push({ transform: coverT, opacity: 0, offset: emergeStart / total, easing: EASE });
-      } else {
-        frames.push({ transform: coverT, opacity: 0, offset: 0, easing: EASE });
-      }
-      frames.push({ transform: fanT, opacity: fanOpacity, offset: emergeEnd / total });
-      frames.push({ transform: fanT, opacity: fanOpacity, offset: flyStart / total, easing: EASE });
+      frames.push({ transform: coverT, opacity: startOpacity, offset: 0 });
+      frames.push({ transform: coverT, opacity: startOpacity, offset: emergeStart / total, easing: EASE });
+      frames.push({ transform: fanT, opacity: 1, offset: emergeEnd / total });
+      frames.push({ transform: fanT, opacity: 1, offset: flyStart / total, easing: EASE });
       frames.push({ transform: "none", opacity: 1, offset: flyEnd / total });
       if (flyEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
 
       card.style.zIndex = String(100 - i); // first card out sits in front; the back of the fan sits behind
       var anim = card.animate(frames, { duration: total, easing: "linear" });
       dealAnims.push(anim);
-      anim.onfinish = function () {
-        card.style.zIndex = "";
-        if (i === lastIdx && coverSleeve) coverSleeve.style.zIndex = ""; // back of fan lands last
-      };
+      anim.onfinish = function () { card.style.zIndex = ""; };
     });
   }
 
@@ -398,6 +402,11 @@
   function flyOut(cards, done) {
     for (var k = 0; k < flyAnims.length; k++) { try { flyAnims[k].cancel(); } catch (e) {} }
     flyAnims = [];
+    // Cancel any deal still in flight on these cards (a slow fetch can resolve
+    // while the loading note is mid-deal): cancelling reverts them to their rest
+    // slots, so the gather reads true rects and the two don't fight on transform.
+    for (var d = 0; d < dealAnims.length; d++) { try { dealAnims[d].cancel(); } catch (e) {} }
+    dealAnims = [];
 
     var coverFrame = document.querySelector('[data-row="wx"] .card-frame--cover');
     var coverSleeve = coverFrame ? coverFrame.closest(".card-sleeve") : null;
@@ -453,6 +462,9 @@
     });
   }
 
+  // The empty-state note deals in like a result card, so the page-load card
+  // (row 2 col 1) enters from the deck and — via clearThen — exits back to it,
+  // the same enter/exit arc the forecast + alert cards ride.
   function renderEmpty() {
     render(noteCard(
       "ph-compass",
@@ -460,6 +472,7 @@
       "Choose a state to draw its current forecast and any active weather alerts.",
       true
     ));
+    dealIn();
   }
 
   // Render the forecast + alerts (or the appropriate note) and deal them in.
@@ -474,6 +487,7 @@
         "The National Weather Service couldn't be read just now. Try again in a moment.",
         true
       ));
+      dealIn(); // deal the error note in like every other note/card — never snap
       return;
     }
 
@@ -503,23 +517,38 @@
     var token = ++requestId;
     currentAlerts = [];
 
-    // The old cards gather back to the deck while the fetch runs in parallel.
-    // Whichever finishes first waits for the other: normally the gather lands
-    // first and a loading note is shown until the data arrives; if the fetch
-    // (e.g. a warm cache) beats the gather, the note is skipped and the results
-    // deal straight in. Both guard on `token` so a newer selection wins.
-    var fetched = null, fetchDone = false, gatherDone = false;
+    // Every card on screen both comes from and returns to the deck. The old cards
+    // gather back to the deck while the fetch runs in parallel. If the fetch is
+    // slow, a loading note deals in from the deck, then gathers back to it before
+    // the results deal in; if the fetch beats the gather (warm cache), the note is
+    // skipped and the results deal straight in after the one gather. Exactly one
+    // of the gather-complete / fetch-complete callbacks drives the results (the
+    // later of the two), and all steps guard on `token` so a newer selection wins.
+    var fetched = null, fetchDone = false, gatherDone = false, loadingShown = false;
 
-    function showWhenReady() {
-      if (token !== requestId || !gatherDone || !fetchDone) return;
-      showResults(state.name, fetched[0], fetched[1]);
+    function dealResults() {
+      if (token !== requestId) return;
+      // A loading note is on screen — gather it back to the deck first; otherwise
+      // the initial clearThen already cleared the deck, so deal straight in.
+      if (loadingShown) {
+        clearThen(function () {
+          if (token === requestId) showResults(state.name, fetched[0], fetched[1]);
+        });
+      } else {
+        showResults(state.name, fetched[0], fetched[1]);
+      }
     }
 
     clearThen(function () {
       if (token !== requestId) return;
       gatherDone = true;
-      if (fetchDone) showWhenReady();
-      else render(noteCard("ph-cloud", "Reading the sky over " + state.capital + "…", null, true));
+      if (fetchDone) {
+        dealResults();
+      } else {
+        render(noteCard("ph-cloud", "Reading the sky over " + state.capital + "…", null, true));
+        dealIn();
+        loadingShown = true;
+      }
     });
 
     Promise.all([
@@ -529,7 +558,7 @@
       if (token !== requestId) return; // a newer selection has taken over
       fetched = out;
       fetchDone = true;
-      showWhenReady();
+      if (gatherDone) dealResults();
     });
   }
 
@@ -644,5 +673,8 @@
   if (lessBtn) lessBtn.addEventListener("click", function () { stepReveal(-1); });
   if (moreBtn) moreBtn.addEventListener("click", function () { stepReveal(1); });
   syncStepper();
-  renderEmpty();
+  // Defer the first deal one frame so the grid (and the cover it deals from) has
+  // laid out — reading rects too early would deal the note from a stale slot.
+  // render + dealIn run together in the frame, so the note never flashes static.
+  requestAnimationFrame(renderEmpty);
 })();
