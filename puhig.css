@@ -1124,12 +1124,15 @@ h1 {
   border-top: none;
 }
 
+/* The numeral is small body-size text, so it uses --orange-deep (not the
+   bright --orange) to clear AA on --surface — same reason the outline button
+   deepens its label. The border deepens with it so the ring stays one hue. */
 .saga-marker {
   align-items: center;
   background: var(--surface);
-  border: 1.5px solid var(--orange);
+  border: 1.5px solid var(--orange-deep);
   border-radius: 50%;
-  color: var(--orange);
+  color: var(--orange-deep);
   display: flex;
   font-size: clamp(8px, 3.2cqi, 13px);
   font-weight: 600;
@@ -1249,7 +1252,7 @@ h1 {
 }
 
 .panel-attribution-rule {
-  color: var(--orange);
+  color: var(--orange-deep);
 }
 
 .panel-link {
@@ -1804,5 +1807,5 @@ html[data-theme="dark"] .mosaic-overlay {
 }
 
 .theme-option[aria-pressed="true"] {
-  color: var(--orange);
+  color: var(--orange-deep);
 }

@@ -31,6 +31,15 @@
   font-weight: 500;
 }
 
+/* Alert location line (📍 area description) — a muted caption under the
+   alert headline. Sizes off the card like the rest; --dim matches the
+   other secondary text (e.g. .wx-temp-unit). */
+.wx-area {
+  color: var(--dim);
+  font-size: clamp(12px, 5.2cqi, 15px);
+  margin-block-start: clamp(4px, 1.6cqi, 8px);
+}
+
 /* The note title leads an empty / loading / clear / error card. */
 .wx-note-title {
   font-weight: 500;
