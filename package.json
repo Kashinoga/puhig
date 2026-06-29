@@ -7,7 +7,9 @@
     "shot": "node tools/screenshot.mjs",
     "csslint": "node tools/csslint.mjs",
     "tokens": "node tools/tokens.mjs",
-    "contrast": "node tools/contrast.mjs"
+    "contrast": "node tools/contrast.mjs",
+    "sheet": "node tools/contactsheet.mjs",
+    "components": "node tools/components.mjs"
   },
   "devDependencies": {
     "playwright": "^1.61.1"
