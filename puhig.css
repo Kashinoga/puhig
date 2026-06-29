@@ -1320,8 +1320,12 @@ h1 {
   padding: clamp(7px, 2.8cqi, 11px) clamp(12px, 4.8cqi, 19px);
   text-decoration: none;
   text-transform: uppercase;
-  transition: background 160ms ease, border-color 160ms ease,
-    color 160ms ease, filter 160ms ease, transform 160ms ease;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease,
+    filter 160ms ease,
+    transform 160ms ease;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -1488,8 +1492,8 @@ h1 {
 .select--sm select {
   border-radius: clamp(4px, 1.6cqi, 7px);
   font-size: clamp(9px, 3.6cqi, 14px);
-  padding: clamp(5px, 2cqi, 8px) clamp(28px, 11cqi, 38px)
-    clamp(5px, 2cqi, 8px) clamp(9px, 3.6cqi, 14px);
+  padding: clamp(5px, 2cqi, 8px) clamp(28px, 11cqi, 38px) clamp(5px, 2cqi, 8px)
+    clamp(9px, 3.6cqi, 14px);
 }
 
 .select--lg select {
