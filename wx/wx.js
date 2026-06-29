@@ -251,7 +251,8 @@
   // static row-1 cards (about + location) nudge aside to make room. The fan
   // shows at most four — a fifth-and-beyond pile sits under the fourth card,
   // all at full opacity. After a brief hold the cards fly to their grid slots
-  // back-to-front (the back of the fan first, the top card last).
+  // front-to-back (the top card — the first revealed — first, the back of the
+  // fan last), mirroring the gather's first-card-leads order.
   // FLIP-style: the cards already occupy their final slots, so only transform +
   // opacity animate (no reflow); the static cards' nudge returns to rest.
   // Skipped under prefers-reduced-motion.
@@ -353,7 +354,7 @@
 
       var emergeStart = fanIdx * emergeStep;
       var emergeEnd = emergeStart + emergeDur;
-      var flyStart = flyPhaseStart + (lastIdx - i) * flyStep; // back of fan flies first
+      var flyStart = flyPhaseStart + i * flyStep; // top card (first revealed) flies first
       var flyEnd = flyStart + flyDur;
 
       // Full size throughout — the revealed cards match the cover, never shrunk.
@@ -379,8 +380,76 @@
       dealAnims.push(anim);
       anim.onfinish = function () {
         card.style.zIndex = "";
-        if (i === 0 && coverSleeve) coverSleeve.style.zIndex = ""; // front card lands last
+        if (i === lastIdx && coverSleeve) coverSleeve.style.zIndex = ""; // back of fan lands last
       };
+    });
+  }
+
+  // Fly-out: the reverse of the deal. Before a re-read (a new state, a cached
+  // re-click) replaces the current cards, they gather straight back onto the
+  // cover — the deck — and fade, so the old reading reads as returned to the
+  // deck the new one will be dealt from. A short straight gather (no fan, no
+  // hold) so the combined out-then-in stays snappy. Front card leaves first,
+  // staggered back; all slide under the cover (raised z-index) as they go.
+  // Cancelled and superseded the same way the deal is, via flyAnims + a token.
+  var flyAnims = [];
+  var transitionId = 0;
+
+  function flyOut(cards, done) {
+    for (var k = 0; k < flyAnims.length; k++) { try { flyAnims[k].cancel(); } catch (e) {} }
+    flyAnims = [];
+
+    var coverFrame = document.querySelector('[data-row="wx"] .card-frame--cover');
+    var coverSleeve = coverFrame ? coverFrame.closest(".card-sleeve") : null;
+    var base = coverSleeve ? coverSleeve.getBoundingClientRect() : cards[0].getBoundingClientRect();
+
+    var EASE = "cubic-bezier(0.4, 0, 0.7, 0.3)"; // accelerate into the deck
+    var perDur = 320;   // one card's flight back to the cover
+    var step = 90;      // gap between successive cards leaving
+    var lastIdx = cards.length - 1;
+    var total = lastIdx * step + perDur;
+
+    if (coverSleeve) coverSleeve.style.zIndex = "200"; // cards slide back under the deck
+
+    var pending = cards.length;
+    function settle() {
+      if (--pending > 0) return;
+      if (coverSleeve) coverSleeve.style.zIndex = "";
+      done();
+    }
+
+    cards.forEach(function (card, i) {
+      var r = card.getBoundingClientRect();
+      var t = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px)";
+      var start = i * step;
+      card.style.zIndex = String(100 - i); // front card on top, mirroring the deal
+      var anim = card.animate(
+        [
+          { transform: "none", opacity: 1, offset: 0 },
+          { transform: "none", opacity: 1, offset: start / total, easing: EASE },
+          { transform: t, opacity: 0, offset: (start + perDur) / total },
+          { transform: t, opacity: 0, offset: 1 }
+        ],
+        { duration: total, easing: "linear" }
+      );
+      flyAnims.push(anim);
+      // onfinish only on a clean run; cancellation (a superseding transition)
+      // leaves `done` unfired — the new transition drives the next render.
+      anim.onfinish = settle;
+    });
+  }
+
+  // Run `after` (which renders the next view) once the current result cards have
+  // flown back to the deck. Instant under reduced motion, or when nothing is
+  // shown yet — there is nothing to gather. The token lets a newer transition
+  // supersede a gather still in flight.
+  function clearThen(after) {
+    var existing = Array.prototype.slice.call(resultsEl.querySelectorAll(":scope > .card-sleeve"));
+    if (reduceMotionMQ.matches || !existing.length) { after(); return; }
+    var token = ++transitionId;
+    flyOut(existing, function () {
+      if (token !== transitionId) return;
+      after();
     });
   }
 
@@ -429,18 +498,38 @@
 
   function onSelect() {
     var state = stateByAbbr(selectEl.value);
-    if (!state) { renderEmpty(); return; }
+    if (!state) { clearThen(renderEmpty); return; }
 
     var token = ++requestId;
     currentAlerts = [];
-    render(noteCard("ph-cloud", "Reading the sky over " + state.capital + "…", null, true));
+
+    // The old cards gather back to the deck while the fetch runs in parallel.
+    // Whichever finishes first waits for the other: normally the gather lands
+    // first and a loading note is shown until the data arrives; if the fetch
+    // (e.g. a warm cache) beats the gather, the note is skipped and the results
+    // deal straight in. Both guard on `token` so a newer selection wins.
+    var fetched = null, fetchDone = false, gatherDone = false;
+
+    function showWhenReady() {
+      if (token !== requestId || !gatherDone || !fetchDone) return;
+      showResults(state.name, fetched[0], fetched[1]);
+    }
+
+    clearThen(function () {
+      if (token !== requestId) return;
+      gatherDone = true;
+      if (fetchDone) showWhenReady();
+      else render(noteCard("ph-cloud", "Reading the sky over " + state.capital + "…", null, true));
+    });
 
     Promise.all([
       loadForecast(state).catch(function () { return null; }),
       loadAlerts(state).catch(function () { return null; })
     ]).then(function (out) {
       if (token !== requestId) return; // a newer selection has taken over
-      showResults(state.name, out[0], out[1]);
+      fetched = out;
+      fetchDone = true;
+      showWhenReady();
     });
   }
 
@@ -497,7 +586,9 @@
     selectEl.value = "IA";       // reflect the fixture in the dropdown
     requestId++;                 // cancel any in-flight live fetch
     currentAlerts = [];
-    showResults("Iowa", CACHED_IOWA.forecast, CACHED_IOWA.alerts);
+    clearThen(function () {
+      showResults("Iowa", CACHED_IOWA.forecast, CACHED_IOWA.alerts);
+    });
   }
 
   // Copy buttons share one delegated listener over the results region.
