@@ -21,6 +21,9 @@
   /* Penguin orange */
   --teal: #18cac0;
   /* teal */
+  --teal-deep: #097a72;
+  /* deep teal — the brand teal is too bright for AA white text; this darker
+     tone clears 4.5:1 against --white (~4.8:1). Filled-button fill, both themes. */
   --yellow: #e8d060;
   /* accent yellow */
   --pink: #f090a8;
@@ -781,6 +784,10 @@ section {
   color: var(--dim);
 }
 
+[data-row="buttons"] .card-rarity {
+  color: var(--teal);
+}
+
 .card-quote {
   color: var(--dim);
   font-size: 11px;
@@ -1229,6 +1236,127 @@ h1 {
   flex-shrink: 0;
   height: clamp(28px, 11.2cqi, 45px);
   width: clamp(52px, 20.8cqi, 83px);
+}
+
+/* ── Buttons (A 500) ────────────────────────────────────────────────
+   A small push-button system. .btn is the base; a weight modifier
+   (--filled / --outline / --ghost) sets the visual emphasis and a size
+   modifier (--sm / --lg) sets the scale. Sizing scales with the card
+   container (cqi) so specimens track the surrounding card text, but the
+   component still reads at a sensible fixed size outside a container.
+   Orange is the system's interaction accent, shared with the pressed
+   theme-option and the saga rail. */
+.btn {
+  align-items: center;
+  background-color: transparent;
+  border: 1.5px solid transparent;
+  border-radius: clamp(6px, 2.4cqi, 10px);
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  flex-shrink: 0;
+  font-family: inherit;
+  font-size: clamp(11px, 4.4cqi, 18px);
+  font-weight: 500;
+  gap: clamp(5px, 2cqi, 8px);
+  justify-content: center;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: clamp(7px, 2.8cqi, 11px) clamp(12px, 4.8cqi, 19px);
+  text-transform: uppercase;
+  transition: background 160ms ease, border-color 160ms ease,
+    color 160ms ease, filter 160ms ease, transform 160ms ease;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.btn i {
+  font-size: 1.15em;
+}
+
+/* Press settles the button into the surface; the motion row's tactile
+   language (press = sink, release = rise). */
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+.btn:disabled,
+.btn[disabled] {
+  cursor: not-allowed;
+  opacity: 0.4;
+  transform: none;
+}
+
+/* Filled — the primary call to action. Teal is the system's primary; the fill
+   uses --teal-deep (not the bright --teal) so the white label clears AA. --white
+   is constant across themes, so the label stays light in dark mode too. */
+.btn--filled {
+  background-color: var(--teal-deep);
+  border-color: var(--teal-deep);
+  color: var(--white);
+}
+
+/* Deepen on hover, deeper on press — lightening a deep fill toward the bright
+   teal would wash the white label below AA, so it richens instead. */
+.btn--filled:hover {
+  filter: brightness(0.93);
+}
+
+.btn--filled:active {
+  filter: brightness(0.86);
+}
+
+/* Outline — the orange accent; secondary emphasis without the fill weight. */
+.btn--outline {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.btn--outline:hover {
+  background-color: color-mix(in srgb, var(--orange) 12%, transparent);
+}
+
+.btn--outline:active {
+  background-color: color-mix(in srgb, var(--orange) 20%, transparent);
+}
+
+/* Ghost — tertiary; a faint box at rest so it still reads as a button, firming
+   up on hover. */
+.btn--ghost {
+  border-color: color-mix(in srgb, var(--ink) 16%, transparent);
+  color: var(--dim);
+}
+
+.btn--ghost:hover {
+  background-color: color-mix(in srgb, var(--ink) 8%, transparent);
+  border-color: color-mix(in srgb, var(--ink) 28%, transparent);
+  color: var(--ink);
+}
+
+.btn--sm {
+  border-radius: clamp(4px, 1.6cqi, 7px);
+  font-size: clamp(9px, 3.6cqi, 14px);
+  padding: clamp(5px, 2cqi, 8px) clamp(9px, 3.6cqi, 14px);
+}
+
+.btn--lg {
+  border-radius: clamp(8px, 3.2cqi, 13px);
+  font-size: clamp(13px, 5.2cqi, 21px);
+  padding: clamp(9px, 3.6cqi, 14px) clamp(16px, 6.4cqi, 26px);
+}
+
+/* Wrapping cluster for laying button specimens side by side. */
+.btn-group {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(6px, 2.4cqi, 10px);
+  margin-block: clamp(8px, 3.2cqi, 13px);
 }
 
 /* Below ~564px viewport only one 264px card column fits (two need
