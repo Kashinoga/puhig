@@ -332,6 +332,8 @@ section {
   font-size: 64px;
 }
 
+/* Composed onto .panel-frame; nulls its treatment at equal specificity [0,1,0],
+   so this block MUST stay below .panel-frame (L297). */
 .panel-frame--flip {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -805,35 +807,37 @@ section {
 
 /* Per-section accent: the rarity gem follows its section's pip/art colour
    instead of the per-tier rarity colour, so pips and rarity read as one palette
-   per row. Equal specificity to the [data-rarity] rules above, so source order
-   (these come later) wins. (Header + colorography keep the tier colour: header
-   is the meta row; colorography is intentionally all-colour.) */
-[data-row="typography"] .card-rarity {
+   per row. The trailing [data-rarity] pins these one class higher [0,3,0] than
+   the [data-rarity] tier rules above [0,2,0], so they win on specificity, not
+   source order — a new tier rule added below can't silently flip a row's accent.
+   (Header + colorography keep the tier colour: header is the meta row;
+   colorography is intentionally all-colour.) */
+[data-row="typography"] .card-rarity[data-rarity] {
   color: var(--dim);
 }
 
-[data-row="iconography"] .card-rarity {
+[data-row="iconography"] .card-rarity[data-rarity] {
   color: var(--teal);
 }
 
-[data-row="motion"] .card-rarity {
+[data-row="motion"] .card-rarity[data-rarity] {
   color: var(--dim);
 }
 
-[data-row="buttons"] .card-rarity {
+[data-row="buttons"] .card-rarity[data-rarity] {
   color: var(--teal);
 }
 
-[data-row="dropdowns"] .card-rarity {
+[data-row="dropdowns"] .card-rarity[data-rarity] {
   color: var(--purple);
 }
 
-[data-row="apps"] .card-rarity {
+[data-row="apps"] .card-rarity[data-rarity] {
   color: var(--teal);
 }
 
 /* The WX app (wx/) reuses the deck; teal is its row identity too. */
-[data-row="wx"] .card-rarity {
+[data-row="wx"] .card-rarity[data-rarity] {
   color: var(--teal);
 }
 
@@ -848,6 +852,9 @@ section {
   letter-spacing: 0.12em;
 }
 
+/* Composed onto .panel-frame; nulls its sleeve treatment at equal specificity
+   [0,1,0], so this block MUST stay below .panel-frame (L297) — reorder above it
+   and the backdrop/bg/shadow reappear on every card. */
 .card-sleeve {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -959,6 +966,8 @@ section {
   transform-box: fill-box;
 }
 
+/* Equal specificity [0,1,0] to .mosaic-tile; MUST stay below it (L956) so this
+   reset wins and the entry animation is suppressed on already-revealed tiles. */
 .mosaic-tile--instant {
   animation: none;
 }
@@ -1709,6 +1718,9 @@ html[data-theme="dark"] .mosaic-overlay {
   }
 }
 
+/* Composed onto .panel-frame; restates the sleeve gloss (backdrop/bg/width) at
+   equal specificity [0,1,0] — intentional (the plastic gloss covers scroll
+   buttons too) — so this block MUST stay below .panel-frame (L297). */
 .scroll-control {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
