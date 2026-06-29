@@ -1,0 +1,37 @@
+/* ── WX — application styles ─────────────────────────────────────────
+   The WX app reuses the Pocket Universe deck wholesale: the page is a
+   `.container.panel` grid of real `.card-sleeve` cards, so layout, the
+   sleeve frame, flip/tilt, `.select`, `.btn`, type scale and colours all
+   come from puhig.css. The only additions here are card-internal: the
+   forecast temperature figure and a couple of text emphases. Everything
+   sizes off the card via cqi, like the rest of the card chrome. */
+
+/* Forecast headline number. */
+.wx-temp {
+  align-items: baseline;
+  display: flex;
+  gap: clamp(6px, 2.4cqi, 10px);
+  margin-block: clamp(4px, 1.6cqi, 8px);
+}
+
+.wx-temp-value {
+  font-size: clamp(40px, 22cqi, 64px);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.wx-temp-unit {
+  color: var(--dim);
+  font-size: clamp(15px, 7cqi, 22px);
+  font-weight: 400;
+}
+
+.wx-short {
+  font-weight: 500;
+}
+
+/* The note title leads an empty / loading / clear / error card. */
+.wx-note-title {
+  font-weight: 500;
+}

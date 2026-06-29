@@ -13,6 +13,10 @@
 !.github/**
 !.gitignore
 
+# Un-ignore the WX demo app (a working product built on the framework).
+!wx/
+!wx/**
+
 # Un-ignore local dev tooling (the helper script + its manifest), but not the
 # generated screenshots under tools/shots/ or installed deps.
 !package.json

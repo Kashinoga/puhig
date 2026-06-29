@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
+    <meta name="color-scheme" content="light dark" />
+    <title>WX — Pocket Universe</title>
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <link rel="stylesheet" href="../puhig.css" />
+    <link rel="stylesheet" href="../phosphor.css" />
+    <link rel="stylesheet" href="wx.css" />
+    <script src="../puhig.js" defer></script>
+    <script src="wx.js" defer></script>
+  </head>
+
+  <body>
+    <div id="mosaic-bg" data-mosaic-align="left" data-mosaic-grid-only><div class="mosaic-overlay"></div></div>
+    <div class="container panel">
+      <main>
+        <section data-row="wx">
+          <div class="panel-frame card-sleeve panel-row-start" data-row="wx">
+            <div class="panel-content card">
+              <div class="card-frame card-frame--cover">
+                <div class="card-cover-art" data-target="24" data-mosaic-align="left" data-mosaic-palette="teal" data-mosaic-static>
+                  <div class="mosaic-overlay card-mosaic"></div>
+                </div>
+                <div class="card-cover-top">
+                  <div class="card-title card-title--cover">
+                    <span class="card-name">WX</span>
+                  </div>
+                </div>
+                <div class="card-cover-bottom">
+                  <div class="card-footer card-footer--cover">
+                    <div class="card-footer-left">
+                      <span class="card-number">WX</span>
+                      <div class="card-metadata">
+                        <span class="card-set-abbreviation">NWS</span>
+                        <span class="card-language">EN</span>
+                      </div>
+                    </div>
+                    <div class="card-footer-right">
+                      <i class="card-rarity ph ph-cloud-sun" data-rarity="landmark"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card-back">
+              <i class="ph ph-planet"></i>
+            </div>
+          </div>
+          <div class="panel-frame card-sleeve" data-row="wx">
+            <div class="panel-content card">
+              <div class="card-frame">
+                <div class="card-title">
+                  <span class="card-name">Weather</span>
+                  <div class="card-cost">
+                    <span class="card-pip" style="background: var(--teal)"></span>
+                  </div>
+                </div>
+                <div class="card-art" data-mosaic-type="ca" data-target="24" data-mosaic-align="left" data-mosaic-palette="teal" data-mosaic-static>
+                  <div class="mosaic-overlay card-mosaic"></div>
+                </div>
+                <div class="card-type">
+                  <span class="card-type-label">Application — Weather</span>
+                  <i class="card-rarity ph ph-cloud-sun" data-rarity="stable"></i>
+                </div>
+                <div class="card-text-box">
+                  <p>A weather reader assembled from the Pocket Universe deck — the framework's own components, shown in a working app, drawing live data from the U.S. National Weather Service.</p>
+                </div>
+                <div class="card-footer">
+                  <div class="card-footer-left">
+                    <span class="card-number">WX</span>
+                    <div class="card-metadata">
+                      <span class="card-set-abbreviation">NWS</span>
+                      <span class="card-language">EN</span>
+                    </div>
+                  </div>
+                  <div class="card-footer-right">
+                    <span class="card-version">v0.2</span>
+                    <span class="card-author">Atelier Kashinoga</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card-back">
+              <i class="ph ph-planet"></i>
+            </div>
+          </div>
+          <div class="panel-frame card-sleeve" data-row="wx">
+            <div class="panel-content card">
+              <div class="card-frame">
+                <div class="card-title">
+                  <span class="card-name">Location</span>
+                  <div class="card-cost">
+                    <span class="card-pip" style="background: var(--teal)"></span>
+                  </div>
+                </div>
+                <div class="card-type">
+                  <span class="card-type-label">Application — Weather</span>
+                  <i class="card-rarity ph ph-map-pin" data-rarity="stable"></i>
+                </div>
+                <div class="card-text-box">
+                  <p>Pick a state to read its sky.</p>
+                  <div class="select-field">
+                    <span class="field-label">State</span>
+                    <div class="select">
+                      <select id="wx-state" aria-label="State">
+                        <option value="" selected disabled>Choose a state</option>
+                      </select>
+                      <i class="select-chevron ph ph-caret-down"></i>
+                    </div>
+                  </div>
+                  <div class="btn-group">
+                    <button class="btn btn--ghost btn--sm" id="wx-cached"><i class="ph ph-flask"></i>Cached Iowa</button>
+                  </div>
+                  <p class="card-quote">The framework, in use.</p>
+                </div>
+                <div class="card-footer">
+                  <div class="card-footer-left">
+                    <span class="card-number">WX</span>
+                    <div class="card-metadata">
+                      <span class="card-set-abbreviation">NWS</span>
+                      <span class="card-language">EN</span>
+                    </div>
+                  </div>
+                  <div class="card-footer-right">
+                    <span class="card-author">Atelier Kashinoga</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card-back">
+              <i class="ph ph-planet"></i>
+            </div>
+          </div>
+          <section id="wx-results" data-row="wx" aria-live="polite"></section>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

@@ -1001,13 +1001,46 @@ function initFlip(el, opts) {
 // Text/control zones that should not trigger a flip when clicked.
 var FLIP_EXCLUDE = '.card-name, .card-cost, .card-subtitle, .card-type, .card-text-box, .card-footer';
 
-document.querySelectorAll('.panel-frame--flip').forEach(function (el) {
-  initFlip(el, { lift: true, exclude: 'button, a, input, select, ' + FLIP_EXCLUDE });
-});
+// Init flip/tilt on a sleeve (or the settings panel). Idempotent via a
+// data-flip-init guard so the observer below can re-offer a card harmlessly.
+function initSleeve(el) {
+  if (el.dataset.flipInit) return;
+  el.dataset.flipInit = '1';
+  if (el.classList.contains('panel-frame--flip')) {
+    initFlip(el, { lift: true, exclude: 'button, a, input, select, ' + FLIP_EXCLUDE });
+  } else {
+    initFlip(el, { lift: false, exclude: FLIP_EXCLUDE });
+  }
+}
 
-document.querySelectorAll('.card-sleeve').forEach(function (el) {
-  initFlip(el, { lift: false, exclude: FLIP_EXCLUDE });
-});
+document.querySelectorAll('.panel-frame--flip, .card-sleeve').forEach(initSleeve);
+
+// Runtime card support: cards added to the DOM after load (e.g. the WX app's
+// weather results) get the same flip/tilt + cover-mosaic init as the authored
+// deck, so a dynamically-built grid behaves identically to a static one. Keeps
+// the no-globals contract — the framework watches its own subtree rather than
+// exposing an init hook. Mosaic drift churn is skipped cheaply: those mutations
+// target nodes inside .mosaic-overlay, so they never reach the card scan.
+(function () {
+  var observer = new MutationObserver(function (records) {
+    var sawMosaic = false;
+    for (var i = 0; i < records.length; i++) {
+      var rec = records[i];
+      if (rec.target && rec.target.closest && rec.target.closest('.mosaic-overlay')) continue;
+      for (var j = 0; j < rec.addedNodes.length; j++) {
+        var node = rec.addedNodes[j];
+        if (node.nodeType !== 1) continue;
+        if (node.matches && node.matches('.panel-frame--flip, .card-sleeve')) initSleeve(node);
+        if (node.querySelectorAll) {
+          node.querySelectorAll('.panel-frame--flip, .card-sleeve').forEach(initSleeve);
+          if ((node.matches && node.matches('.mosaic-overlay')) || node.querySelector('.mosaic-overlay')) sawMosaic = true;
+        }
+      }
+    }
+    if (sawMosaic) fitMosaics(false);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+}());
 
 // Hide purely-decorative chrome from assistive tech: the Phosphor icon glyphs,
 // the cost pips, and the mosaic art layers carry no information the adjacent
