@@ -17,8 +17,10 @@
 !wx/
 !wx/**
 
-# Un-ignore local dev tooling (the helper script + its manifest), but not the
-# generated screenshots under tools/shots/ or installed deps.
+# Un-ignore local dev tooling (the helper scripts + their manifest) so it's
+# shared with the repo: screenshot.mjs, csslint.mjs, tokens.mjs, contrast.mjs.
+# The `!tools/*.mjs` glob covers any new tool automatically. Still ignored:
+# generated screenshots under tools/shots/ and installed deps (node_modules).
 !package.json
 !tools/
 !tools/*.mjs
