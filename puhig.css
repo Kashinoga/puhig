@@ -72,6 +72,26 @@
   --mono-5: oklch(50% 0 0);
   --mono-6: oklch(72% 0 0);
   --mono-7: oklch(20% 0 0);
+  /* Teal palette — branded teal ramp anchored on --teal/--teal-deep, tighter to
+     the brand hue and a touch more saturated than miku so the cover reads as the
+     same teal as the row's pips, rarity gem, and filled button. Buttons card. */
+  --teal-1: oklch(24% 0.06 186);
+  --teal-2: oklch(76% 0.115 188);
+  --teal-3: oklch(47% 0.085 184);
+  --teal-4: oklch(90% 0.05 190);
+  --teal-5: oklch(62% 0.11 187);
+  --teal-6: oklch(83% 0.09 189);
+  --teal-7: oklch(38% 0.075 185);
+  /* Purple palette — branded violet ramp anchored on --purple, same dark-anchor
+     + brights spread as teal so the cover reads as the row's identity colour
+     (pips, rarity gem, select chevron). Drop-downs card. */
+  --purple-1: oklch(26% 0.07 300);
+  --purple-2: oklch(72% 0.12 300);
+  --purple-3: oklch(50% 0.11 300);
+  --purple-4: oklch(90% 0.05 300);
+  --purple-5: oklch(63% 0.105 300);
+  --purple-6: oklch(82% 0.08 302);
+  --purple-7: oklch(40% 0.09 298);
   --mosaic-hover: #e8d060;
   --mosaic-press: var(--black);
   --mosaic-grid: oklch(0% 0 0 / 4%);
@@ -788,6 +808,10 @@ section {
   color: var(--teal);
 }
 
+[data-row="dropdowns"] .card-rarity {
+  color: var(--purple);
+}
+
 .card-quote {
   color: var(--dim);
   font-size: 11px;
@@ -1357,6 +1381,105 @@ h1 {
   flex-wrap: wrap;
   gap: clamp(6px, 2.4cqi, 10px);
   margin-block: clamp(8px, 3.2cqi, 13px);
+}
+
+/* ── Drop-downs (A 600) ─────────────────────────────────────────────
+   A native <select> dressed to match the system. .select wraps the
+   control so a chevron can overlay the field (the native arrow is
+   removed via appearance:none); the native element keeps all keyboard,
+   focus, and accessibility behaviour for free — the pure-leaning choice.
+   Purple is the row's identity colour; orange stays the shared focus
+   accent, matching the button + theme-option focus rings. Sizing tracks
+   the card container (cqi) like .btn and the saga specimens. */
+.select {
+  align-items: center;
+  display: inline-flex;
+  position: relative;
+}
+
+.select select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: transparent;
+  border: 1.5px solid color-mix(in srgb, var(--ink) 28%, transparent);
+  border-radius: clamp(6px, 2.4cqi, 10px);
+  color: var(--ink);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: clamp(11px, 4.4cqi, 18px);
+  line-height: 1;
+  /* extra right inset clears the overlaid chevron */
+  padding: clamp(7px, 2.8cqi, 11px) clamp(34px, 13cqi, 44px)
+    clamp(7px, 2.8cqi, 11px) clamp(12px, 4.8cqi, 19px);
+  transition: border-color 160ms ease;
+  width: 100%;
+}
+
+.select select:hover {
+  border-color: color-mix(in srgb, var(--purple) 55%, transparent);
+}
+
+.select select:focus-visible {
+  border-color: var(--purple);
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+}
+
+.select select:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+/* Native option list — colours land in most engines; harmless where the
+   platform owns the popup. */
+.select select option {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+.select-chevron {
+  color: var(--purple);
+  font-size: clamp(14px, 5.2cqi, 20px);
+  pointer-events: none;
+  position: absolute;
+  right: clamp(10px, 4cqi, 16px);
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Size modifiers mirror the button scale. */
+.select--sm select {
+  border-radius: clamp(4px, 1.6cqi, 7px);
+  font-size: clamp(9px, 3.6cqi, 14px);
+  padding: clamp(5px, 2cqi, 8px) clamp(28px, 11cqi, 38px)
+    clamp(5px, 2cqi, 8px) clamp(9px, 3.6cqi, 14px);
+}
+
+.select--lg select {
+  border-radius: clamp(8px, 3.2cqi, 13px);
+  font-size: clamp(13px, 5.2cqi, 21px);
+  padding: clamp(9px, 3.6cqi, 14px) clamp(40px, 15cqi, 52px)
+    clamp(9px, 3.6cqi, 14px) clamp(16px, 6.4cqi, 26px);
+}
+
+/* Stacked field: a small caps label above a full-width select. */
+.select-field {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(4px, 1.6cqi, 7px);
+  margin-block: clamp(8px, 3.2cqi, 13px);
+}
+
+.select-field .select {
+  display: flex;
+  width: 100%;
+}
+
+.field-label {
+  color: var(--dim);
+  font-size: clamp(9px, 3.6cqi, 13px);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 /* Below ~564px viewport only one 264px card column fits (two need

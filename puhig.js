@@ -511,6 +511,8 @@ function fitMosaics(animate) {
       : p.dataset.mosaicPalette === "light" ? getPrefixedPalette("light")
       : p.dataset.mosaicPalette === "gray" ? getPrefixedPalette("gray")
       : p.dataset.mosaicPalette === "mono" ? getPrefixedPalette("mono")
+      : p.dataset.mosaicPalette === "teal" ? getPrefixedPalette("teal")
+      : p.dataset.mosaicPalette === "purple" ? getPrefixedPalette("purple")
       : defaultPalette;
 
     // Dimensions first — the card-art height is snapped to whole tile rows
