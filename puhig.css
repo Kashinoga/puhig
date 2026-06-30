@@ -249,6 +249,14 @@ h2 {
 }
 
 body {
+  /* Floor the body at the viewport so the full-bleed #mosaic-bg (absolute
+     inset:0, so it's only as tall as the body) always covers the screen — even
+     on a short page like /wx at load, where one row of cards would otherwise
+     leave the body shorter than the viewport and the grid stop mid-screen. It
+     still grows past this with content; the ResizeObserver re-cuts the SVG.
+     100vh (== the URL-bar-retracted height on iOS) guarantees coverage at every
+     URL-bar state with no scroll-time rebuild churn. */
+  min-height: 100vh;
   padding-top: calc(12px + env(safe-area-inset-top));
   padding-right: 12px;
   /* Reserve a band at the bottom so the fixed .scroll-controls (36px offset +
