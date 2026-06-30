@@ -1253,10 +1253,11 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
       var emitEnd = emitStart + emitDur;
       var settleEnd = emitEnd + settleDur;
 
+      // Fade in over the whole flight (mirrors the gather's fade-out), so the card
+      // emerges faint from the vortex rather than popping to full opacity in it.
       var frames = [
         { transform: bornT, opacity: 0, offset: 0 },
-        { transform: bornT, opacity: 0, offset: emitStart / total, easing: "ease-out" },
-        { transform: bornT, opacity: 1, offset: (emitStart + 70) / total, easing: EASE },
+        { transform: bornT, opacity: 0, offset: emitStart / total, easing: EASE },
         { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / total, easing: "ease-out" },
         { transform: "none", opacity: 1, offset: settleEnd / total }
       ];

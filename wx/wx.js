@@ -437,12 +437,14 @@
       var emitEnd = emitStart + emitDur;
       var settleEnd = emitEnd + settleDur;
 
-      // offset 0 → (wait at centre, hidden) → pop visible → fly out to slot,
-      // arriving a touch over-grown (momentum) → settle back to rest
+      // offset 0 → (wait at centre, hidden) → fade in from near-nothing as it flies
+      // out to its slot, arriving a touch over-grown (momentum) → settle back to
+      // rest. The fade spans the whole flight, mirroring the gather's fade-to-zero
+      // as a card is sucked in: a card is born faint at the vortex and resolves as
+      // it emerges, not popped to full opacity while still in the portal.
       var frames = [
         { transform: bornT, opacity: 0, offset: 0 },
-        { transform: bornT, opacity: 0, offset: emitStart / total, easing: "ease-out" },
-        { transform: bornT, opacity: 1, offset: (emitStart + 70) / total, easing: EASE },
+        { transform: bornT, opacity: 0, offset: emitStart / total, easing: EASE },
         { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / total, easing: "ease-out" },
         { transform: "none", opacity: 1, offset: settleEnd / total }
       ];
@@ -510,10 +512,11 @@
       var emitEnd = emitStart + emitDur;
       var settleEnd = emitEnd + settleDur;
 
+      // Fade in over the whole flight (mirrors the gather's fade-out), so the card
+      // emerges faint from the vortex rather than popping to full opacity in it.
       var frames = [
         { transform: bornT, opacity: 0, offset: 0 },
-        { transform: bornT, opacity: 0, offset: emitStart / total, easing: "ease-out" },
-        { transform: bornT, opacity: 1, offset: (emitStart + 70) / total, easing: EASE },
+        { transform: bornT, opacity: 0, offset: emitStart / total, easing: EASE },
         { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / total, easing: "ease-out" },
         { transform: "none", opacity: 1, offset: settleEnd / total }
       ];
