@@ -1135,6 +1135,180 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
   });
 }());
 
+// Cover-portal entry deal — the same cover-portal the WX deck plays, applied to
+// every cover card on the page. A cover pops in (a quick scale-up carrying a touch
+// of growth inertia), then its sibling cards are born tiny at the cover's centre
+// and spat out to their slots while the cover's mosaic zooms — a vortex opening.
+// The masthead cover (A 000) deals on page load; each section cover (A 100, A 200,
+// …) deals when it first scrolls into view, so the spit-out plays where the reader
+// can see it (matching how the mosaic tile entry is gated to the viewport). When we
+// arrive through the cross-document cover portal (viaPortal), that morph IS the
+// cover's entry, so we leave the cover alone and only spit its siblings — popping it
+// would break the portal's morph target. FLIP-style: each card already sits in its
+// final slot, so only transform + opacity animate (no reflow). fill:none reverts
+// every part to rest on end. Skipped under reduced motion. Plays once per cover,
+// after the initial fitMosaics build so the cover's mosaic exists for the zoom.
+(function () {
+  // Shared deal motion: a card is born tiny at the cover's centre (bornScale),
+  // flies out on EASE, and lands a touch over-grown (growScale) before settling.
+  var EASE = "cubic-bezier(0.2, 0.7, 0.25, 1)";
+  var bornScale = 0.16; // size of a card at the vortex centre before it flies out
+  var growScale = 1.05; // a card overshoots its rest size on landing, then settles
+
+  // The portal pulse: the mosaic inside the cover zooms (zoomScale > 1) — the
+  // vortex opening — holding between peakAt and closeAt then settling to rest. The
+  // optional inhale (inhaleScale < 1 at inhaleAt) gives the zoom a breath: the
+  // mosaic contracts first, then expands past rest to spit the cards out. fill:none
+  // reverts it on end.
+  function portalPulse(mosaic, total, peakAt, closeAt, zoomScale, inhaleScale, inhaleAt) {
+    if (!mosaic) return;
+    mosaic.style.transformOrigin = "center"; // zoom about the vortex centre
+    var frames = [{ transform: "scale(1)", offset: 0, easing: "ease-in-out" }];
+    if (inhaleScale != null) {
+      frames.push({ transform: "scale(" + inhaleScale + ")", offset: inhaleAt, easing: "ease-in-out" });
+    }
+    frames.push({ transform: "scale(" + zoomScale + ")", offset: peakAt, easing: "ease-in-out" });
+    frames.push({ transform: "scale(" + zoomScale + ")", offset: closeAt, easing: "ease-in-out" });
+    frames.push({ transform: "scale(1)", offset: 1 });
+    mosaic.animate(frames, { duration: total, easing: "linear" });
+  }
+
+  // Deal one cover's section in. `sleeve` is the cover's .card-sleeve; the masthead
+  // is every other .panel-frame sharing its parent (the <header> or the <section>).
+  function dealEntry(sleeve, viaPortal) {
+    if (reduceMotionMQ.matches || !sleeve) return;
+    var coverFrame = sleeve.querySelector(".card-frame--cover");
+    var mosaic = coverFrame ? coverFrame.querySelector(".mosaic-tiles-svg") : null;
+    var mast = Array.prototype.slice.call(sleeve.parentNode.children).filter(function (el) {
+      return el.classList && el.classList.contains("panel-frame") && el !== sleeve;
+    });
+    // Nothing to spit and the cover is mid-morph — there's no entry to play.
+    if (!mast.length && viaPortal) return;
+
+    // Read every final rect first (one layout pass), then animate transforms.
+    var base = sleeve.getBoundingClientRect();
+    var rects = mast.map(function (c) { return c.getBoundingClientRect(); });
+
+    var popDur = 360;     // the cover pops in (direct entry only)
+    var emitDelay = 300;  // the first card emerges as the cover settles
+    var emitStep = 90;    // gap between successive cards
+    var emitDur = 460;    // one card's flight from the cover centre to its slot
+    var settleDur = 160;  // the spit-out inertia
+    var closeDur = 300;   // the mosaic eases back to rest behind the last card
+
+    var lastIdx = mast.length - 1;
+    var lastLand = emitDelay + lastIdx * emitStep + emitDur + settleDur;
+    var closeStart = Math.max(emitDelay, lastLand - settleDur - 140);
+    var total = Math.max(lastLand, closeStart + closeDur);
+
+    // Direct entry: pop the cover in, then open the portal (mosaic zoom) as the
+    // siblings spit. Via portal: the cover is mid-morph — touch neither.
+    if (!viaPortal) {
+      sleeve.animate(
+        [
+          { transform: "scale(0.84)", opacity: 0, easing: EASE },
+          { transform: "scale(" + growScale + ")", opacity: 1, offset: 0.78, easing: "ease-out" },
+          { transform: "none", opacity: 1 }
+        ],
+        { duration: popDur + 140 }
+      );
+      portalPulse(
+        mosaic, total, emitDelay / total, closeStart / total, 1.28,
+        0.88, 140 / total // breath in before the exhale spits the siblings out
+      );
+    }
+    // Reveal the cover from the pre-deal hide: the running pop (or, via portal, the
+    // morph) carries it in, so clearing the inline opacity now doesn't flash it.
+    sleeve.style.opacity = "";
+
+    mast.forEach(function (card, i) {
+      var r = rects[i];
+      // Same-row cards align top-left to the cover; the scale shrinks each to a
+      // tile at the cover's centre before it flies out.
+      var bornT = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(" + bornScale + ")";
+      var emitStart = emitDelay + i * emitStep;
+      var emitEnd = emitStart + emitDur;
+      var settleEnd = emitEnd + settleDur;
+
+      var frames = [
+        { transform: bornT, opacity: 0, offset: 0 },
+        { transform: bornT, opacity: 0, offset: emitStart / total, easing: "ease-out" },
+        { transform: bornT, opacity: 1, offset: (emitStart + 70) / total, easing: EASE },
+        { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / total, easing: "ease-out" },
+        { transform: "none", opacity: 1, offset: settleEnd / total }
+      ];
+      if (settleEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
+
+      card.style.zIndex = String(100 - i);
+      var anim = card.animate(frames, { duration: total, easing: "linear" });
+      // The running deal holds the card hidden (opacity 0 at offset 0) then brings
+      // it in, so clearing the pre-deal hide now reveals it without a flash.
+      card.style.opacity = "";
+      anim.onfinish = function () { card.style.zIndex = ""; };
+    });
+  }
+
+  function sleeveOf(frame) { return frame.closest(".card-sleeve"); }
+
+  // Pre-deal hide: a cover and its siblings start invisible (opacity only — slots
+  // stay laid out, so rects read true) until their deal reveals them. Without this,
+  // a section dealt on scroll-in would sit visible at rest, then snap to the born
+  // pose and fly back — a jerk, since there's no exit animation. Applied only to the
+  // viewport-triggered section covers; the masthead deals on load, near-immediately.
+  function hideGroup(sleeve) {
+    if (!sleeve) return;
+    sleeve.style.opacity = "0";
+    Array.prototype.slice.call(sleeve.parentNode.children).forEach(function (el) {
+      if (el.classList && el.classList.contains("panel-frame") && el !== sleeve) el.style.opacity = "0";
+    });
+  }
+
+  // The masthead cover (A 000) deals on load. pagereveal (where supported) fires
+  // before paint and tells us whether the cover portal is morphing us in; we stash
+  // that and run the deal on load, once the initial fitMosaics build has cut the
+  // cover's mosaic so the zoom has tiles.
+  var headerCover = document.querySelector("header .card-frame--cover");
+  var headerSleeve = headerCover ? sleeveOf(headerCover) : null;
+  var headerPlayed = false, viaPortal = false;
+  function playHeader() {
+    if (headerPlayed) return;
+    headerPlayed = true;
+    dealEntry(headerSleeve, viaPortal);
+  }
+  if ("onpagereveal" in window) {
+    window.addEventListener("pagereveal", function (e) { viaPortal = !!e.viewTransition; });
+  }
+  window.addEventListener("load", function () { requestAnimationFrame(playHeader); });
+
+  // Each section cover (A 100, A 200, …) deals once, the first time it scrolls into
+  // view — so sections below the fold spit out as the reader reaches them rather
+  // than animating unseen on load. (A section in view at load fires straight away.)
+  var sectionSleeves = Array.prototype.slice
+    .call(document.querySelectorAll("main section .card-frame--cover"))
+    .map(sleeveOf)
+    .filter(Boolean);
+  // Hide them now (before first paint) so they don't show at rest then jerk into the
+  // deal on scroll-in. Skipped under reduced motion (no deal runs to reveal them).
+  if (!reduceMotionMQ.matches) sectionSleeves.forEach(hideGroup);
+  window.addEventListener("load", function () {
+    if (window.IntersectionObserver) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) {
+          if (!en.isIntersecting) return;
+          io.unobserve(en.target);
+          dealEntry(en.target, false);
+        });
+      }, { threshold: 0.35 });
+      sectionSleeves.forEach(function (s) { io.observe(s); });
+    } else {
+      // No IO: deal them all on load (still once each).
+      requestAnimationFrame(function () {
+        sectionSleeves.forEach(function (s) { dealEntry(s, false); });
+      });
+    }
+  });
+}());
+
 if (navigator.maxTouchPoints > 0 && !window.matchMedia("(pointer: fine)").matches) {
   document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
   document.addEventListener("touchmove", function (e) {
