@@ -261,8 +261,11 @@ function setupMosaicPress(container) {
     ensureOverlays(svg);
     var tw = container._tw || 24;
     var th = container._th || 24;
-    pressTileCol = Math.floor(cx / tw);
-    pressTileRow = Math.floor(cy / th);
+    // cx/cy are frame-relative; a cover mosaic's tiles are offset by its bleed
+    // ring (the svg overhangs the frame), so add the ring back to hit the tile
+    // actually under the pointer.
+    pressTileCol = Math.floor(cx / tw) + (container._bleedCol || 0);
+    pressTileRow = Math.floor(cy / th) + (container._bleedRow || 0);
 
     svg._tiles.forEach(function (tile) {
       var dist = Math.abs(tile._col - pressTileCol) + Math.abs(tile._row - pressTileRow);
@@ -566,11 +569,31 @@ function fitMosaics(animate) {
     // Static mosaics (card-art, grid-only backgrounds) appear instantly — no
     // staggered tile entry animation.
     var playEntry = playAllEntry && inViewport && !isStaticBg;
+    // Cover mosaics carry a bleed ring of extra tiles beyond the frame (clipped by
+    // .card-cover-art's overflow:hidden) so the portal pulse's inhale — which
+    // contracts the mosaic below the frame — draws more tiles in at the edges
+    // rather than exposing the dark frame background. Sized to cover the inhale
+    // trough; the ring overhangs at rest, so the resting mosaic still fills the
+    // frame edge-to-edge unchanged.
+    var bleed = isCover ? Math.max(1, Math.ceil(0.07 * Math.max(cols, rows))) : 0;
+    var bCols = cols + 2 * bleed, bRows = rows + 2 * bleed;
+    var bW = bleed ? bCols * tw : W;
+    var bH = bleed ? bRows * th : H_build;
     var newSvg = isGridOnly
-      ? buildGridSVG(W, H_build, cols, rows, tw, th, gridStroke, mc)
+      ? buildGridSVG(bW, bH, bCols, bRows, tw, th, gridStroke, mc)
       : (p.dataset.mosaicType === "ca"
-          ? buildCAMosaicSVG(W, H_build, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry)
-          : buildMosaicSVG(W, H_build, cols, rows, tw, th, seed, gridStroke, palette, mc, playEntry));
+          ? buildCAMosaicSVG(bW, bH, bCols, bRows, tw, th, seed, gridStroke, palette, mc, playEntry)
+          : buildMosaicSVG(bW, bH, bCols, bRows, tw, th, seed, gridStroke, palette, mc, playEntry));
+    // Shift the oversized mosaic so its inner (non-ring) region aligns to the
+    // frame; the ring overhangs equally on every side. Press mapping adds the ring
+    // back when locating the tapped tile (see setupMosaicPress).
+    p._bleedCol = bleed; p._bleedRow = bleed;
+    if (bleed) {
+      newSvg.style.left = (-bleed * tw) + "px";
+      newSvg.style.top = (-bleed * th) + "px";
+      newSvg.style.width = bW + "px";
+      newSvg.style.height = bH + "px";
+    }
     if (!isSidebar && W_full !== undefined && W_full > W && p.dataset.mosaicAlign !== "left") {
       newSvg.style.left = (W_full - W) + "px";
       newSvg.style.width = W + "px";
@@ -1286,7 +1309,11 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
   var sectionSleeves = Array.prototype.slice
     .call(document.querySelectorAll("main section .card-frame--cover"))
     .map(sleeveOf)
-    .filter(Boolean);
+    .filter(Boolean)
+    // A cover that is itself a portal endpoint (data-portal) is an app's masthead
+    // that runs its own load entry (e.g. WX) — skip it, or we'd pre-hide it and
+    // deal it in competition with the app, leaving its siblings stuck invisible.
+    .filter(function (s) { return !s.hasAttribute("data-portal"); });
   // Hide them now (before first paint) so they don't show at rest then jerk into the
   // deal on scroll-in. Skipped under reduced motion (no deal runs to reveal them).
   if (!reduceMotionMQ.matches) sectionSleeves.forEach(hideGroup);

@@ -326,6 +326,17 @@
     };
   }
 
+  // The masthead: the cover's sibling sleeves (About, the idle note, Location) on
+  // the cover's own row — not the nested forecast/results sections. These are what
+  // the load entry spits out from the cover's centre.
+  function mastCards() {
+    var cover = coverParts();
+    if (!cover.sleeve) return [];
+    return Array.prototype.slice.call(cover.sleeve.parentNode.children).filter(function (el) {
+      return el.classList && el.classList.contains("card-sleeve") && el.getAttribute("data-wx-slot") !== "cover";
+    });
+  }
+
   // The portal pulse: the whole cover card (its .card-sleeve) recedes
   // (faceScale < 1) while the mosaic inside it zooms (zoomScale > 1, so the
   // tiles' net scale faceScale×zoomScale still reads as a zoom-in) — the vortex
@@ -457,11 +468,7 @@
     if (reduceMotionMQ.matches) return;
     var cover = coverParts();
     if (!cover.sleeve) return;
-    // The masthead is the cover's sibling sleeves (About, note, Location) — scope
-    // to the cover's own row, not the nested forecast/results sections.
-    var mast = Array.prototype.slice.call(cover.sleeve.parentNode.children).filter(function (el) {
-      return el.classList && el.classList.contains("card-sleeve") && el.getAttribute("data-wx-slot") !== "cover";
-    });
+    var mast = mastCards();
     if (!mast.length) return;
 
     var base = cover.sleeve.getBoundingClientRect();
@@ -515,6 +522,10 @@
       card.style.zIndex = String(100 - i);
       var anim = card.animate(frames, { duration: total, easing: "linear" });
       entryAnims.push(anim);
+      // The running deal holds the card hidden (opacity 0 at offset 0) then brings
+      // it in, so clearing the pre-deal hide now reveals it through the deal, not in
+      // a flash; without this it would snap back to the inline opacity:0 on finish.
+      card.style.opacity = "";
       anim.onfinish = function () { card.style.zIndex = ""; };
     });
   }
@@ -809,10 +820,31 @@
   // render it straight away; the alerts region starts empty.
   renderEmpty();
 
-  // Page-load entry: cover pops in, then the masthead spits out. Once only.
+  // Pre-deal hide: the masthead siblings start invisible (opacity only — their
+  // slots stay laid out so the deal reads true rects) until the entry spits them
+  // from the cover's centre. Without this they sit at rest in the first paint —
+  // and, arriving through the portal, in the view-transition snapshot — then jerk
+  // back to the cover to deal. The cover itself is never hidden: on a direct load
+  // its pop fades it in; through the portal it is the morph target. Skipped under
+  // reduced motion, where no deal runs to reveal them.
+  if (!reduceMotionMQ.matches) {
+    mastCards().forEach(function (c) { c.style.opacity = "0"; });
+  }
+
+  // Page-load entry: cover pops in, then the masthead spits from its centre. Once.
+  // pagereveal (where it fires) is preferred — it runs before the first paint and
+  // reports, via e.viewTransition, whether the cover portal is morphing us in. A
+  // cross-document portal arrival, though, doesn't reliably deliver pagereveal to
+  // the new page, so we also arm a load fallback; whichever lands first plays the
+  // entry. The fallback reads the portal arrival from the exit origin puhig stashes
+  // in sessionStorage as it leaves the deck, consuming it so a later direct reload
+  // reads as a direct load (cover pops) rather than a portal arrival (cover held).
   if ("onpagereveal" in window) {
     window.addEventListener("pagereveal", function (e) { playEntry(!!e.viewTransition); });
-  } else {
-    playEntry(false);
   }
+  window.addEventListener("load", function () {
+    var viaPortal = sessionStorage.getItem("vt-exit-origin") != null;
+    sessionStorage.removeItem("vt-exit-origin");
+    playEntry(viaPortal);
+  });
 })();
