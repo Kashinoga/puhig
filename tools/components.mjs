@@ -24,7 +24,7 @@
 //
 // Usage:
 //   node tools/components.mjs [options]
-//   npm run components -- --consumer wx/index.html --trigger '#wx-cached'
+//   npm run components -- --consumer 'wx/index.html?dev' --trigger '#wx-cached'
 //
 // Options:
 //   --consumer <url|path>  Page whose DOM classes are checked (default: wx/index.html)
@@ -34,7 +34,8 @@
 //   --sheets <files>       Comma-separated stylesheets that DEFINE classes
 //                          (default: puhig.css,wx/wx.css,phosphor.css)
 //   --trigger <css>        Click this before reading the DOM, to populate dynamic
-//                          content (e.g. '#wx-cached' deals the cached fixture)
+//                          content (e.g. '#wx-cached' on the ?dev card deals the
+//                          cached fixture)
 //   --framework <file>     Which sheet is "the framework" for the dependency
 //                          surface report (default: puhig.css)
 //   --deps                 List the full framework dependency surface

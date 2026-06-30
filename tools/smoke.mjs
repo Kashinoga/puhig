@@ -22,8 +22,8 @@
 //   npm run smoke
 //
 // Options:
-//   --url <url>      Consumer page         (default: file://<repo>/wx/index.html)
-//   --trigger <css>  Click to populate     (default: #wx-cached)
+//   --url <url>      Consumer page         (default: file://<repo>/wx/index.html?dev)
+//   --trigger <css>  Click to populate     (default: #wx-cached, on the ?dev card)
 //   --min-cards <n>  Fail if fewer .card-sleeve after the deal (default: 3)
 //   --wait <ms>      Settle delay after load and after the deal (default: 1200)
 //   --json           Emit results as JSON
@@ -50,7 +50,9 @@ function parseArgs(argv) {
 async function main() {
   const a = parseArgs(process.argv.slice(2));
   const o = {
-    url: a.url || pathToFileURL(join(REPO, 'wx', 'index.html')).href,
+    // ?dev builds the dev card, which now hosts the #wx-cached fixture trigger
+    // (the only deterministic, API-free way to populate the deck for the test).
+    url: a.url || pathToFileURL(join(REPO, 'wx', 'index.html')).href + '?dev',
     trigger: a.trigger || '#wx-cached',
     minCards: Number(a['min-cards'] ?? 3),
     wait: Number(a.wait ?? 1200),

@@ -30,11 +30,77 @@ html[data-theme="dark"] {
   --mosaic-grid: oklch(70% 0.13 195 / 30%);
 }
 
+/* ── Weather mosaic palettes ─────────────────────────────────────────
+   The forecast card's mosaic art is recoloured by the weather (forecastPalette
+   in wx.js): a condition (storm / rain / snow / fog) sets the mood, else the
+   temperature picks a warm→cool ramp (hot → warm → teal → cool). Each is a
+   seven-step oklch ramp mirroring the framework's teal palette's lightness/
+   chroma spread (24/76/47/90/62/83/38% L), re-hued — so they read as the same
+   family of tiles at a different temperature/mood. getPrefixedPalette resolves
+   --<name>-1..7; the white figure text stays legible on any of them via its
+   bottom scrim. (mild weather reuses the framework's teal; fog reuses gray.) */
+:root {
+  /* Hot — high temp / strong sun: reds through orange (hue ~32–55). */
+  --hot-1: oklch(24% 0.09 33);
+  --hot-2: oklch(76% 0.15 52);
+  --hot-3: oklch(47% 0.15 35);
+  --hot-4: oklch(90% 0.07 60);
+  --hot-5: oklch(62% 0.17 42);
+  --hot-6: oklch(83% 0.12 55);
+  --hot-7: oklch(38% 0.13 30);
+
+  /* Warm — mild-warm / sunny: amber and gold (hue ~68–88). */
+  --warm-1: oklch(26% 0.07 68);
+  --warm-2: oklch(78% 0.14 86);
+  --warm-3: oklch(50% 0.12 72);
+  --warm-4: oklch(91% 0.06 88);
+  --warm-5: oklch(64% 0.14 80);
+  --warm-6: oklch(84% 0.10 86);
+  --warm-7: oklch(40% 0.10 66);
+
+  /* Cool — cold / clear-cold: blues (hue ~245–252). */
+  --cool-1: oklch(24% 0.07 250);
+  --cool-2: oklch(74% 0.12 248);
+  --cool-3: oklch(47% 0.11 250);
+  --cool-4: oklch(90% 0.05 245);
+  --cool-5: oklch(61% 0.12 250);
+  --cool-6: oklch(82% 0.08 247);
+  --cool-7: oklch(38% 0.09 252);
+
+  /* Rain — slate blue-grey, low chroma (hue ~235). */
+  --rain-1: oklch(24% 0.03 235);
+  --rain-2: oklch(72% 0.05 235);
+  --rain-3: oklch(46% 0.045 235);
+  --rain-4: oklch(88% 0.025 235);
+  --rain-5: oklch(60% 0.05 235);
+  --rain-6: oklch(80% 0.04 235);
+  --rain-7: oklch(36% 0.04 235);
+
+  /* Storm — thunder: deep, moody indigo-violet (hue ~283–292). */
+  --storm-1: oklch(20% 0.06 285);
+  --storm-2: oklch(68% 0.12 290);
+  --storm-3: oklch(42% 0.10 285);
+  --storm-4: oklch(85% 0.06 292);
+  --storm-5: oklch(55% 0.11 288);
+  --storm-6: oklch(74% 0.09 290);
+  --storm-7: oklch(30% 0.08 283);
+
+  /* Snow — pale icy blue, high lightness, low chroma (hue ~225). */
+  --snow-1: oklch(40% 0.02 225);
+  --snow-2: oklch(92% 0.03 225);
+  --snow-3: oklch(66% 0.03 225);
+  --snow-4: oklch(97% 0.015 225);
+  --snow-5: oklch(80% 0.03 225);
+  --snow-6: oklch(88% 0.025 225);
+  --snow-7: oklch(55% 0.025 225);
+}
+
 /* Forecast headline number. */
 .wx-temp {
   align-items: baseline;
   display: flex;
   gap: clamp(6px, 2.4cqi, 10px);
+  justify-content: flex-end;
   margin-block: clamp(4px, 1.6cqi, 8px);
 }
 
@@ -53,6 +119,42 @@ html[data-theme="dark"] {
 
 .wx-short {
   font-weight: 500;
+}
+
+/* The forecast figure: temperature + short forecast laid over the card's mosaic
+   art (like a cover's title), anchored bottom-right. z-index 2 lifts it above the
+   tiles (the appended .mosaic-tiles-svg + the z-index 1 gloss overlay); a bottom
+   scrim + white text + shadow keep it legible over any teal tile run, matching the
+   cover's treatment. pointer-events:none so taps still ripple the mosaic beneath. */
+.wx-forecast-figure {
+  align-items: flex-end;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent 55%);
+  color: var(--mosaic-white);
+  display: flex;
+  flex-direction: column;
+  inset: 0;
+  justify-content: flex-end;
+  padding: clamp(12px, 4.8cqi, 19px);
+  pointer-events: none;
+  position: absolute;
+  text-align: right;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  z-index: 2;
+}
+
+/* The unit reads as secondary over the art, but --dim is too low-contrast on the
+   mosaic — soften the white instead. */
+.wx-forecast-figure .wx-temp-unit {
+  color: inherit;
+  opacity: 0.8;
+}
+
+/* Dev card (opt-in via ?dev): the temperature scrubber. Native range, tinted to
+   the deck's teal; everything else on the card reuses .select / .btn / .card-quote. */
+.wx-dev-range {
+  accent-color: var(--teal);
+  margin-block-start: clamp(4px, 1.6cqi, 8px);
+  width: 100%;
 }
 
 /* Alert location line (📍 area description) — a muted caption under the

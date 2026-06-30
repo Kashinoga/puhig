@@ -156,18 +156,32 @@
   // dealt cards (alerts, the clear-skies note) wrap a body in a sleeve instead.
   var FC_NUM = "WX 004"; // the forecast card's collector number / its column
 
-  // A footer: a card-number on the left over a single metadata line.
-  function footer(number, meta) {
+  // A footer: a card-number on the left over a metadata line, plus optional extras
+  // that match the static masthead cards' footers — opts.setAbbr renders a set
+  // abbreviation (the data source, e.g. "NWS") before the language/meta value, and
+  // opts.author renders an author on the right. Omit opts for the bare data-card
+  // footer (number + a single meta value).
+  function footer(number, meta, opts) {
+    opts = opts || {};
+    var setAbbr = opts.setAbbr
+      ? '<span class="card-set-abbreviation">' + esc(opts.setAbbr) + "</span>"
+      : "";
+    var right = opts.author
+      ? '<div class="card-footer-right"><span class="card-author">' + esc(opts.author) + "</span></div>"
+      : "";
     return (
       '<div class="card-footer"><div class="card-footer-left">' +
         '<span class="card-number">' + esc(number) + "</span>" +
-        '<div class="card-metadata"><span class="card-language">' + esc(meta) + "</span></div>" +
-      "</div></div>"
+        '<div class="card-metadata">' + setAbbr +
+          '<span class="card-language">' + esc(meta) + "</span></div>" +
+      "</div>" + right + "</div>"
     );
   }
 
   // A note body carries the app's calm empty / loading / clear / error voice.
-  function noteBody(icon, heading, body, number) {
+  // opts (optional) flows to footer — e.g. the masthead idle note passes the set
+  // abbreviation + author to match its static siblings.
+  function noteBody(icon, heading, body, number, opts) {
     return (
       title("Weather", "var(--teal)") +
       typeRow("Reading", icon) +
@@ -175,23 +189,53 @@
         '<p class="wx-note-title">' + esc(heading) + "</p>" +
         (body ? "<p>" + esc(body) + "</p>" : "") +
       "</div>" +
-      footer(number, "EN")
+      footer(number, "EN", opts)
     );
   }
 
   // The live forecast body (temperature + short / detailed prose).
-  function forecastBody(place, period) {
-    var wind = period.windSpeed ? period.windDirection + " " + period.windSpeed : "";
+  // Recolour the forecast mosaic by the weather: a condition (thunder, snow, rain,
+  // fog) sets the mood directly; otherwise the temperature picks a warm→cool ramp.
+  // The names resolve to --<name>-1..7 in wx.css; mild weather and fog reuse the
+  // framework's own teal / gray palettes.
+  function forecastPalette(period) {
+    var cond = (period.shortForecast || "").toLowerCase();
+    if (/thunder|lightning|t-?storm|tstm/.test(cond)) return "storm";
+    if (/snow|sleet|ic(e|y)|flurr|wintry|blizzard|freezing|frost/.test(cond)) return "snow";
+    if (/rain|shower|drizzle|storm/.test(cond)) return "rain";
+    if (/fog|haze|mist|smoke/.test(cond)) return "gray";
+    var t = parseFloat(period.temperature); // NaN for missing (Number(null) is 0)
+    if (period.temperatureUnit === "C") t = t * 9 / 5 + 32; // ramp thresholds are °F
+    if (isNaN(t)) return "teal";
+    if (t >= 85) return "hot";
+    if (t >= 68) return "warm";
+    if (t >= 55) return "teal"; // mild — the app's default cool-teal
+    return "cool";              // cold
+  }
+
+  function forecastBody(place, period, generatedAt) {
+    // When NWS generated the forecast (properties.generatedAt), formatted like the
+    // alert cards' times and labelled — parallel to the alerts' "until <time>".
+    var at = fmtTime(generatedAt);
     return (
       title(place, "var(--teal)") +
       typeRow("Forecast — " + period.name, "ph-cloud-sun") +
+      // The temperature + short forecast sit over the card's mosaic art, laid into a
+      // figure above the tiles. The palette tracks the weather (forecastPalette).
+      // data-mosaic-static: built once by fitMosaics, no entry stagger. The detailed
+      // forecast stays below in the text box.
+      '<div class="card-art" data-mosaic-type="ca" data-target="24" data-mosaic-align="left" data-mosaic-palette="' + forecastPalette(period) + '" data-mosaic-static>' +
+        '<div class="mosaic-overlay card-mosaic"></div>' +
+        '<div class="wx-forecast-figure">' +
+          '<div class="wx-temp"><span class="wx-temp-value">' + esc(period.temperature) + "</span>" +
+            '<span class="wx-temp-unit">°' + esc(period.temperatureUnit) + "</span></div>" +
+          '<p class="wx-short">' + esc(period.shortForecast) + "</p>" +
+        "</div>" +
+      "</div>" +
       '<div class="card-text-box">' +
-        '<div class="wx-temp"><span class="wx-temp-value">' + esc(period.temperature) + "</span>" +
-          '<span class="wx-temp-unit">°' + esc(period.temperatureUnit) + "</span></div>" +
-        '<p class="wx-short">' + esc(period.shortForecast) + "</p>" +
         "<p>" + esc(trunc(period.detailedForecast, 130)) + "</p>" +
       "</div>" +
-      footer(FC_NUM, wind)
+      footer(FC_NUM, at ? "Forecasted at " + at : "")
     );
   }
 
@@ -236,8 +280,10 @@
       var rel = props.relativeLocation && props.relativeLocation.properties;
       var place = rel ? rel.city + ", " + rel.state : "Near " + state.capital;
       return getJSON(props.forecast).then(function (fc) {
-        var periods = (fc.properties && fc.properties.periods) || [];
-        return { place: place, period: periods[0] || null };
+        var fcProps = fc.properties || {};
+        var periods = fcProps.periods || [];
+        // generatedAt is when NWS produced the forecast — the "forecasted at" time.
+        return { place: place, period: periods[0] || null, generatedAt: fcProps.generatedAt || "" };
       });
     });
   }
@@ -309,12 +355,13 @@
   // on cancel. Skipped under prefers-reduced-motion.
   var reduceMotionMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-  // Shared deal motion: a card is born tiny at the cover's centre (bornScale),
-  // flies out on EASE, and lands a touch over-grown (growScale) before settling —
-  // the spit-out's inertia. Used by both the selection deal and the load entry.
-  var EASE = "cubic-bezier(0.2, 0.7, 0.25, 1)";
-  var bornScale = 0.16; // size of a card at the vortex centre before it flies out
-  var growScale = 1.05; // a card overshoots its rest size on landing, then settles
+  // The cover-portal animation toolkit the HIG framework provides (window.puhig.
+  // portal, from puhig.js — loaded before this script). WX animates its own cover
+  // with these shared primitives — the portal pulse, the deal timing, the card
+  // fly-out and the cover breath — instead of re-implementing them, so the deck
+  // deals with the same motion as every HIG cover and a tweak to that motion is one
+  // edit in the framework, not one per app.
+  var portal = window.puhig.portal;
 
   // The cover's animatable parts: the sleeve (deal origin / rect, scaled to
   // recede) and the mosaic tile SVG inside it (scaled to zoom).
@@ -328,56 +375,16 @@
 
   // The masthead: the cover's sibling sleeves (About, the idle note, Location) on
   // the cover's own row — not the nested forecast/results sections. These are what
-  // the load entry spits out from the cover's centre.
+  // the load entry spits out from the cover's centre. Dev cards (data-wx-slot
+  // "dev-*") also live in this row but are static scaffolding — excluded so the
+  // entry deal doesn't spit them and the pre-deal hide doesn't blank them.
   function mastCards() {
     var cover = coverParts();
     if (!cover.sleeve) return [];
     return Array.prototype.slice.call(cover.sleeve.parentNode.children).filter(function (el) {
-      return el.classList && el.classList.contains("card-sleeve") && el.getAttribute("data-wx-slot") !== "cover";
+      var slot = (el.getAttribute && el.getAttribute("data-wx-slot")) || "";
+      return el.classList && el.classList.contains("card-sleeve") && slot !== "cover" && slot.indexOf("dev") !== 0;
     });
-  }
-
-  // The portal pulse: the whole cover card (its .card-sleeve) recedes
-  // (faceScale < 1) while the mosaic inside it zooms (zoomScale > 1, so the
-  // tiles' net scale faceScale×zoomScale still reads as a zoom-in) — the vortex
-  // opening. Both hold between peakAt and closeAt (offsets in [0,1] of `total`)
-  // then settle back to rest. The sleeve has no resting transform (the flip only
-  // sets one during interaction, which doesn't happen mid-deal); fill:none
-  // reverts both on end / cancel. Returns the WAAPI animations so the caller can
-  // track + cancel them.
-  // The optional inhale (inhaleScale < 1 at inhaleAt, before peakAt) gives the
-  // zoom a breath: the mosaic contracts first, then expands past rest to spit the
-  // cards out — a draw-in before the blow-out. Omit it (as the gather does, being
-  // an inhale already) for a plain exhale.
-  function portalPulse(sleeve, mosaic, total, peakAt, closeAt, faceScale, zoomScale, inhaleScale, inhaleAt) {
-    var anims = [];
-    if (sleeve) {
-      anims.push(sleeve.animate(
-        [
-          { transform: "none", offset: 0, easing: "ease-out" },
-          { transform: "scale(" + faceScale + ")", offset: peakAt, easing: "ease-in-out" },
-          { transform: "scale(" + faceScale + ")", offset: closeAt, easing: "ease-in-out" },
-          { transform: "none", offset: 1 }
-        ],
-        { duration: total, easing: "linear" }
-      ));
-    }
-    if (mosaic) {
-      mosaic.style.transformOrigin = "center"; // zoom about the vortex centre, not the SVG origin
-      var frames = [{ transform: "scale(1)", offset: 0, easing: "ease-in-out" }];
-      // Breath in (contract) before the zoom, so the exhale that follows reads as
-      // a push that throws the cards out, not a flat opening. The inhale eases in
-      // AND out (ease-in-out) so it settles to zero velocity at the bottom of the
-      // breath and the exhale swings out from rest — no snap at the turn.
-      if (inhaleScale != null) {
-        frames.push({ transform: "scale(" + inhaleScale + ")", offset: inhaleAt, easing: "ease-in-out" });
-      }
-      frames.push({ transform: "scale(" + zoomScale + ")", offset: peakAt, easing: "ease-in-out" });
-      frames.push({ transform: "scale(" + zoomScale + ")", offset: closeAt, easing: "ease-in-out" });
-      frames.push({ transform: "scale(1)", offset: 1 });
-      anims.push(mosaic.animate(frames, { duration: total, easing: "linear" }));
-    }
-    return anims;
   }
 
   // Every card that rides the portal: the forecast card (WX 004, col 5) leads,
@@ -407,54 +414,24 @@
     var rects = cards.map(function (c) { return c.getBoundingClientRect(); });
     var base = cover.sleeve ? cover.sleeve.getBoundingClientRect() : rects[0];
 
-    var lastIdx = cards.length - 1;
-    var openDur = 280;   // the portal opens: face recedes, mosaic zooms in
-    var emitDelay = 150; // first card is born once the vortex has cracked open
-    var emitStep = 110;  // gap between successive cards emerging
-    var emitDur = 480;   // one card's flight from the vortex centre to its slot
-    var settleDur = 160; // the spit-out inertia: a card arrives over-grown, then relaxes to rest
-    var closeDur = 320;  // the portal eases back to rest behind the last card
-
-    var lastLand = emitDelay + lastIdx * emitStep + emitDur + settleDur;
-    var closeStart = Math.max(openDur, lastLand - settleDur - 140); // overlap the close with the last landing
-    var total = Math.max(lastLand, closeStart + closeDur);
-
-    dealAnims = portalPulse(
-      cover.sleeve, cover.mosaic, total,
-      openDur / total, closeStart / total, 0.95, 1.32,
-      0.88, 110 / total // breath in before the exhale spits the cards
-    );
-
-    // The animation easing is linear so each keyframe's `offset` lands at its
-    // intended time; the moving segment carries its own easing. (EASE, bornScale,
-    // growScale are shared with the load entry — defined above.)
-    cards.forEach(function (card, i) {
-      var r = rects[i];
-      // All sleeves are the same size, so aligning top-left aligns centres; the
-      // scale then shrinks the card to a tile sitting at the cover's centre.
-      var bornT = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(" + bornScale + ")";
-      var emitStart = emitDelay + i * emitStep;
-      var emitEnd = emitStart + emitDur;
-      var settleEnd = emitEnd + settleDur;
-
-      // offset 0 → (wait at centre, hidden) → fade in from near-nothing as it flies
-      // out to its slot, arriving a touch over-grown (momentum) → settle back to
-      // rest. The fade spans the whole flight, mirroring the gather's fade-to-zero
-      // as a card is sucked in: a card is born faint at the vortex and resolves as
-      // it emerges, not popped to full opacity while still in the portal.
-      var frames = [
-        { transform: bornT, opacity: 0, offset: 0 },
-        { transform: bornT, opacity: 0, offset: emitStart / total, easing: EASE },
-        { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / total, easing: "ease-out" },
-        { transform: "none", opacity: 1, offset: settleEnd / total }
-      ];
-      if (settleEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
-
-      card.style.zIndex = String(100 - i); // first card out sits in front of the fan
-      var anim = card.animate(frames, { duration: total, easing: "linear" });
-      dealAnims.push(anim);
-      anim.onfinish = function () { card.style.zIndex = ""; };
+    // The portal opens (openDur) before the first card emerges, and is the floor for
+    // the close. Timing maths + the spit-out itself come from the framework toolkit.
+    var openDur = 280;
+    var t = portal.dealTiming(cards.length, {
+      emitDelay: 150, emitStep: 110, emitDur: 480, settleDur: 160, closeDur: 320,
+      closeFloor: openDur
     });
+
+    // Open the portal (the face recedes a touch, the mosaic zooms), then spit the
+    // cards out from its centre. Track every animation in dealAnims so a rapid
+    // re-click can cancel them. Cards are freshly injected (already visible) so no
+    // pre-deal hide to clear.
+    dealAnims = portal.pulse(
+      cover.sleeve, cover.mosaic, t.total,
+      openDur / t.total, t.closeStart / t.total, 0.95, 1.32,
+      0.88, 110 / t.total // breath in before the exhale spits the cards
+    );
+    dealAnims = dealAnims.concat(portal.dealCards(cards, base, rects, t, {}));
   }
 
   // One-time page-load entry. The cover card pops in (a quick scale-up carrying
@@ -476,61 +453,32 @@
     var base = cover.sleeve.getBoundingClientRect();
     var rects = mast.map(function (c) { return c.getBoundingClientRect(); });
 
-    var popDur = 360;     // the cover pops in (direct load only)
-    var emitDelay = 300;  // the first masthead card emerges as the cover settles
-    var emitStep = 90;    // gap between successive masthead cards
-    var emitDur = 460;    // one card's flight from the cover centre to its slot
-    var settleDur = 160;  // the spit-out inertia (matches the selection deal)
-    var closeDur = 300;   // the mosaic eases back to rest behind the last card
+    var t = portal.dealTiming(mast.length, {
+      emitDelay: 300, emitStep: 90, emitDur: 460, settleDur: 160, closeDur: 300
+    });
 
-    var lastIdx = mast.length - 1;
-    var lastLand = emitDelay + lastIdx * emitStep + emitDur + settleDur;
-    var closeStart = Math.max(emitDelay, lastLand - settleDur - 140);
-    var total = Math.max(lastLand, closeStart + closeDur);
-
-    // Direct load: pop the cover in, then open the portal (mosaic zoom) as the
+    // Direct load: breathe the cover in, then open the portal (mosaic zoom) as the
     // masthead spits. Via portal: the cover is mid-morph — touch neither.
+    // The masthead is the page's first impression — a more prominent entry: the cover
+    // is born noticeably small so it visibly grows in (coverFrom 0.62), with a deeper
+    // outward vortex breath (zoom 1.5), and synced so the frame and mosaic breathe as
+    // one — the cover swells to its overshoot as the vortex peaks, holds across the
+    // plateau, then settles to rest on the vortex's close (see portal.coverBreath).
     if (!viaPortal) {
-      entryAnims.push(cover.sleeve.animate(
-        [
-          { transform: "scale(0.84)", opacity: 0, easing: EASE },
-          { transform: "scale(" + growScale + ")", opacity: 1, offset: 0.78, easing: "ease-out" },
-          { transform: "none", opacity: 1 }
-        ],
-        { duration: popDur + 140 }
-      ));
-      entryAnims = entryAnims.concat(portalPulse(
-        null, cover.mosaic, total, emitDelay / total, closeStart / total, 1, 1.28,
-        0.88, 140 / total // breath in before the exhale spits the masthead out
+      var peakOff = t.emitDelay / t.total;
+      var holdOff = t.closeStart / t.total;
+      entryAnims.push(portal.coverBreath(cover.sleeve, {
+        from: 0.62, total: t.total, peakOff: peakOff, holdOff: holdOff, sync: true
+      }));
+      entryAnims = entryAnims.concat(portal.pulse(
+        null, cover.mosaic, t.total, peakOff, holdOff, 1, 1.5,
+        0.88, 140 / t.total // breath in before the exhale spits the masthead out
       ));
     }
 
-    mast.forEach(function (card, i) {
-      var r = rects[i];
-      var bornT = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(" + bornScale + ")";
-      var emitStart = emitDelay + i * emitStep;
-      var emitEnd = emitStart + emitDur;
-      var settleEnd = emitEnd + settleDur;
-
-      // Fade in over the whole flight (mirrors the gather's fade-out), so the card
-      // emerges faint from the vortex rather than popping to full opacity in it.
-      var frames = [
-        { transform: bornT, opacity: 0, offset: 0 },
-        { transform: bornT, opacity: 0, offset: emitStart / total, easing: EASE },
-        { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / total, easing: "ease-out" },
-        { transform: "none", opacity: 1, offset: settleEnd / total }
-      ];
-      if (settleEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
-
-      card.style.zIndex = String(100 - i);
-      var anim = card.animate(frames, { duration: total, easing: "linear" });
-      entryAnims.push(anim);
-      // The running deal holds the card hidden (opacity 0 at offset 0) then brings
-      // it in, so clearing the pre-deal hide now reveals it through the deal, not in
-      // a flash; without this it would snap back to the inline opacity:0 on finish.
-      card.style.opacity = "";
-      anim.onfinish = function () { card.style.zIndex = ""; };
-    });
+    // Spit the masthead siblings out from the cover's centre, clearing their pre-deal
+    // hide (they were set opacity:0 before paint) as the deal reveals them.
+    entryAnims = entryAnims.concat(portal.dealCards(mast, base, rects, t, { clearHide: true }));
   }
 
   // Play the entry exactly once. Prefer pagereveal — it fires before the first
@@ -576,7 +524,8 @@
 
     // The portal inhales — a gentler pulse than the deal's, peaking mid-gather
     // and settling to rest by the end so the next deal opens from a clean cover.
-    flyAnims = portalPulse(cover.sleeve, cover.mosaic, total, 0.6, 0.85, 0.97, 1.18);
+    // No inhale arg: the gather is itself an inhale (a plain exhale-free pulse).
+    flyAnims = portal.pulse(cover.sleeve, cover.mosaic, total, 0.6, 0.85, 0.97, 1.18);
 
     var pending = cards.length;
     function settle() {
@@ -588,7 +537,7 @@
       var r = card.getBoundingClientRect();
       // Shrink to a tile at the cover's centre (same born-size as the deal) as it
       // fades — the mirror of a card being born from the vortex.
-      var t = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(0.16)";
+      var t = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(" + portal.bornScale + ")";
       var start = i * step;
       card.style.zIndex = String(100 - i); // front card on top, sucked in first
       var anim = card.animate(
@@ -630,7 +579,8 @@
       "ph-compass",
       "The sky, unread.",
       "Choose a state to draw its current forecast and any active weather alerts.",
-      NOTE_NUM
+      NOTE_NUM,
+      { setAbbr: "NWS", author: "Atelier Kashinoga" } // match the static masthead siblings (WX 001 / WX 003)
     ));
     clearForecast();
     render("");
@@ -643,7 +593,7 @@
     lastShown = { stateName: stateName, forecast: forecast, alerts: alerts };
 
     if (forecast && forecast.period) {
-      setForecast(forecastBody(forecast.place, forecast.period));
+      setForecast(forecastBody(forecast.place, forecast.period, forecast.generatedAt));
     } else if (!forecast && !alerts) {
       // Both feeds failed: the forecast card carries the error (and deals in too).
       setForecast(noteBody(
@@ -713,6 +663,7 @@
   var CACHED_IOWA = {
     forecast: {
       place: "Des Moines, IA",
+      generatedAt: "2026-06-29T11:35:00-05:00",
       period: {
         name: "This Afternoon",
         temperature: 84,
@@ -793,10 +744,11 @@
   }
 
   // The -/+ stepper sets how many result cards are dealt; nudging it re-deals
-  // the last-shown reading at the new limit so the change is visible at once.
-  var countEl = document.getElementById("wx-reveal-count");
-  var lessBtn = document.getElementById("wx-reveal-less");
-  var moreBtn = document.getElementById("wx-reveal-more");
+  // the last-shown reading at the new limit so the change is visible at once. Its
+  // elements live on the dev Deck card (setupDevCards, ?dev), built below — assigned
+  // there. Null in the normal app, where the reveal limit holds at its default;
+  // syncStepper/stepReveal guard on null.
+  var countEl = null, lessBtn = null, moreBtn = null;
 
   function syncStepper() {
     if (countEl) countEl.textContent = String(revealLimit);
@@ -814,14 +766,121 @@
 
   populate();
   selectEl.addEventListener("change", onSelect);
-  var cachedBtn = document.getElementById("wx-cached");
-  if (cachedBtn) cachedBtn.addEventListener("click", loadCached);
-  if (lessBtn) lessBtn.addEventListener("click", function () { stepReveal(-1); });
-  if (moreBtn) moreBtn.addEventListener("click", function () { stepReveal(1); });
-  syncStepper();
+  // The Cached Iowa button + reveal stepper live on the dev Deck card now (?dev).
   // The forecast card's idle state is set in place (no deal, so no rect read) —
   // render it straight away; the alerts region starts empty.
   renderEmpty();
+
+  // ── Dev cards (opt-in via ?dev) ───────────────────────────────────────────
+  // All developer affordances, off the product cards and onto their own dev row:
+  //   • Weather — a condition picker + temperature slider drive forecastBody in
+  //     place (no deal) so every condition/temp combo's mosaic palette previews at
+  //     a scrub, with the resolved palette named on the card.
+  //   • Deck — the Cached Iowa fixture (a full deal: forecast + alerts) and the
+  //     reveal stepper (how many result cards are dealt).
+  // Each is inserted into the masthead section just before #wx-results, so it flows
+  // in the masthead row (after the static cards / forecast) and always sits above
+  // the dealt results — reachable no matter how many result cards are revealed.
+  // mastCards() excludes data-wx-slot "dev-*", so the entry deal and pre-deal hide
+  // leave them alone. Built only when the URL carries ?dev (or #dev).
+  function devCardEl(slot, inner) {
+    var tmp = document.createElement("div");
+    tmp.innerHTML = sleeve(inner, false); // no row-start: flow with the mast cards
+    var el = tmp.firstChild;
+    el.setAttribute("data-wx-slot", slot);
+    var cover = coverParts();
+    var mast = cover.sleeve ? cover.sleeve.parentNode : null;
+    var results = document.getElementById("wx-results");
+    if (mast && results) mast.insertBefore(el, results);
+    else if (mast) mast.appendChild(el);
+    else (document.querySelector("main") || document.body).appendChild(el);
+    return el;
+  }
+
+  function setupDevCards() {
+    // Weather card — palette preview.
+    var DEV_CONDS = [
+      "Sunny", "Clear", "Mostly Cloudy", "Patchy Fog", "Chance Light Rain",
+      "Rain Showers", "Scattered Thunderstorms", "Snow Likely", "Freezing Rain", "Blizzard"
+    ];
+    var opts = DEV_CONDS.map(function (c) {
+      return '<option value="' + esc(c) + '">' + esc(c) + "</option>";
+    }).join("");
+    devCardEl("dev-weather",
+      title("Weather", "var(--orange)") +
+      typeRow("Developer — Palette Preview", "ph-cloud-sun") +
+      '<div class="card-text-box">' +
+        '<div class="select-field"><span class="field-label">Condition</span>' +
+          '<div class="select"><select id="wx-dev-cond" aria-label="Condition">' + opts + "</select>" +
+            '<i class="select-chevron ph ph-caret-down"></i></div></div>' +
+        '<div class="select-field"><span class="field-label">Temperature · ' +
+          '<span id="wx-dev-temp-val">72°F</span></span>' +
+          '<input type="range" id="wx-dev-temp" class="wx-dev-range" min="-20" max="120" step="1" value="72" aria-label="Temperature (°F)"></div>' +
+        '<p class="card-quote">Palette · <span id="wx-dev-pal">—</span></p>' +
+      "</div>" +
+      footer("WX DEV", "WEATHER")
+    );
+
+    // Deck card — fixture + reveal stepper.
+    devCardEl("dev-deck",
+      title("Deck", "var(--orange)") +
+      typeRow("Developer — Deal & Reveal", "ph-flask") +
+      '<div class="card-text-box">' +
+        "<p>Deal the cached Iowa fixture, and set how many result cards are revealed.</p>" +
+        '<div class="btn-group">' +
+          '<button class="btn btn--ghost btn--sm" id="wx-cached"><i class="ph ph-flask"></i>Cached Iowa</button>' +
+          '<div class="wx-stepper" role="group" aria-label="Cards to reveal">' +
+            '<button class="btn btn--outline btn--sm wx-stepper-btn" id="wx-reveal-less" aria-label="Reveal fewer cards"><i class="ph ph-minus"></i></button>' +
+            '<span class="wx-stepper-value" id="wx-reveal-count" aria-live="polite">' + revealLimit + "</span>" +
+            '<button class="btn btn--outline btn--sm wx-stepper-btn" id="wx-reveal-more" aria-label="Reveal more cards"><i class="ph ph-plus"></i></button>' +
+          "</div>" +
+        "</div>" +
+      "</div>" +
+      footer("WX DEV", "DECK")
+    );
+
+    // Wire the Weather card: condition + temperature drive the forecast palette.
+    var condEl = document.getElementById("wx-dev-cond");
+    var tempEl = document.getElementById("wx-dev-temp");
+    var tempVal = document.getElementById("wx-dev-temp-val");
+    var palVal = document.getElementById("wx-dev-pal");
+    var raf = 0;
+    function devPeriod() {
+      var t = parseFloat(tempEl.value);
+      return {
+        name: "Dev Preview", temperature: t, temperatureUnit: "F",
+        shortForecast: condEl.value,
+        detailedForecast: condEl.value + " — developer preview at " + t + "°F."
+      };
+    }
+    function devRender() {
+      raf = 0;
+      setForecast(forecastBody("Dev Preview", devPeriod(), new Date().toISOString()));
+    }
+    function devTick() {
+      var p = devPeriod();
+      tempVal.textContent = p.temperature + "°F";
+      palVal.textContent = forecastPalette(p);
+      if (!raf) raf = requestAnimationFrame(devRender); // coalesce a scrub to 1 build/frame
+    }
+    condEl.addEventListener("change", devTick);
+    tempEl.addEventListener("input", devTick);
+    devTick(); // initial preview
+
+    // Wire the Deck card: cached fixture + reveal stepper. Assign the module-scoped
+    // stepper elements now that they exist, then sync their initial state.
+    var cachedBtn = document.getElementById("wx-cached");
+    if (cachedBtn) cachedBtn.addEventListener("click", loadCached);
+    countEl = document.getElementById("wx-reveal-count");
+    lessBtn = document.getElementById("wx-reveal-less");
+    moreBtn = document.getElementById("wx-reveal-more");
+    if (lessBtn) lessBtn.addEventListener("click", function () { stepReveal(-1); });
+    if (moreBtn) moreBtn.addEventListener("click", function () { stepReveal(1); });
+    syncStepper();
+  }
+  var devOn = false;
+  try { devOn = new URLSearchParams(location.search).has("dev") || location.hash.slice(1) === "dev"; } catch (e) {}
+  if (devOn) setupDevCards();
 
   // Pre-deal hide: the masthead siblings start invisible (opacity only — their
   // slots stay laid out so the deal reads true rects) until the entry spits them
