@@ -334,7 +334,11 @@
   // sets one during interaction, which doesn't happen mid-deal); fill:none
   // reverts both on end / cancel. Returns the WAAPI animations so the caller can
   // track + cancel them.
-  function portalPulse(sleeve, mosaic, total, peakAt, closeAt, faceScale, zoomScale) {
+  // The optional inhale (inhaleScale < 1 at inhaleAt, before peakAt) gives the
+  // zoom a breath: the mosaic contracts first, then expands past rest to spit the
+  // cards out — a draw-in before the blow-out. Omit it (as the gather does, being
+  // an inhale already) for a plain exhale.
+  function portalPulse(sleeve, mosaic, total, peakAt, closeAt, faceScale, zoomScale, inhaleScale, inhaleAt) {
     var anims = [];
     if (sleeve) {
       anims.push(sleeve.animate(
@@ -349,15 +353,18 @@
     }
     if (mosaic) {
       mosaic.style.transformOrigin = "center"; // zoom about the vortex centre, not the SVG origin
-      anims.push(mosaic.animate(
-        [
-          { transform: "scale(1)", offset: 0, easing: "ease-out" },
-          { transform: "scale(" + zoomScale + ")", offset: peakAt, easing: "ease-in-out" },
-          { transform: "scale(" + zoomScale + ")", offset: closeAt, easing: "ease-in-out" },
-          { transform: "scale(1)", offset: 1 }
-        ],
-        { duration: total, easing: "linear" }
-      ));
+      var frames = [{ transform: "scale(1)", offset: 0, easing: "ease-in-out" }];
+      // Breath in (contract) before the zoom, so the exhale that follows reads as
+      // a push that throws the cards out, not a flat opening. The inhale eases in
+      // AND out (ease-in-out) so it settles to zero velocity at the bottom of the
+      // breath and the exhale swings out from rest — no snap at the turn.
+      if (inhaleScale != null) {
+        frames.push({ transform: "scale(" + inhaleScale + ")", offset: inhaleAt, easing: "ease-in-out" });
+      }
+      frames.push({ transform: "scale(" + zoomScale + ")", offset: peakAt, easing: "ease-in-out" });
+      frames.push({ transform: "scale(" + zoomScale + ")", offset: closeAt, easing: "ease-in-out" });
+      frames.push({ transform: "scale(1)", offset: 1 });
+      anims.push(mosaic.animate(frames, { duration: total, easing: "linear" }));
     }
     return anims;
   }
@@ -403,7 +410,8 @@
 
     dealAnims = portalPulse(
       cover.sleeve, cover.mosaic, total,
-      openDur / total, closeStart / total, 0.95, 1.32
+      openDur / total, closeStart / total, 0.95, 1.32,
+      0.88, 110 / total // breath in before the exhale spits the cards
     );
 
     // The animation easing is linear so each keyframe's `offset` lands at its
@@ -483,7 +491,8 @@
         { duration: popDur + 140 }
       ));
       entryAnims = entryAnims.concat(portalPulse(
-        null, cover.mosaic, total, emitDelay / total, closeStart / total, 1, 1.28
+        null, cover.mosaic, total, emitDelay / total, closeStart / total, 1, 1.28,
+        0.88, 140 / total // breath in before the exhale spits the masthead out
       ));
     }
 
