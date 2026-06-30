@@ -21,7 +21,7 @@
     <div class="container panel">
       <main>
         <section data-row="wx">
-          <div class="panel-frame card-sleeve panel-row-start" data-row="wx">
+          <div class="panel-frame card-sleeve panel-row-start" data-row="wx" data-wx-slot="cover">
             <div class="panel-content card">
               <div class="card-frame card-frame--cover">
                 <div class="card-cover-art" data-target="24" data-mosaic-align="left" data-mosaic-palette="teal" data-mosaic-static>
@@ -35,7 +35,7 @@
                 <div class="card-cover-bottom">
                   <div class="card-footer card-footer--cover">
                     <div class="card-footer-left">
-                      <span class="card-number">WX</span>
+                      <span class="card-number">WX 000</span>
                       <div class="card-metadata">
                         <span class="card-set-abbreviation">NWS</span>
                         <span class="card-language">EN</span>
@@ -52,7 +52,7 @@
               <i class="ph ph-planet"></i>
             </div>
           </div>
-          <div class="panel-frame card-sleeve" data-row="wx">
+          <div class="panel-frame card-sleeve" data-row="wx" data-wx-slot="about">
             <div class="panel-content card">
               <div class="card-frame">
                 <div class="card-title">
@@ -73,7 +73,7 @@
                 </div>
                 <div class="card-footer">
                   <div class="card-footer-left">
-                    <span class="card-number">WX</span>
+                    <span class="card-number">WX 001</span>
                     <div class="card-metadata">
                       <span class="card-set-abbreviation">NWS</span>
                       <span class="card-language">EN</span>
@@ -90,7 +90,18 @@
               <i class="ph ph-planet"></i>
             </div>
           </div>
-          <div class="panel-frame card-sleeve" data-row="wx">
+          <div class="panel-frame card-sleeve" data-row="wx" data-wx-slot="note">
+            <div class="panel-content card">
+              <!-- The idle note (WX 002, col 3): wx.js sets its body once on load
+                   ("The sky, unread.") and keeps it — it never shows the forecast.
+                   The live forecast is its own card to the right (see #wx-forecast). -->
+              <div class="card-frame" id="wx-note"></div>
+            </div>
+            <div class="card-back">
+              <i class="ph ph-planet"></i>
+            </div>
+          </div>
+          <div class="panel-frame card-sleeve" data-row="wx" data-wx-slot="location">
             <div class="panel-content card">
               <div class="card-frame">
                 <div class="card-title">
@@ -126,7 +137,7 @@
                 </div>
                 <div class="card-footer">
                   <div class="card-footer-left">
-                    <span class="card-number">WX</span>
+                    <span class="card-number">WX 003</span>
                     <div class="card-metadata">
                       <span class="card-set-abbreviation">NWS</span>
                       <span class="card-language">EN</span>
@@ -142,6 +153,9 @@
               <i class="ph ph-planet"></i>
             </div>
           </div>
+          <!-- The forecast card (WX 004) is created here on selection — a fifth
+               masthead card to the right; empty (idle) on load. -->
+          <section id="wx-forecast" data-row="wx"></section>
           <section id="wx-results" data-row="wx" aria-live="polite"></section>
         </section>
       </main>

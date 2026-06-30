@@ -67,3 +67,39 @@
   min-width: 1.4em;
   text-align: center;
 }
+
+/* ── Row-1 masthead placement ────────────────────────────────────────
+   The deck opens with a masthead row whose numbers track their column:
+   WX 000 cover (col 1), WX 001 App Description (col 2), WX 002 idle note
+   (col 3) and WX 003 Location picker (col 4) — all static. On a selection a
+   fifth card, WX 004 forecast, is created to their right (col 5). The dealt
+   alert cards (#wx-results) begin a fresh row below (their first card keeps
+   its .panel-row-start col-1 pin). The four static cards hold once four
+   264px columns fit (≥1116px = body padding + 4×264 + 3×12); the forecast's
+   fifth column needs ≥1392px (+ 264 + 12) — below that it flows to the next
+   row. Scoped to .container.panel, which on /wx is the WX grid alone. */
+@media (min-width: 1116px) {
+  .card-sleeve[data-wx-slot="cover"] {
+    grid-area: 1 / 1;
+  }
+
+  .card-sleeve[data-wx-slot="about"] {
+    grid-area: 1 / 2;
+  }
+
+  .card-sleeve[data-wx-slot="note"] {
+    grid-area: 1 / 3;
+  }
+
+  .card-sleeve[data-wx-slot="location"] {
+    grid-area: 1 / 4;
+  }
+}
+
+/* The forecast is a fifth masthead card; place it in col 5 once a fifth
+   264px column fits. */
+@media (min-width: 1392px) {
+  .card-sleeve[data-wx-slot="forecast"] {
+    grid-area: 1 / 5;
+  }
+}

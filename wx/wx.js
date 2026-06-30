@@ -151,26 +151,38 @@
     );
   }
 
-  // A note sleeve carries the app's calm empty / loading / clear / error voice.
-  function noteCard(icon, heading, body, rowStart) {
-    return sleeve(
+  // The forecast lives in a fixed masthead card (WX 003, col 3): its body is
+  // swapped in place — never dealt — through noteBody / forecastBody below. The
+  // dealt cards (alerts, the clear-skies note) wrap a body in a sleeve instead.
+  var FC_NUM = "WX 004"; // the forecast card's collector number / its column
+
+  // A footer: a card-number on the left over a single metadata line.
+  function footer(number, meta) {
+    return (
+      '<div class="card-footer"><div class="card-footer-left">' +
+        '<span class="card-number">' + esc(number) + "</span>" +
+        '<div class="card-metadata"><span class="card-language">' + esc(meta) + "</span></div>" +
+      "</div></div>"
+    );
+  }
+
+  // A note body carries the app's calm empty / loading / clear / error voice.
+  function noteBody(icon, heading, body, number) {
+    return (
       title("Weather", "var(--teal)") +
       typeRow("Reading", icon) +
       '<div class="card-text-box">' +
         '<p class="wx-note-title">' + esc(heading) + "</p>" +
         (body ? "<p>" + esc(body) + "</p>" : "") +
       "</div>" +
-      '<div class="card-footer"><div class="card-footer-left">' +
-        '<span class="card-number">NWS</span>' +
-        '<div class="card-metadata"><span class="card-language">EN</span></div>' +
-      "</div></div>",
-      rowStart
+      footer(number, "EN")
     );
   }
 
-  function forecastCard(place, period, rowStart) {
+  // The live forecast body (temperature + short / detailed prose).
+  function forecastBody(place, period) {
     var wind = period.windSpeed ? period.windDirection + " " + period.windSpeed : "";
-    return sleeve(
+    return (
       title(place, "var(--teal)") +
       typeRow("Forecast — " + period.name, "ph-cloud-sun") +
       '<div class="card-text-box">' +
@@ -179,12 +191,14 @@
         '<p class="wx-short">' + esc(period.shortForecast) + "</p>" +
         "<p>" + esc(trunc(period.detailedForecast, 130)) + "</p>" +
       "</div>" +
-      '<div class="card-footer"><div class="card-footer-left">' +
-        '<span class="card-number">NWS</span>' +
-        '<div class="card-metadata"><span class="card-language">' + esc(wind) + "</span></div>" +
-      "</div></div>",
-      rowStart
+      footer(FC_NUM, wind)
     );
+  }
+
+  // A dealt note sleeve (the "clear skies" / no-alerts card), numbered as a data
+  // note (NWS) since it sits in the alerts region, not the masthead.
+  function noteCard(icon, heading, body, rowStart) {
+    return sleeve(noteBody(icon, heading, body, "NWS"), rowStart);
   }
 
   function alertCard(feature, index, rowStart) {
@@ -200,10 +214,7 @@
           '<button class="btn btn--outline btn--sm" data-copy="' + index + '"><i class="ph ph-copy"></i>Copy</button>' +
         "</div>" +
       "</div>" +
-      '<div class="card-footer"><div class="card-footer-left">' +
-        '<span class="card-number">' + esc(fmtTime(p.effective)) + "</span>" +
-        '<div class="card-metadata"><span class="card-language">until ' + esc(fmtTime(p.expires)) + "</span></div>" +
-      "</div></div>",
+      footer(fmtTime(p.effective), "until " + fmtTime(p.expires)),
       rowStart
     );
   }
@@ -238,151 +249,178 @@
   }
 
   // ---- render --------------------------------------------------------------
-  // Forecast + alerts share one results region (row 2 onward); the first card
-  // starts the new row beneath the cover / about / location row.
+  // The masthead carries two JS-managed cards: the idle note (WX 002, col 3 —
+  // set once on load and kept) and, on selection, a forecast card (WX 004) built
+  // in its own host to the right (col 5). Alerts share the results region (row 2
+  // onward); their first card starts that row.
 
   function render(html) {
     resultsEl.innerHTML = html;
   }
 
-  // Deal animation: after a selection, the deck cycles open in three beats.
-  // (1) The WX cover — sitting on top of the freshly-rendered stack — drops to
-  //     the bottom of the pile (a short dip down and tuck under, its z-index
-  //     falling below the cards mid-dip), revealing the first result card on top.
-  // (2) The revealed cards slide out to the cover's right one at a time, fanning
-  //     up to four (a fifth-and-beyond pile sits under the fourth), all at full
-  //     opacity, while the static row-1 cards (about + location) nudge aside.
-  // (3) After a brief hold the cards fly to their grid slots front-to-back (the
-  //     top card — first revealed — first, the back of the fan last), mirroring
-  //     the gather's first-card-leads order.
-  // FLIP-style: the cards already occupy their final slots, so only transform +
-  // opacity animate (no reflow); the cover and static cards return to rest.
-  // Skipped under prefers-reduced-motion.
+  var NOTE_NUM = "WX 002"; // the kept idle-note card's column number
+
+  // The idle note (WX 002, col 3): its body is set once on load (and on the
+  // placeholder re-select) and then left as-is — it never shows the forecast.
+  var noteEl = document.getElementById("wx-note");
+  function setNote(body) {
+    if (noteEl) noteEl.innerHTML = body;
+  }
+
+  // The forecast card (WX 004) lives in its own host to the right (col 5),
+  // created on selection and updated in place — no deal animation. The sleeve is
+  // built once (so puhig.js's flip-init survives) and only its card-frame body
+  // swaps; clearForecast removes the card entirely (the idle masthead).
+  var forecastHost = document.getElementById("wx-forecast");
+  function forecastFrame() {
+    if (!forecastHost) return null;
+    var f = forecastHost.querySelector("#wx-forecast-body");
+    if (!f) {
+      forecastHost.innerHTML =
+        '<div class="panel-frame card-sleeve" data-row="wx" data-wx-slot="forecast">' +
+          '<div class="panel-content card"><div class="card-frame" id="wx-forecast-body" aria-live="polite"></div></div>' +
+          '<div class="card-back"><i class="ph ph-planet"></i></div>' +
+        "</div>";
+      f = forecastHost.querySelector("#wx-forecast-body");
+    }
+    return f;
+  }
+  function setForecast(body) {
+    var f = forecastFrame();
+    if (f) f.innerHTML = body;
+  }
+  function clearForecast() {
+    if (forecastHost) forecastHost.innerHTML = "";
+  }
+
+  // Deal animation: the WX cover is a portal. On a selection it cycles open in
+  // one continuous beat:
+  // (1) The cover's face recedes a touch (a 2D scale on its front, .panel-content)
+  //     while the mosaic behind it zooms in — a vortex opening. (The face scale
+  //     keeps the no-op rotateY(0) that enrols it in the flip's 3D context.)
+  // (2) The dealt cards — the forecast card (WX 004, col 5) leading, then the
+  //     alert cards (row 2) — are born at the mosaic's centre, tiny (scale 0.16)
+  //     and faded, then fly out to their grid slots one at a time, growing to
+  //     full size and opacity, staggered.
+  // (3) As the last card lands the portal eases back to rest (face + mosaic).
+  // FLIP-style: each card already occupies its final slot, so only transform +
+  // opacity animate (no reflow). fill:none on every animation, so the cover face,
+  // the mosaic and the cards all revert to their rest pose when the deal ends and
+  // on cancel. Skipped under prefers-reduced-motion.
   var reduceMotionMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-  function dealIn() {
-    if (reduceMotionMQ.matches) return;
-    var cards = Array.prototype.slice.call(resultsEl.querySelectorAll(":scope > .card-sleeve"));
-    if (!cards.length) return;
+  // The cover's animatable parts: the sleeve (deal origin / rect, scaled to
+  // recede) and the mosaic tile SVG inside it (scaled to zoom).
+  function coverParts() {
+    var frame = document.querySelector('[data-row="wx"] .card-frame--cover');
+    return {
+      sleeve: frame ? frame.closest(".card-sleeve") : null,
+      mosaic: frame ? frame.querySelector(".mosaic-tiles-svg") : null
+    };
+  }
 
-    // Cancel any still-running prior deal (e.g. a rapid re-click) so its
-    // late-firing onfinish — which runs on the now-detached old cards — can't
-    // clear the cover's z-index that this new deal is about to set.
-    for (var k = 0; k < dealAnims.length; k++) { try { dealAnims[k].cancel(); } catch (e) {} }
-    dealAnims = [];
-
-    // The cover card is the deck: cards are dealt from its slot. Fall back to the
-    // first result slot if the cover can't be found (defensive).
-    var coverFrame = document.querySelector('[data-row="wx"] .card-frame--cover');
-    var coverSleeve = coverFrame ? coverFrame.closest(".card-sleeve") : null;
-
-    // Read every final rect first (one layout pass), then animate transforms.
-    var rects = cards.map(function (c) { return c.getBoundingClientRect(); });
-    var base = coverSleeve ? coverSleeve.getBoundingClientRect() : rects[0];
-
-    // One shared timeline of absolute times, mapped to per-card keyframe offsets.
-    // Reveal beat first (cover → bottom, first card shown), then cards emerge one
-    // at a time (staggered forward), the fan caps at four (the fourth-and-beyond
-    // share one slot), all hold, then fly to their slots back-to-front.
-    var lastIdx = cards.length - 1;
-    var revealDur = 300; // beat 1: cover drops to the bottom, first card shown
-    var emergeStep = 125; // gap between successive cards sliding out
-    var emergeDur = 340;  // one card's slide-out
-    var holdDur = 280;    // the pause once the fan is laid out
-    var flyStep = 135;    // gap between successive cards flying off
-    var flyDur = 480;     // one card's flight to its slot
-    var maxFanIdx = 3;    // fan positions 0..3; index >= 3 share slot 3
-    var peek = 50;        // px of each card shown past the one in front (its right edge / pips)
-    var dip = 22;         // px the cover dips down as it tucks to the bottom
-
-    var lastEmergeIdx = Math.min(lastIdx, maxFanIdx);
-    var fanLaidOutTime = revealDur + lastEmergeIdx * emergeStep + emergeDur;
-    var flyPhaseStart = fanLaidOutTime + holdDur;
-    var total = flyPhaseStart + lastIdx * flyStep + flyDur;
-
-    // Nudge the static row-1 cards (everything to the cover's right: the about +
-    // location cards) aside while the fan lays out, hold, then ease back as the
-    // cards fly off to their slots.
-    var outer = resultsEl.parentElement;
-    var rightSiblings = Array.prototype.slice.call(outer.children).filter(function (el) {
-      return el.classList && el.classList.contains("card-sleeve") && el !== coverSleeve;
-    });
-    // The animation easing is linear so each keyframe's `offset` lands at its
-    // intended time; the moving segments carry their own easing (a keyframe's
-    // easing applies from it to the next), while the holds stay linear.
-    var EASE = "cubic-bezier(0.2, 0.7, 0.25, 1)";
-
-    var pushPx = 56;
-    var fanLaidOut = fanLaidOutTime / total;
-    rightSiblings.forEach(function (s) {
-      dealAnims.push(s.animate(
+  // The portal pulse: the whole cover card (its .card-sleeve) recedes
+  // (faceScale < 1) while the mosaic inside it zooms (zoomScale > 1, so the
+  // tiles' net scale faceScale×zoomScale still reads as a zoom-in) — the vortex
+  // opening. Both hold between peakAt and closeAt (offsets in [0,1] of `total`)
+  // then settle back to rest. The sleeve has no resting transform (the flip only
+  // sets one during interaction, which doesn't happen mid-deal); fill:none
+  // reverts both on end / cancel. Returns the WAAPI animations so the caller can
+  // track + cancel them.
+  function portalPulse(sleeve, mosaic, total, peakAt, closeAt, faceScale, zoomScale) {
+    var anims = [];
+    if (sleeve) {
+      anims.push(sleeve.animate(
         [
-          { transform: "none", offset: 0, easing: "ease-in-out" },
-          { transform: "none", offset: revealDur / total, easing: "ease-in-out" },
-          { transform: "translateX(" + pushPx + "px)", offset: fanLaidOut },
-          { transform: "translateX(" + pushPx + "px)", offset: flyPhaseStart / total, easing: "ease-in-out" },
-          { transform: "none", offset: 1 }
-        ],
-        { duration: total, easing: "linear" }
-      ));
-    });
-
-    // Beat 1: the cover starts on top of the stack, then moves to the bottom —
-    // a dip down and tuck back under, its z-index falling below the cards partway
-    // through (a no-op timer animation drops it on cancel-safe onfinish), so the
-    // first card is revealed on top of the deck. It then rests at base beneath
-    // the dealt cards, which now lie over it.
-    if (coverSleeve) {
-      coverSleeve.style.zIndex = "200";
-      var zDrop = coverSleeve.animate([{ opacity: 1 }, { opacity: 1 }], { duration: revealDur * 0.45 });
-      zDrop.onfinish = function () { coverSleeve.style.zIndex = ""; };
-      dealAnims.push(zDrop);
-      dealAnims.push(coverSleeve.animate(
-        [
-          { transform: "none", offset: 0, easing: "ease-in" },
-          { transform: "translateY(" + dip + "px)", offset: (revealDur * 0.5) / total, easing: "ease-out" },
-          { transform: "none", offset: revealDur / total },
+          { transform: "none", offset: 0, easing: "ease-out" },
+          { transform: "scale(" + faceScale + ")", offset: peakAt, easing: "ease-in-out" },
+          { transform: "scale(" + faceScale + ")", offset: closeAt, easing: "ease-in-out" },
           { transform: "none", offset: 1 }
         ],
         { duration: total, easing: "linear" }
       ));
     }
+    if (mosaic) {
+      mosaic.style.transformOrigin = "center"; // zoom about the vortex centre, not the SVG origin
+      anims.push(mosaic.animate(
+        [
+          { transform: "scale(1)", offset: 0, easing: "ease-out" },
+          { transform: "scale(" + zoomScale + ")", offset: peakAt, easing: "ease-in-out" },
+          { transform: "scale(" + zoomScale + ")", offset: closeAt, easing: "ease-in-out" },
+          { transform: "scale(1)", offset: 1 }
+        ],
+        { duration: total, easing: "linear" }
+      ));
+    }
+    return anims;
+  }
+
+  // Every card that rides the portal: the forecast card (WX 004, col 5) leads,
+  // then the alert cards (row 2). Both are born from / gathered into the cover.
+  function dealableCards() {
+    var list = [];
+    if (forecastHost) list = list.concat(Array.prototype.slice.call(forecastHost.querySelectorAll(":scope > .card-sleeve")));
+    return list.concat(Array.prototype.slice.call(resultsEl.querySelectorAll(":scope > .card-sleeve")));
+  }
+
+  function dealIn() {
+    if (reduceMotionMQ.matches) return;
+    var cards = dealableCards();
+    if (!cards.length) return;
+
+    // Cancel any still-running prior deal (e.g. a rapid re-click) so its
+    // late-firing onfinish — which runs on the now-detached old cards — can't
+    // clear a card z-index that this new deal is about to set.
+    for (var k = 0; k < dealAnims.length; k++) { try { dealAnims[k].cancel(); } catch (e) {} }
+    dealAnims = [];
+
+    // The cover is the portal: cards are dealt from its centre. Fall back to the
+    // first result slot if the cover can't be found (defensive).
+    var cover = coverParts();
+
+    // Read every final rect first (one layout pass), then animate transforms.
+    var rects = cards.map(function (c) { return c.getBoundingClientRect(); });
+    var base = cover.sleeve ? cover.sleeve.getBoundingClientRect() : rects[0];
+
+    var lastIdx = cards.length - 1;
+    var openDur = 280;   // the portal opens: face recedes, mosaic zooms in
+    var emitDelay = 150; // first card is born once the vortex has cracked open
+    var emitStep = 110;  // gap between successive cards emerging
+    var emitDur = 480;   // one card's flight from the vortex centre to its slot
+    var closeDur = 320;  // the portal eases back to rest behind the last card
+
+    var lastLand = emitDelay + lastIdx * emitStep + emitDur;
+    var closeStart = Math.max(openDur, lastLand - 140); // overlap the close with the last landing
+    var total = Math.max(lastLand, closeStart + closeDur);
+
+    dealAnims = portalPulse(
+      cover.sleeve, cover.mosaic, total,
+      openDur / total, closeStart / total, 0.95, 1.32
+    );
+
+    // The animation easing is linear so each keyframe's `offset` lands at its
+    // intended time; the moving segment carries its own easing.
+    var EASE = "cubic-bezier(0.2, 0.7, 0.25, 1)";
+    var bornScale = 0.16; // size of a card at the vortex centre before it flies out
 
     cards.forEach(function (card, i) {
       var r = rects[i];
-      var fanIdx = Math.min(i, maxFanIdx);
-      var coverDX = base.left - r.left;
-      var coverDY = base.top - r.top;
-      // Fan straight out to the cover's right (x-axis only); held at the cover's
-      // own vertical band, over it, so the cards read as dealt off the top of the
-      // deck. Each shows only `peek` past the one in front — its right edge / pips.
-      var emergeLeft = base.left + peek * (fanIdx + 1);
-      var emergeTop = base.top;
-      var emDX = emergeLeft - r.left;
-      var emDY = emergeTop - r.top;
+      // All sleeves are the same size, so aligning top-left aligns centres; the
+      // scale then shrinks the card to a tile sitting at the cover's centre.
+      var bornT = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(" + bornScale + ")";
+      var emitStart = emitDelay + i * emitStep;
+      var emitEnd = emitStart + emitDur;
 
-      var emergeStart = revealDur + fanIdx * emergeStep;
-      var emergeEnd = emergeStart + emergeDur;
-      var flyStart = flyPhaseStart + i * flyStep; // top card (first revealed) flies first
-      var flyEnd = flyStart + flyDur;
+      // offset 0 → (wait at centre, hidden) → pop visible → fly out to slot → rest
+      var frames = [
+        { transform: bornT, opacity: 0, offset: 0 },
+        { transform: bornT, opacity: 0, offset: emitStart / total, easing: "ease-out" },
+        { transform: bornT, opacity: 1, offset: (emitStart + 70) / total, easing: EASE },
+        { transform: "none", opacity: 1, offset: emitEnd / total }
+      ];
+      if (emitEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
 
-      // Full size throughout — the revealed cards match the cover, never shrunk.
-      var coverT = "translate(" + coverDX + "px, " + coverDY + "px)";
-      var fanT = "translate(" + emDX + "px, " + emDY + "px)";
-      // The first card is shown the moment the cover drops away (opacity 1 from
-      // the start); the rest stay hidden behind the stack until they emerge.
-      var startOpacity = i === 0 ? 1 : 0;
-
-      // offset 0 → (hold on deck) → emerge to fan → (hold) → fly to slot → (hold)
-      var frames = [];
-      frames.push({ transform: coverT, opacity: startOpacity, offset: 0 });
-      frames.push({ transform: coverT, opacity: startOpacity, offset: emergeStart / total, easing: EASE });
-      frames.push({ transform: fanT, opacity: 1, offset: emergeEnd / total });
-      frames.push({ transform: fanT, opacity: 1, offset: flyStart / total, easing: EASE });
-      frames.push({ transform: "none", opacity: 1, offset: flyEnd / total });
-      if (flyEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
-
-      card.style.zIndex = String(100 - i); // first card out sits in front; the back of the fan sits behind
+      card.style.zIndex = String(100 - i); // first card out sits in front of the fan
       var anim = card.animate(frames, { duration: total, easing: "linear" });
       dealAnims.push(anim);
       anim.onfinish = function () { card.style.zIndex = ""; };
@@ -390,12 +428,13 @@
   }
 
   // Fly-out: the reverse of the deal. Before a re-read (a new state, a cached
-  // re-click) replaces the current cards, they gather straight back onto the
-  // cover — the deck — and fade, so the old reading reads as returned to the
-  // deck the new one will be dealt from. A short straight gather (no fan, no
-  // hold) so the combined out-then-in stays snappy. Front card leaves first,
-  // staggered back; all slide under the cover (raised z-index) as they go.
-  // Cancelled and superseded the same way the deal is, via flyAnims + a token.
+  // re-click) replaces the current cards, they fly back into the cover's mosaic —
+  // shrinking to the vortex centre and fading — so the old reading reads as drawn
+  // back into the portal the new one will be dealt from. The portal inhales (the
+  // mosaic zooms in to draw them) then settles to rest before the next deal opens
+  // it again. Front card leaves first, staggered back; all pass over the cover
+  // (raised z-index) as they're pulled in. Cancelled and superseded the same way
+  // the deal is, via flyAnims + a token.
   var flyAnims = [];
   var transitionId = 0;
 
@@ -408,30 +447,32 @@
     for (var d = 0; d < dealAnims.length; d++) { try { dealAnims[d].cancel(); } catch (e) {} }
     dealAnims = [];
 
-    var coverFrame = document.querySelector('[data-row="wx"] .card-frame--cover');
-    var coverSleeve = coverFrame ? coverFrame.closest(".card-sleeve") : null;
-    var base = coverSleeve ? coverSleeve.getBoundingClientRect() : cards[0].getBoundingClientRect();
+    var cover = coverParts();
+    var base = cover.sleeve ? cover.sleeve.getBoundingClientRect() : cards[0].getBoundingClientRect();
 
-    var EASE = "cubic-bezier(0.4, 0, 0.7, 0.3)"; // accelerate into the deck
-    var perDur = 320;   // one card's flight back to the cover
+    var EASE = "cubic-bezier(0.4, 0, 0.7, 0.3)"; // accelerate into the vortex
+    var perDur = 340;   // one card's flight back into the portal
     var step = 90;      // gap between successive cards leaving
     var lastIdx = cards.length - 1;
     var total = lastIdx * step + perDur;
 
-    if (coverSleeve) coverSleeve.style.zIndex = "200"; // cards slide back under the deck
+    // The portal inhales — a gentler pulse than the deal's, peaking mid-gather
+    // and settling to rest by the end so the next deal opens from a clean cover.
+    flyAnims = portalPulse(cover.sleeve, cover.mosaic, total, 0.6, 0.85, 0.97, 1.18);
 
     var pending = cards.length;
     function settle() {
       if (--pending > 0) return;
-      if (coverSleeve) coverSleeve.style.zIndex = "";
       done();
     }
 
     cards.forEach(function (card, i) {
       var r = card.getBoundingClientRect();
-      var t = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px)";
+      // Shrink to a tile at the cover's centre (same born-size as the deal) as it
+      // fades — the mirror of a card being born from the vortex.
+      var t = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(0.16)";
       var start = i * step;
-      card.style.zIndex = String(100 - i); // front card on top, mirroring the deal
+      card.style.zIndex = String(100 - i); // front card on top, sucked in first
       var anim = card.animate(
         [
           { transform: "none", opacity: 1, offset: 0 },
@@ -448,12 +489,12 @@
     });
   }
 
-  // Run `after` (which renders the next view) once the current result cards have
-  // flown back to the deck. Instant under reduced motion, or when nothing is
-  // shown yet — there is nothing to gather. The token lets a newer transition
-  // supersede a gather still in flight.
+  // Run `after` (which renders the next view) once the current dealt cards — the
+  // forecast card and any alerts — have flown back into the portal. Instant under
+  // reduced motion, or when nothing is shown yet (nothing to gather). The token
+  // lets a newer transition supersede a gather still in flight.
   function clearThen(after) {
-    var existing = Array.prototype.slice.call(resultsEl.querySelectorAll(":scope > .card-sleeve"));
+    var existing = dealableCards();
     if (reduceMotionMQ.matches || !existing.length) { after(); return; }
     var token = ++transitionId;
     flyOut(existing, function () {
@@ -462,52 +503,55 @@
     });
   }
 
-  // The empty-state note deals in like a result card, so the page-load card
-  // (row 2 col 1) enters from the deck and — via clearThen — exits back to it,
-  // the same enter/exit arc the forecast + alert cards ride.
+  // The idle masthead: the kept note (col 3) shows its empty voice, the forecast
+  // card and the alerts region are cleared. Used on load and the placeholder
+  // re-select. The note is set here every time but its content never varies — it
+  // stays as it is on load. (FC_NUM is unused here; the note carries NOTE_NUM.)
   function renderEmpty() {
-    render(noteCard(
+    setNote(noteBody(
       "ph-compass",
       "The sky, unread.",
       "Choose a state to draw its current forecast and any active weather alerts.",
-      true
+      NOTE_NUM
     ));
-    dealIn();
+    clearForecast();
+    render("");
   }
 
-  // Render the forecast + alerts (or the appropriate note) and deal them in.
-  // Shared by the live fetch and the cached test fixture.
+  // Set the forecast card's body and render the alerts (+ a clear-skies note when
+  // there are none), then deal the forecast card and alerts in together from the
+  // portal. Shared by the live fetch and the cached test fixture.
   function showResults(stateName, forecast, alerts) {
     lastShown = { stateName: stateName, forecast: forecast, alerts: alerts };
 
-    if (!forecast && !alerts) {
-      render(noteCard(
+    if (forecast && forecast.period) {
+      setForecast(forecastBody(forecast.place, forecast.period));
+    } else if (!forecast && !alerts) {
+      // Both feeds failed: the forecast card carries the error (and deals in too).
+      setForecast(noteBody(
         "ph-cloud-slash",
         "The signal didn't reach us.",
         "The National Weather Service couldn't be read just now. Try again in a moment.",
-        true
+        FC_NUM
       ));
-      dealIn(); // deal the error note in like every other note/card — never snap
-      return;
+    } else {
+      // Alerts came through but no forecast — note it on the card.
+      setForecast(noteBody("ph-cloud-slash", "Forecast unavailable.", "No current forecast for " + stateName + ".", FC_NUM));
     }
 
-    // Cap the deal at the stepper's reveal limit (forecast counts as one card).
+    // Cap the alert deal at the stepper's reveal limit.
     var cards = [];
-    if (forecast && forecast.period) {
-      cards.push(forecastCard(forecast.place, forecast.period, true));
-    }
-
     if (alerts && alerts.length) {
       currentAlerts = alerts;
       for (var i = 0; i < alerts.length && cards.length < revealLimit; i++) {
         cards.push(alertCard(alerts[i], i, cards.length === 0));
       }
     } else if (alerts) {
-      cards.push(noteCard("ph-sun", "Clear skies.", "No active alerts for " + stateName + ".", cards.length === 0));
+      cards.push(noteCard("ph-sun", "Clear skies.", "No active alerts for " + stateName + ".", true));
     }
 
     render(cards.join(""));
-    dealIn();
+    dealIn(); // the forecast card (col 5) + any alerts (row 2) deal in from the portal
   }
 
   function onSelect() {
@@ -517,38 +561,22 @@
     var token = ++requestId;
     currentAlerts = [];
 
-    // Every card on screen both comes from and returns to the deck. The old cards
-    // gather back to the deck while the fetch runs in parallel. If the fetch is
-    // slow, a loading note deals in from the deck, then gathers back to it before
-    // the results deal in; if the fetch beats the gather (warm cache), the note is
-    // skipped and the results deal straight in after the one gather. Exactly one
-    // of the gather-complete / fetch-complete callbacks drives the results (the
-    // later of the two), and all steps guard on `token` so a newer selection wins.
-    var fetched = null, fetchDone = false, gatherDone = false, loadingShown = false;
-
-    function dealResults() {
-      if (token !== requestId) return;
-      // A loading note is on screen — gather it back to the deck first; otherwise
-      // the initial clearThen already cleared the deck, so deal straight in.
-      if (loadingShown) {
-        clearThen(function () {
-          if (token === requestId) showResults(state.name, fetched[0], fetched[1]);
-        });
-      } else {
+    // The old forecast card + alerts gather back into the portal while the fetch
+    // runs in parallel; the new forecast + alerts deal out once BOTH the gather
+    // and the fetch are done (whichever lands later drives it), guarded on `token`
+    // so a newer selection wins. (The portal inhale/exhale is the loading cue —
+    // there's no separate loading card.)
+    var fetched = null, fetchDone = false, gatherDone = false;
+    function maybeShow() {
+      if (token === requestId && fetchDone && gatherDone) {
         showResults(state.name, fetched[0], fetched[1]);
       }
     }
 
-    clearThen(function () {
+    clearThen(function () { // gather the old forecast + alerts into the portal
       if (token !== requestId) return;
       gatherDone = true;
-      if (fetchDone) {
-        dealResults();
-      } else {
-        render(noteCard("ph-cloud", "Reading the sky over " + state.capital + "…", null, true));
-        dealIn();
-        loadingShown = true;
-      }
+      maybeShow();
     });
 
     Promise.all([
@@ -558,7 +586,7 @@
       if (token !== requestId) return; // a newer selection has taken over
       fetched = out;
       fetchDone = true;
-      if (gatherDone) dealResults();
+      maybeShow();
     });
   }
 
@@ -613,10 +641,10 @@
 
   function loadCached() {
     selectEl.value = "IA";       // reflect the fixture in the dropdown
-    requestId++;                 // cancel any in-flight live fetch
+    var token = ++requestId;     // cancel any in-flight live fetch
     currentAlerts = [];
-    clearThen(function () {
-      showResults("Iowa", CACHED_IOWA.forecast, CACHED_IOWA.alerts);
+    clearThen(function () {      // gather old alerts, then show the fixture
+      if (token === requestId) showResults("Iowa", CACHED_IOWA.forecast, CACHED_IOWA.alerts);
     });
   }
 
@@ -673,8 +701,7 @@
   if (lessBtn) lessBtn.addEventListener("click", function () { stepReveal(-1); });
   if (moreBtn) moreBtn.addEventListener("click", function () { stepReveal(1); });
   syncStepper();
-  // Defer the first deal one frame so the grid (and the cover it deals from) has
-  // laid out — reading rects too early would deal the note from a stale slot.
-  // render + dealIn run together in the frame, so the note never flashes static.
-  requestAnimationFrame(renderEmpty);
+  // The forecast card's idle state is set in place (no deal, so no rect read) —
+  // render it straight away; the alerts region starts empty.
+  renderEmpty();
 })();
