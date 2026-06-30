@@ -1814,6 +1814,7 @@ html[data-theme="dark"] .mosaic-overlay {
   overflow: hidden;
   padding: 6px;
   position: relative;
+  text-decoration: none;
   width: 48px;
 }
 

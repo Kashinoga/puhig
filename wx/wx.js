@@ -309,6 +309,13 @@
   // on cancel. Skipped under prefers-reduced-motion.
   var reduceMotionMQ = window.matchMedia("(prefers-reduced-motion: reduce)");
 
+  // Shared deal motion: a card is born tiny at the cover's centre (bornScale),
+  // flies out on EASE, and lands a touch over-grown (growScale) before settling —
+  // the spit-out's inertia. Used by both the selection deal and the load entry.
+  var EASE = "cubic-bezier(0.2, 0.7, 0.25, 1)";
+  var bornScale = 0.16; // size of a card at the vortex centre before it flies out
+  var growScale = 1.05; // a card overshoots its rest size on landing, then settles
+
   // The cover's animatable parts: the sleeve (deal origin / rect, scaled to
   // recede) and the mosaic tile SVG inside it (scaled to zoom).
   function coverParts() {
@@ -387,10 +394,11 @@
     var emitDelay = 150; // first card is born once the vortex has cracked open
     var emitStep = 110;  // gap between successive cards emerging
     var emitDur = 480;   // one card's flight from the vortex centre to its slot
+    var settleDur = 160; // the spit-out inertia: a card arrives over-grown, then relaxes to rest
     var closeDur = 320;  // the portal eases back to rest behind the last card
 
-    var lastLand = emitDelay + lastIdx * emitStep + emitDur;
-    var closeStart = Math.max(openDur, lastLand - 140); // overlap the close with the last landing
+    var lastLand = emitDelay + lastIdx * emitStep + emitDur + settleDur;
+    var closeStart = Math.max(openDur, lastLand - settleDur - 140); // overlap the close with the last landing
     var total = Math.max(lastLand, closeStart + closeDur);
 
     dealAnims = portalPulse(
@@ -399,10 +407,8 @@
     );
 
     // The animation easing is linear so each keyframe's `offset` lands at its
-    // intended time; the moving segment carries its own easing.
-    var EASE = "cubic-bezier(0.2, 0.7, 0.25, 1)";
-    var bornScale = 0.16; // size of a card at the vortex centre before it flies out
-
+    // intended time; the moving segment carries its own easing. (EASE, bornScale,
+    // growScale are shared with the load entry — defined above.)
     cards.forEach(function (card, i) {
       var r = rects[i];
       // All sleeves are the same size, so aligning top-left aligns centres; the
@@ -410,21 +416,110 @@
       var bornT = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(" + bornScale + ")";
       var emitStart = emitDelay + i * emitStep;
       var emitEnd = emitStart + emitDur;
+      var settleEnd = emitEnd + settleDur;
 
-      // offset 0 → (wait at centre, hidden) → pop visible → fly out to slot → rest
+      // offset 0 → (wait at centre, hidden) → pop visible → fly out to slot,
+      // arriving a touch over-grown (momentum) → settle back to rest
       var frames = [
         { transform: bornT, opacity: 0, offset: 0 },
         { transform: bornT, opacity: 0, offset: emitStart / total, easing: "ease-out" },
         { transform: bornT, opacity: 1, offset: (emitStart + 70) / total, easing: EASE },
-        { transform: "none", opacity: 1, offset: emitEnd / total }
+        { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / total, easing: "ease-out" },
+        { transform: "none", opacity: 1, offset: settleEnd / total }
       ];
-      if (emitEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
+      if (settleEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
 
       card.style.zIndex = String(100 - i); // first card out sits in front of the fan
       var anim = card.animate(frames, { duration: total, easing: "linear" });
       dealAnims.push(anim);
       anim.onfinish = function () { card.style.zIndex = ""; };
     });
+  }
+
+  // One-time page-load entry. The cover card pops in (a quick scale-up carrying
+  // the same growth inertia as a deal), then the static masthead cards — About
+  // (001), the idle note (002), Location (003) — are spat out from the cover's
+  // centre, born tiny and flying to their slots. This is the masthead's only
+  // animation; selections animate the forecast + alerts, never these. Skipped
+  // under reduced motion. When we arrive through the cross-document cover portal
+  // (viaPortal), that morph IS the cover's entry, so we leave the cover alone and
+  // only spit the masthead — popping it would break the portal's morph target.
+  var entryAnims = [];
+  function entryDeal(viaPortal) {
+    if (reduceMotionMQ.matches) return;
+    var cover = coverParts();
+    if (!cover.sleeve) return;
+    // The masthead is the cover's sibling sleeves (About, note, Location) — scope
+    // to the cover's own row, not the nested forecast/results sections.
+    var mast = Array.prototype.slice.call(cover.sleeve.parentNode.children).filter(function (el) {
+      return el.classList && el.classList.contains("card-sleeve") && el.getAttribute("data-wx-slot") !== "cover";
+    });
+    if (!mast.length) return;
+
+    var base = cover.sleeve.getBoundingClientRect();
+    var rects = mast.map(function (c) { return c.getBoundingClientRect(); });
+
+    var popDur = 360;     // the cover pops in (direct load only)
+    var emitDelay = 300;  // the first masthead card emerges as the cover settles
+    var emitStep = 90;    // gap between successive masthead cards
+    var emitDur = 460;    // one card's flight from the cover centre to its slot
+    var settleDur = 160;  // the spit-out inertia (matches the selection deal)
+    var closeDur = 300;   // the mosaic eases back to rest behind the last card
+
+    var lastIdx = mast.length - 1;
+    var lastLand = emitDelay + lastIdx * emitStep + emitDur + settleDur;
+    var closeStart = Math.max(emitDelay, lastLand - settleDur - 140);
+    var total = Math.max(lastLand, closeStart + closeDur);
+
+    // Direct load: pop the cover in, then open the portal (mosaic zoom) as the
+    // masthead spits. Via portal: the cover is mid-morph — touch neither.
+    if (!viaPortal) {
+      entryAnims.push(cover.sleeve.animate(
+        [
+          { transform: "scale(0.84)", opacity: 0, easing: EASE },
+          { transform: "scale(" + growScale + ")", opacity: 1, offset: 0.78, easing: "ease-out" },
+          { transform: "none", opacity: 1 }
+        ],
+        { duration: popDur + 140 }
+      ));
+      entryAnims = entryAnims.concat(portalPulse(
+        null, cover.mosaic, total, emitDelay / total, closeStart / total, 1, 1.28
+      ));
+    }
+
+    mast.forEach(function (card, i) {
+      var r = rects[i];
+      var bornT = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(" + bornScale + ")";
+      var emitStart = emitDelay + i * emitStep;
+      var emitEnd = emitStart + emitDur;
+      var settleEnd = emitEnd + settleDur;
+
+      var frames = [
+        { transform: bornT, opacity: 0, offset: 0 },
+        { transform: bornT, opacity: 0, offset: emitStart / total, easing: "ease-out" },
+        { transform: bornT, opacity: 1, offset: (emitStart + 70) / total, easing: EASE },
+        { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / total, easing: "ease-out" },
+        { transform: "none", opacity: 1, offset: settleEnd / total }
+      ];
+      if (settleEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
+
+      card.style.zIndex = String(100 - i);
+      var anim = card.animate(frames, { duration: total, easing: "linear" });
+      entryAnims.push(anim);
+      anim.onfinish = function () { card.style.zIndex = ""; };
+    });
+  }
+
+  // Play the entry exactly once. Prefer pagereveal — it fires before the first
+  // paint and tells us (via e.viewTransition) whether the cover portal is morphing
+  // us in, and applying the born-at-centre poses there hides the masthead from the
+  // portal's snapshot so it deals in cleanly afterwards. Fall back to an immediate
+  // run for browsers without cross-document View Transitions (no portal there).
+  var entryPlayed = false;
+  function playEntry(viaPortal) {
+    if (entryPlayed) return;
+    entryPlayed = true;
+    entryDeal(viaPortal);
   }
 
   // Fly-out: the reverse of the deal. Before a re-read (a new state, a cached
@@ -704,4 +799,11 @@
   // The forecast card's idle state is set in place (no deal, so no rect read) —
   // render it straight away; the alerts region starts empty.
   renderEmpty();
+
+  // Page-load entry: cover pops in, then the masthead spits out. Once only.
+  if ("onpagereveal" in window) {
+    window.addEventListener("pagereveal", function (e) { playEntry(!!e.viewTransition); });
+  } else {
+    playEntry(false);
+  }
 })();
