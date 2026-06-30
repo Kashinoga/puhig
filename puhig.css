@@ -514,7 +514,7 @@ section {
 .card-name {
   font-size: clamp(11px, 4.4cqi, 18px);
   font-weight: 600;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.02em;
   line-height: 1;
   cursor: text;
   -webkit-user-select: text;

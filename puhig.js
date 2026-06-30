@@ -510,13 +510,16 @@ function fitMosaics(animate) {
     var isStaticBg = isGridOnly || "mosaicStatic" in p.dataset;
     var isCardArt = p.classList.contains("card-art");
     var isCover = p.classList.contains("card-cover-art");
-    var palette = p.dataset.mosaicPalette === "miku" ? getPrefixedPalette("miku")
-      : p.dataset.mosaicPalette === "light" ? getPrefixedPalette("light")
-      : p.dataset.mosaicPalette === "gray" ? getPrefixedPalette("gray")
-      : p.dataset.mosaicPalette === "mono" ? getPrefixedPalette("mono")
-      : p.dataset.mosaicPalette === "teal" ? getPrefixedPalette("teal")
-      : p.dataset.mosaicPalette === "purple" ? getPrefixedPalette("purple")
-      : defaultPalette;
+    // Any data-mosaic-palette value is treated as a palette prefix and resolved to
+    // its --<prefix>-1..7 CSS vars; an undefined prefix (first var empty) falls back
+    // to the default palette. So a new palette is just seven CSS vars + the attribute
+    // — no edit here (e.g. WX's weather palettes: hot/warm/cool/rain/storm/snow).
+    var palPrefix = p.dataset.mosaicPalette;
+    var palette = defaultPalette;
+    if (palPrefix) {
+      var resolved = getPrefixedPalette(palPrefix);
+      if (resolved[0]) palette = resolved;
+    }
 
     // Dimensions first — the card-art height is snapped to whole tile rows
     // before the cache check so the snap survives a cache-hit early return.
@@ -1158,6 +1161,147 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
   });
 }());
 
+// ── Cover-portal animation toolkit (window.puhig.portal) ────────────────────
+// The framework's shared vocabulary for the cover-portal: the deal-motion
+// constants, the portal pulse (mosaic zoom + optional face recede / inhale), the
+// deal timing maths, the born-at-centre card fly-out, and the cover's breath.
+// Pure motion — no DOM queries or app structure — so it generalises across any
+// cover. Exposed on window.puhig.portal so consumer apps (e.g. WX) animate their
+// own covers with the same motion instead of re-implementing it; the HIG's own
+// masthead + section covers (below) consume it too.
+window.puhig = window.puhig || {};
+window.puhig.portal = (function () {
+  // A card is born tiny at the cover's centre (bornScale), flies out on EASE, and
+  // lands a touch over-grown (growScale) before settling — the spit-out's inertia.
+  var EASE = "cubic-bezier(0.2, 0.7, 0.25, 1)";
+  var bornScale = 0.16;
+  var growScale = 1.05;
+
+  // The portal pulse. The mosaic inside the cover zooms (zoomScale > 1) — the
+  // vortex opening — and, if a `sleeve` is given, the cover's face recedes
+  // (faceScale < 1) so the zoom reads as depth rather than the whole card growing.
+  // Both hold between peakAt and closeAt (offsets in [0,1] of `total`) then settle
+  // to rest. The optional inhale (inhaleScale < 1 at inhaleAt, before peakAt) gives
+  // the zoom a breath: the mosaic contracts first, then expands past rest to throw
+  // the cards out — a draw-in before the blow-out; omit it (as the gather does,
+  // being an inhale already) for a plain exhale. fill:none reverts every part on
+  // end / cancel. Returns the WAAPI animations so the caller can track + cancel.
+  function pulse(sleeve, mosaic, total, peakAt, closeAt, faceScale, zoomScale, inhaleScale, inhaleAt) {
+    var anims = [];
+    if (sleeve) {
+      anims.push(sleeve.animate(
+        [
+          { transform: "none", offset: 0, easing: "ease-out" },
+          { transform: "scale(" + faceScale + ")", offset: peakAt, easing: "ease-in-out" },
+          { transform: "scale(" + faceScale + ")", offset: closeAt, easing: "ease-in-out" },
+          { transform: "none", offset: 1 }
+        ],
+        { duration: total, easing: "linear" }
+      ));
+    }
+    if (mosaic) {
+      mosaic.style.transformOrigin = "center"; // zoom about the vortex centre
+      var frames = [{ transform: "scale(1)", offset: 0, easing: "ease-in-out" }];
+      if (inhaleScale != null) {
+        frames.push({ transform: "scale(" + inhaleScale + ")", offset: inhaleAt, easing: "ease-in-out" });
+      }
+      frames.push({ transform: "scale(" + zoomScale + ")", offset: peakAt, easing: "ease-in-out" });
+      frames.push({ transform: "scale(" + zoomScale + ")", offset: closeAt, easing: "ease-in-out" });
+      frames.push({ transform: "scale(1)", offset: 1 });
+      anims.push(mosaic.animate(frames, { duration: total, easing: "linear" }));
+    }
+    return anims;
+  }
+
+  // Deal timing from the per-card `steps` and the card count. Cards emit one at a
+  // time (emitStep apart) after emitDelay, each flying for emitDur then settling for
+  // settleDur; the portal's close (closeDur) overlaps the last landing. closeFloor
+  // is the earliest the close may begin (the portal must be open first) — defaults
+  // to emitDelay; the selection deal passes its openDur. Returns the derived total +
+  // closeStart alongside the emit steps, ready for pulse() and dealCards().
+  function dealTiming(count, steps) {
+    var floor = steps.closeFloor != null ? steps.closeFloor : steps.emitDelay;
+    var lastIdx = count - 1;
+    var lastLand = steps.emitDelay + lastIdx * steps.emitStep + steps.emitDur + steps.settleDur;
+    var closeStart = Math.max(floor, lastLand - steps.settleDur - 140);
+    var total = Math.max(lastLand, closeStart + steps.closeDur);
+    return {
+      total: total, closeStart: closeStart,
+      emitDelay: steps.emitDelay, emitStep: steps.emitStep,
+      emitDur: steps.emitDur, settleDur: steps.settleDur
+    };
+  }
+
+  // Spit `cards` out from the cover's centre to their slots. `base` is the cover's
+  // rect, `rects` each card's final rect (read in one pass before animating, so no
+  // reflow). Each card is born at the cover centre tiny + faded, then flies out on
+  // EASE — fading in over the whole flight (mirrors the gather), arriving over-grown
+  // then settling. The earliest card sits in front (z-index, cleared on finish).
+  // With opts.clearHide it clears a pre-deal inline opacity:0 as the deal starts
+  // (covers hidden before paint), so the reveal rides the deal rather than flashing.
+  // Returns the WAAPI animations.
+  function dealCards(cards, base, rects, t, opts) {
+    var clearHide = !!(opts && opts.clearHide);
+    var anims = [];
+    cards.forEach(function (card, i) {
+      var r = rects[i];
+      // All sleeves are the same size, so aligning top-left aligns centres; the
+      // scale shrinks the card to a tile sitting at the cover's centre.
+      var bornT = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(" + bornScale + ")";
+      var emitStart = t.emitDelay + i * t.emitStep;
+      var emitEnd = emitStart + t.emitDur;
+      var settleEnd = emitEnd + t.settleDur;
+      var frames = [
+        { transform: bornT, opacity: 0, offset: 0 },
+        { transform: bornT, opacity: 0, offset: emitStart / t.total, easing: EASE },
+        { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / t.total, easing: "ease-out" },
+        { transform: "none", opacity: 1, offset: settleEnd / t.total }
+      ];
+      if (settleEnd < t.total) frames.push({ transform: "none", opacity: 1, offset: 1 });
+      card.style.zIndex = String(100 - i); // first card out sits in front of the fan
+      var anim = card.animate(frames, { duration: t.total, easing: "linear" });
+      if (clearHide) card.style.opacity = "";
+      anim.onfinish = function () { card.style.zIndex = ""; };
+      anims.push(anim);
+    });
+    return anims;
+  }
+
+  // The cover's own breath as it enters. Born at `t.from` (a scale < 1) and faded,
+  // it grows to the growScale overshoot then settles to rest. With t.sync it
+  // breathes on the mosaic's envelope over the full `t.total`: swelling to the
+  // overshoot as the vortex peaks (t.peakOff), holding the swell across the plateau
+  // (t.holdOff), then settling on the vortex's close — frame and vortex as one
+  // breath. Without sync it runs its own t.coverDur clock (the quieter scroll-in
+  // pop, overshoot at 0.78). Returns the animation.
+  function coverBreath(sleeve, t) {
+    if (t.sync) {
+      return sleeve.animate(
+        [
+          { transform: "scale(" + t.from + ")", opacity: 0, easing: EASE },
+          { transform: "scale(" + growScale + ")", opacity: 1, offset: t.peakOff, easing: "ease-out" },
+          { transform: "scale(" + growScale + ")", opacity: 1, offset: t.holdOff, easing: "ease-in-out" },
+          { transform: "none", opacity: 1 }
+        ],
+        { duration: t.total }
+      );
+    }
+    return sleeve.animate(
+      [
+        { transform: "scale(" + t.from + ")", opacity: 0, easing: EASE },
+        { transform: "scale(" + growScale + ")", opacity: 1, offset: 0.78, easing: "ease-out" },
+        { transform: "none", opacity: 1 }
+      ],
+      { duration: t.coverDur }
+    );
+  }
+
+  return {
+    EASE: EASE, bornScale: bornScale, growScale: growScale,
+    pulse: pulse, dealTiming: dealTiming, dealCards: dealCards, coverBreath: coverBreath
+  };
+}());
+
 // Cover-portal entry deal — the same cover-portal the WX deck plays, applied to
 // every cover card on the page. A cover pops in (a quick scale-up carrying a touch
 // of growth inertia), then its sibling cards are born tiny at the cover's centre
@@ -1172,34 +1316,28 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
 // every part to rest on end. Skipped under reduced motion. Plays once per cover,
 // after the initial fitMosaics build so the cover's mosaic exists for the zoom.
 (function () {
-  // Shared deal motion: a card is born tiny at the cover's centre (bornScale),
-  // flies out on EASE, and lands a touch over-grown (growScale) before settling.
-  var EASE = "cubic-bezier(0.2, 0.7, 0.25, 1)";
-  var bornScale = 0.16; // size of a card at the vortex centre before it flies out
-  var growScale = 1.05; // a card overshoots its rest size on landing, then settles
-
-  // The portal pulse: the mosaic inside the cover zooms (zoomScale > 1) — the
-  // vortex opening — holding between peakAt and closeAt then settling to rest. The
-  // optional inhale (inhaleScale < 1 at inhaleAt) gives the zoom a breath: the
-  // mosaic contracts first, then expands past rest to spit the cards out. fill:none
-  // reverts it on end.
-  function portalPulse(mosaic, total, peakAt, closeAt, zoomScale, inhaleScale, inhaleAt) {
-    if (!mosaic) return;
-    mosaic.style.transformOrigin = "center"; // zoom about the vortex centre
-    var frames = [{ transform: "scale(1)", offset: 0, easing: "ease-in-out" }];
-    if (inhaleScale != null) {
-      frames.push({ transform: "scale(" + inhaleScale + ")", offset: inhaleAt, easing: "ease-in-out" });
-    }
-    frames.push({ transform: "scale(" + zoomScale + ")", offset: peakAt, easing: "ease-in-out" });
-    frames.push({ transform: "scale(" + zoomScale + ")", offset: closeAt, easing: "ease-in-out" });
-    frames.push({ transform: "scale(1)", offset: 1 });
-    mosaic.animate(frames, { duration: total, easing: "linear" });
-  }
+  // The cover-portal toolkit (window.puhig.portal, defined above) supplies the deal
+  // motion, the portal pulse, the timing maths, the card fly-out and the cover
+  // breath; this block wires them to the HIG's own covers — the masthead on load,
+  // each section cover on scroll-in.
+  var portal = window.puhig.portal;
 
   // Deal one cover's section in. `sleeve` is the cover's .card-sleeve; the masthead
   // is every other .panel-frame sharing its parent (the <header> or the <section>).
-  function dealEntry(sleeve, viaPortal) {
+  // `opts` tunes the cover's pop (see portal.coverBreath):
+  //   coverFrom — the scale the cover is born at (smaller = a bigger, clearer grow-in)
+  //   coverDur  — how long the quiet pop takes to settle (no-sync only)
+  //   zoom      — the vortex's outward breath (the expansion past rest; the
+  //               contraction stays at the bleed-ring-safe inhale trough, 0.88)
+  //   sync      — lock the frame's breath to the mosaic's envelope (see coverBreath)
+  // Defaults give the quiet pop the scroll-in section covers use.
+  function dealEntry(sleeve, viaPortal, opts) {
     if (reduceMotionMQ.matches || !sleeve) return;
+    var pop = opts || {};
+    var coverFrom = pop.coverFrom != null ? pop.coverFrom : 0.84;
+    var coverDur = pop.coverDur != null ? pop.coverDur : 500;
+    var zoom = pop.zoom != null ? pop.zoom : 1.28;
+    var sync = !!pop.sync;
     var coverFrame = sleeve.querySelector(".card-frame--cover");
     var mosaic = coverFrame ? coverFrame.querySelector(".mosaic-tiles-svg") : null;
     var mast = Array.prototype.slice.call(sleeve.parentNode.children).filter(function (el) {
@@ -1212,64 +1350,27 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
     var base = sleeve.getBoundingClientRect();
     var rects = mast.map(function (c) { return c.getBoundingClientRect(); });
 
-    var popDur = 360;     // the cover pops in (direct entry only)
-    var emitDelay = 300;  // the first card emerges as the cover settles
-    var emitStep = 90;    // gap between successive cards
-    var emitDur = 460;    // one card's flight from the cover centre to its slot
-    var settleDur = 160;  // the spit-out inertia
-    var closeDur = 300;   // the mosaic eases back to rest behind the last card
+    var t = portal.dealTiming(mast.length, {
+      emitDelay: 300, emitStep: 90, emitDur: 460, settleDur: 160, closeDur: 300
+    });
 
-    var lastIdx = mast.length - 1;
-    var lastLand = emitDelay + lastIdx * emitStep + emitDur + settleDur;
-    var closeStart = Math.max(emitDelay, lastLand - settleDur - 140);
-    var total = Math.max(lastLand, closeStart + closeDur);
-
-    // Direct entry: pop the cover in, then open the portal (mosaic zoom) as the
+    // Direct entry: breathe the cover in and open the portal (mosaic zoom) as the
     // siblings spit. Via portal: the cover is mid-morph — touch neither.
     if (!viaPortal) {
-      sleeve.animate(
-        [
-          { transform: "scale(0.84)", opacity: 0, easing: EASE },
-          { transform: "scale(" + growScale + ")", opacity: 1, offset: 0.78, easing: "ease-out" },
-          { transform: "none", opacity: 1 }
-        ],
-        { duration: popDur + 140 }
-      );
-      portalPulse(
-        mosaic, total, emitDelay / total, closeStart / total, 1.28,
-        0.88, 140 / total // breath in before the exhale spits the siblings out
-      );
+      var peakOff = t.emitDelay / t.total; // vortex peak / cover overshoot
+      var holdOff = t.closeStart / t.total; // vortex plateau end
+      portal.coverBreath(sleeve, {
+        from: coverFrom, coverDur: coverDur, total: t.total,
+        peakOff: peakOff, holdOff: holdOff, sync: sync
+      });
+      portal.pulse(null, mosaic, t.total, peakOff, holdOff, 1, zoom, 0.88, 140 / t.total);
     }
-    // Reveal the cover from the pre-deal hide: the running pop (or, via portal, the
-    // morph) carries it in, so clearing the inline opacity now doesn't flash it.
+    // Reveal the cover from the pre-deal hide: the running breath (or, via portal,
+    // the morph) carries it in, so clearing the inline opacity now doesn't flash it.
     sleeve.style.opacity = "";
 
-    mast.forEach(function (card, i) {
-      var r = rects[i];
-      // Same-row cards align top-left to the cover; the scale shrinks each to a
-      // tile at the cover's centre before it flies out.
-      var bornT = "translate(" + (base.left - r.left) + "px, " + (base.top - r.top) + "px) scale(" + bornScale + ")";
-      var emitStart = emitDelay + i * emitStep;
-      var emitEnd = emitStart + emitDur;
-      var settleEnd = emitEnd + settleDur;
-
-      // Fade in over the whole flight (mirrors the gather's fade-out), so the card
-      // emerges faint from the vortex rather than popping to full opacity in it.
-      var frames = [
-        { transform: bornT, opacity: 0, offset: 0 },
-        { transform: bornT, opacity: 0, offset: emitStart / total, easing: EASE },
-        { transform: "scale(" + growScale + ")", opacity: 1, offset: emitEnd / total, easing: "ease-out" },
-        { transform: "none", opacity: 1, offset: settleEnd / total }
-      ];
-      if (settleEnd < total) frames.push({ transform: "none", opacity: 1, offset: 1 });
-
-      card.style.zIndex = String(100 - i);
-      var anim = card.animate(frames, { duration: total, easing: "linear" });
-      // The running deal holds the card hidden (opacity 0 at offset 0) then brings
-      // it in, so clearing the pre-deal hide now reveals it without a flash.
-      card.style.opacity = "";
-      anim.onfinish = function () { card.style.zIndex = ""; };
-    });
+    // Spit the siblings out from the cover's centre (clearing their pre-deal hide).
+    portal.dealCards(mast, base, rects, t, { clearHide: true });
   }
 
   function sleeveOf(frame) { return frame.closest(".card-sleeve"); }
@@ -1297,7 +1398,13 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
   function playHeader() {
     if (headerPlayed) return;
     headerPlayed = true;
-    dealEntry(headerSleeve, viaPortal);
+    // The masthead is the page's first impression — give it a more prominent pop
+    // than the quiet scroll-in section covers: born smaller so it visibly grows in,
+    // a deeper outward vortex breath, and `sync` so the frame and mosaic breathe as
+    // one — the cover swelling and settling on the vortex's beats rather than its own
+    // clock. (No effect when arriving via the cover portal — that morph carries the
+    // cover and these are ignored.)
+    dealEntry(headerSleeve, viaPortal, { coverFrom: 0.62, zoom: 1.5, sync: true });
   }
   if ("onpagereveal" in window) {
     window.addEventListener("pagereveal", function (e) { viaPortal = !!e.viewTransition; });
