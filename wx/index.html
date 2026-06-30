@@ -21,7 +21,7 @@
     <div class="container panel">
       <main>
         <section data-row="wx">
-          <div class="panel-frame card-sleeve panel-row-start" data-row="wx" data-wx-slot="cover">
+          <div class="panel-frame card-sleeve panel-row-start" data-row="wx" data-wx-slot="cover" data-portal="wx">
             <div class="panel-content card">
               <div class="card-frame card-frame--cover">
                 <div class="card-cover-art" data-target="24" data-mosaic-align="left" data-mosaic-palette="teal" data-mosaic-static>
@@ -159,6 +159,22 @@
           <section id="wx-results" data-row="wx" aria-live="polite"></section>
         </section>
       </main>
+    </div>
+    <!-- Super area: the fixed bottom-left control cluster (shared .scroll-controls
+         chrome). On a sub-app the leading control is Back — an <a>, so it's real
+         navigation; the same-origin nav reverses the cover-card portal, morphing
+         the WX cover back into its slot in the HIG deck. -->
+    <div class="scroll-controls">
+      <a
+        class="panel-frame scroll-control"
+        id="scroll-back-btn"
+        href="../index.html"
+        aria-label="Back to the Human Interface Guidelines"
+      >
+        <span class="toggle-body">
+          <i class="ph-light ph-arrow-arc-left"></i>
+        </span>
+      </a>
     </div>
   </body>
 </html>

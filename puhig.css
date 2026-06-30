@@ -1688,6 +1688,76 @@ html[data-theme="dark"] .mosaic-overlay {
   );
 }
 
+/* ── Cover-card portals ──────────────────────────────────────────────
+   Each app is a card in the deck; opening its cover takes you into that
+   app's universe. Cross-document View Transitions make that literal: a
+   same-origin navigation morphs the cover from its slot in the deck into
+   the app's masthead cover (and reverses on Back), with no SPA, router, or
+   build step. Opt in framework-wide; user-initiated same-origin navs only.
+   Progressive enhancement — browsers without VT just navigate (Chromium,
+   Safari 18.2+ animate; Firefox is behind a flag). */
+@view-transition {
+  navigation: auto;
+}
+
+/* A sleeve marked data-portal="<app>" shares one view-transition-name across
+   the two pages, so the deck card and the app cover are matched and morphed.
+   One element per name per page keeps the name unique, as the spec requires;
+   add a new app by reusing the pattern with a fresh name. */
+.card-sleeve[data-portal="wx"] {
+  view-transition-name: cover-wx;
+}
+
+/* Give the portal a deliberate, eased morph (longer than the ~0.25s default) so
+   it reads as a cover opening into its app rather than a flash; the rest of the
+   page cross-fades under it on the slower-out, the cover settling last. */
+::view-transition-group(cover-wx) {
+  animation-duration: 460ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* The cover is the portal; everything else on the page is the `root` snapshot.
+   Scale the whole outgoing app down into the cover (suck in) and the whole
+   incoming app up out of it (spit out), anchored on the cover's on-screen
+   centre — puhig.js sets --vt-exit/enter-origin from the cover's rect (handing
+   the exit origin across the navigation), falling back to the masthead corner.
+   The two run together: one app collapses into the portal as the next is born
+   from it, the cover morphing above as the anchor and the mosaic palette
+   crossfading to the new app's. */
+::view-transition-old(root) {
+  animation: portal-suck 420ms cubic-bezier(0.4, 0, 1, 1) both;
+  transform-origin: var(--vt-exit-origin, 50% 38%);
+}
+
+::view-transition-new(root) {
+  animation: portal-spit 480ms cubic-bezier(0, 0, 0.2, 1) 60ms both;
+  transform-origin: var(--vt-enter-origin, 50% 38%);
+}
+
+@keyframes portal-suck {
+  to {
+    opacity: 0;
+    transform: scale(0.06);
+  }
+}
+
+@keyframes portal-spit {
+  from {
+    opacity: 0;
+    transform: scale(0.06);
+  }
+}
+
+/* Honour the OS reduce-motion setting (as the tile entry and press bounce do):
+   collapse the morph to an instant swap rather than animating position/size. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 .scroll-controls {
   bottom: calc(36px + env(safe-area-inset-bottom));
   display: flex;

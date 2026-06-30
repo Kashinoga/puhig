@@ -4,6 +4,7 @@
   "type": "module",
   "description": "Local dev tooling for Pocket Universe (not shipped with the framework)",
   "scripts": {
+    "serve": "python3 -m http.server 8753",
     "shot": "node tools/screenshot.mjs",
     "csslint": "node tools/csslint.mjs",
     "tokens": "node tools/tokens.mjs",

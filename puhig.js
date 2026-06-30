@@ -1070,7 +1070,9 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
 (function () {
   function setupScrollBtn(btn, action) {
     if (!btn) return;
-    btn.addEventListener('click', action);
+    // action is optional: a nav-link control (e.g. the WX back button) carries
+    // its own href, so it wants only the shared press bounce, not a JS handler.
+    if (action) btn.addEventListener('click', action);
     btn.addEventListener('pointerdown', function (e) {
       btn.setPointerCapture(e.pointerId);
       btn.classList.remove('is-bouncing');
@@ -1093,6 +1095,43 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
   });
   setupScrollBtn(document.getElementById('scroll-bottom-btn'), function () {
     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  });
+  // Back-to-deck control (WX and other sub-apps); navigation via its href.
+  setupScrollBtn(document.getElementById('scroll-back-btn'));
+}());
+
+// App-to-app portal transition. The cover card is a named view-transition; the
+// rest of the page is the `root` snapshot. We anchor root's scale origin on the
+// cover so the whole outgoing app collapses into the portal and the incoming one
+// is born from it (the CSS does the scaling; here we only place the origin).
+// The exit origin is the cover's spot on the page we're LEAVING, so it rides
+// across the navigation via sessionStorage; the enter origin is read live on the
+// page we're arriving at.
+(function () {
+  function coverOrigin() {
+    // The portal we're travelling through. With one app this is unambiguous;
+    // future multi-app decks would match the cover by the navigated name.
+    var cover = document.querySelector('[data-portal]');
+    if (!cover) return null;
+    var r = cover.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    var x = ((r.left + r.width / 2) / window.innerWidth) * 100;
+    var y = ((r.top + r.height / 2) / window.innerHeight) * 100;
+    return x.toFixed(2) + '% ' + y.toFixed(2) + '%';
+  }
+  window.addEventListener('pageswap', function (e) {
+    if (!e.viewTransition) return;
+    var o = coverOrigin();
+    if (o) sessionStorage.setItem('vt-exit-origin', o);
+    else sessionStorage.removeItem('vt-exit-origin');
+  });
+  window.addEventListener('pagereveal', function (e) {
+    if (!e.viewTransition) return;
+    var root = document.documentElement;
+    var exit = sessionStorage.getItem('vt-exit-origin');
+    var enter = coverOrigin();
+    if (exit) root.style.setProperty('--vt-exit-origin', exit);
+    if (enter) root.style.setProperty('--vt-enter-origin', enter);
   });
 }());
 

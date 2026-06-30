@@ -6,6 +6,30 @@
    forecast temperature figure and a couple of text emphases. Everything
    sizes off the card via cqi, like the rest of the card chrome. */
 
+/* ── WX app colour ───────────────────────────────────────────────────
+   Give the full-bleed background mosaic the app's identity by tinting its
+   grid strokes toward teal (hue ~195) instead of the framework's neutral
+   black — so entering WX recolours the page grid and the portal transition
+   visibly changes the mosaic colour to match the app (its cards are already
+   teal). buildGrid bakes --mosaic-grid into the SVG stroke at build time, and
+   wx.css loads before that build, so WX draws teal grid lines. Alpha (line
+   weight) matches the base per appearance so the grid reads the same density,
+   only re-hued. Mirrors the base light / system-dark / forced-dark structure
+   in puhig.css; loaded after it, so these win by source order. */
+:root {
+  --mosaic-grid: oklch(55% 0.12 195 / 5%);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --mosaic-grid: oklch(70% 0.13 195 / 30%);
+  }
+}
+
+html[data-theme="dark"] {
+  --mosaic-grid: oklch(70% 0.13 195 / 30%);
+}
+
 /* Forecast headline number. */
 .wx-temp {
   align-items: baseline;
