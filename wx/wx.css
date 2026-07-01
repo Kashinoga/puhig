@@ -203,11 +203,11 @@ html[data-theme="dark"] {
   z-index: 2;
 }
 
-/* The unit reads as secondary over the art, but --dim is too low-contrast on the
-   mosaic — soften the white instead. */
+/* The unit still reads as secondary through weight + size, but stays fully opaque
+   like the rest of the mosaic text — the softened white muddied it against the tiles.
+   (--dim is too low-contrast over the mosaic, hence the inherited white.) */
 .wx-figure .wx-temp-unit {
   color: inherit;
-  opacity: 0.8;
 }
 
 /* The station figure's caption: the station's friendly name over its mosaic, sized
@@ -280,15 +280,6 @@ html[data-theme="dark"] {
   vertical-align: -0.1em;
 }
 
-/* The effect window in an alert's body (moved out of the footer): the alert's
-   duration reads as quiet meta above the headline, set off from it by the space
-   below (the global reset zeroes paragraph margins, so this space is explicit). */
-.wx-alert-when {
-  color: var(--dim);
-  letter-spacing: 0.02em;
-  margin-block-end: clamp(8px, 3.2cqi, 14px);
-}
-
 /* The note title leads an empty / loading / clear / error card; space it off the
    body line below so the heading + prose read as two beats (e.g. the No Alerts
    card's "Clear skies." over its detail). */
@@ -358,5 +349,35 @@ html[data-theme="dark"] {
 @media (min-width: 1392px) {
   .card-sleeve[data-wx-slot="station"] {
     grid-area: 1 / 5;
+  }
+}
+
+/* Mosaic text on full-width phone cards. The captions laid over the mosaics (the
+   station name, the forecast temperature + short line, the alert location strip)
+   share the base type scale's ~0.4cqi calibration, so like the card chrome they read
+   proportionally small once the card fills the screen. Bump their cqi terms + caps
+   ~20% here, matching the base scale's mobile nudge; desktop (>563px) is untouched. */
+@media (max-width: 563px) {
+  .wx-figure-label {
+    font-size: clamp(18px, 7.6cqi, 27px);
+  }
+
+  .wx-temp-value {
+    font-size: clamp(48px, 26cqi, 82px);
+  }
+
+  .wx-temp-unit {
+    font-size: clamp(18px, 8.4cqi, 28px);
+  }
+
+  .wx-area {
+    font-size: clamp(14px, 6.2cqi, 19px);
+  }
+
+  /* The short-forecast line inherits the fixed 14px body size (no cqi), so unlike the
+     temp above it, it wouldn't grow with the card at all — give it a responsive size
+     here so it scales as a caption under the temperature. */
+  .wx-short {
+    font-size: clamp(15px, 5.8cqi, 20px);
   }
 }

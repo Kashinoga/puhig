@@ -610,6 +610,13 @@ section {
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
 
+/* The cost pip rides the cover's mosaic art, not a flat card surface — the base
+   0.75 opacity lets the tiles bleed through and mute its colour. Make it solid so
+   the cover's cost reads at full strength over the art. */
+.card-frame--cover .card-pip {
+  opacity: 1;
+}
+
 /* Light-art cover (pale mosaic, e.g. the light palette): white text would
    wash out, so flip to dark ink and lighten the scrims to white. Works in
    both themes because the light palette is theme-independent. */
@@ -1330,6 +1337,10 @@ h1 {
   color: var(--teal);
   display: inline-flex;
   font-size: 0.9em;
+  /* middle centres the glyph box on the parent's x-height midline, but the box is a
+     full em (taller than the text) so it dips below the baseline and reads low. Lift it
+     ~0.1em to sit optically centred on the line. */
+  transform: translateY(-0.1em);
   vertical-align: middle;
 }
 
@@ -1570,6 +1581,25 @@ h1 {
   margin-block: clamp(8px, 3.2cqi, 13px);
 }
 
+/* When a select-field sits flush against a text box's own padding (e.g. the lone
+   State field filling WX's Location card), its outer margin doubles that inset. Drop
+   the edge margins on a first/last field so the box's padding-block provides the
+   spacing; margins between stacked fields (the components showcase) are untouched. */
+.card-text-box > .select-field:first-child {
+  margin-block-start: 0;
+}
+
+.card-text-box > .select-field:last-child {
+  margin-block-end: 0;
+}
+
+/* Same reasoning for a card-quote leading a text box (e.g. WX's Station card, whose
+   box holds only the "Nearest observation station" quote): its margin-top spaces it
+   off preceding prose, but as the first child it only doubles the box's padding. */
+.card-text-box > .card-quote:first-child {
+  margin-top: 0;
+}
+
 .select-field .select {
   display: flex;
   width: 100%;
@@ -1620,6 +1650,38 @@ h1 {
 
   .panel-frame {
     width: 100%;
+  }
+
+  /* Full-width cards make the type scale read proportionally small — the chrome (title,
+     type) tracks the card via cqi but caps at desktop's ~250px-card proportion, and the
+     body copy is worse: plain paragraphs are a flat 14px (the global `p` rule beats the
+     box's inherited size), so they never grow with the card at all. Lift the shared
+     scale — title, type, body paragraphs (an unclassed `p` beats `p{14px}` on
+     specificity; its 0.9em external-link icon rides along), the field, and excerpts —
+     ~20% so the enlarged card carries proportionally larger text. Scoped to this query,
+     so desktop (>563px, fixed 264px columns) stays pixel-identical. */
+  .card-name,
+  .card-type,
+  .card-text-box p:not([class]),
+  .card-text-box .panel-excerpt,
+  .select:not(.select--sm):not(.select--lg) select {
+    font-size: clamp(15px, 5.3cqi, 22px);
+  }
+
+  .card-text-box .type-meta {
+    font-size: clamp(11px, 4.3cqi, 17px);
+  }
+
+  /* The rarity emblem + cost pip share one base scale (they read as a single palette
+     per row); bump them with the surrounding title/type text so they don't shrink
+     against the enlarged rows. */
+  .card-rarity {
+    font-size: clamp(15px, 5.5cqi, 22px);
+  }
+
+  .card-pip {
+    height: clamp(15px, 5.5cqi, 22px);
+    width: clamp(15px, 5.5cqi, 22px);
   }
 }
 

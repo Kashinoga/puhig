@@ -334,17 +334,18 @@
     return sleeve(noteBody(icon, heading, body, "NWS", { label: label }), rowStart);
   }
 
-  // The alert's body beats, below the 📍 strip: the effect window as dim meta (the
-  // duration that used to sit in the footer), then the headline. Each renders as a
-  // paragraph; the short window stays whole on the first card, the headline splits
-  // across cards after it.
+  // The alert's body beats, below the 📍 strip: the headline first, then the effect
+  // window as a closing quote ("From <start> to <end>") that trails the alert text like
+  // the station card's caption. Each renders as a paragraph; the headline splits across
+  // cards and the window-quote flows onto the last page after it (a lone continuation is
+  // fine — .card-quote:first-child drops its top margin there).
   function alertBodyBeats(p) {
     var beats = [];
-    var eff = fmtTime(p.effective), exp = fmtTime(p.expires);
-    var when = eff && exp ? eff + " → " + exp : exp ? "Until " + exp : eff ? "From " + eff : "";
-    if (when) beats.push({ text: when, cls: "wx-alert-when" });
     var headline = headlineOf(p);
     if (headline) beats.push({ text: headline, cls: "" });
+    var eff = fmtTime(p.effective), exp = fmtTime(p.expires);
+    var when = eff && exp ? "From " + eff + " to " + exp : exp ? "Until " + exp : eff ? "From " + eff : "";
+    if (when) beats.push({ text: when, cls: "card-quote" });
     return beats;
   }
 
