@@ -1346,6 +1346,14 @@ window.puhig.portal = (function () {
   //   zoom      — the vortex's outward breath (the expansion past rest; the
   //               contraction stays at the bleed-ring-safe inhale trough, 0.88)
   //   sync      — lock the frame's breath to the mosaic's envelope (see coverBreath)
+  //   flip      — deal the cover face-down (its .card-back showing) and turn it
+  //               over before the deck spits: a lead of flipLead + flipDur is
+  //               reserved ahead of the emit so the born-flipped grow-in and the
+  //               turn each read as their own beat, then the vortex opens on the
+  //               now-revealed front. Ignored via the cross-document portal (that
+  //               morph IS the front's entry — a flip would fight it).
+  //   flipLead  — ms the cover grows in flipped before the turn begins
+  //   flipDur   — ms the turn itself takes
   // Defaults give the quiet pop the scroll-in section covers use.
   function dealEntry(sleeve, viaPortal, opts) {
     if (reduceMotionMQ.matches || !sleeve) return;
@@ -1354,6 +1362,9 @@ window.puhig.portal = (function () {
     var coverDur = pop.coverDur != null ? pop.coverDur : 500;
     var zoom = pop.zoom != null ? pop.zoom : 1.28;
     var sync = !!pop.sync;
+    var flip = !!pop.flip && !viaPortal;
+    var flipLead = pop.flipLead != null ? pop.flipLead : 360;
+    var flipDur = pop.flipDur != null ? pop.flipDur : 480;
     var coverFrame = sleeve.querySelector(".card-frame--cover");
     var mosaic = coverFrame ? coverFrame.querySelector(".mosaic-tiles-svg") : null;
     var mast = Array.prototype.slice.call(sleeve.parentNode.children).filter(function (el) {
@@ -1366,8 +1377,13 @@ window.puhig.portal = (function () {
     var base = sleeve.getBoundingClientRect();
     var rects = mast.map(function (c) { return c.getBoundingClientRect(); });
 
+    // A face-down cover reserves a lead (grow-in flipped, then the turn) ahead of
+    // the emit so the deck spits from the front only once it's revealed. The whole
+    // deal — breath, mosaic zoom, spit — shifts later by this lead, so the cover
+    // grows slowly in flipped and overshoots as it turns face-up and the vortex opens.
+    var lead = flip ? flipLead + flipDur : 0;
     var t = portal.dealTiming(mast.length, {
-      emitDelay: 300, emitStep: 90, emitDur: 460, settleDur: 160, closeDur: 300
+      emitDelay: 300 + lead, emitStep: 90, emitDur: 460, settleDur: 160, closeDur: 300
     });
 
     // Direct entry: breathe the cover in and open the portal (mosaic zoom) as the
@@ -1380,6 +1396,24 @@ window.puhig.portal = (function () {
         peakOff: peakOff, holdOff: holdOff, sync: sync
       });
       portal.pulse(null, mosaic, t.total, peakOff, holdOff, 1, zoom, 0.88, 140 / t.total);
+    }
+    // Turn the cover over: born face-down (rotateY 180, its .card-back showing) and
+    // held there through the flipLead while it grows in, then rotated to the front
+    // over flipDur with a slight rotateX lift at the half-turn. Targets the sleeve's
+    // .flip-inner (the 3D layer initFlip already wrapped) so it composes with the
+    // breath on the flat sleeve. fill:backwards holds the face-down pose across the
+    // lead without leaving an inline transform behind — on finish it reverts to the
+    // inner's own resting front, matching the flip controller's flipped=false state.
+    if (flip) {
+      var inner = sleeve.querySelector(":scope > .flip-inner") || wrapFlipInner(sleeve);
+      inner.animate(
+        [
+          { transform: "perspective(600px) rotateY(180deg) rotateX(0deg)" },
+          { transform: "perspective(600px) rotateY(90deg) rotateX(6deg)", offset: 0.5 },
+          { transform: "perspective(600px) rotateY(0deg) rotateX(0deg)" }
+        ],
+        { duration: flipDur, delay: flipLead, easing: portal.EASE, fill: "backwards" }
+      );
     }
     // Reveal the cover from the pre-deal hide: the running breath (or, via portal,
     // the morph) carries it in, so clearing the inline opacity now doesn't flash it.
@@ -1418,9 +1452,10 @@ window.puhig.portal = (function () {
     // than the quiet scroll-in section covers: born smaller so it visibly grows in,
     // a deeper outward vortex breath, and `sync` so the frame and mosaic breathe as
     // one — the cover swelling and settling on the vortex's beats rather than its own
-    // clock. (No effect when arriving via the cover portal — that morph carries the
-    // cover and these are ignored.)
-    dealEntry(headerSleeve, viaPortal, { coverFrom: 0.62, zoom: 1.5, sync: true });
+    // clock. It also enters face-down and turns over before the deck spits (flip), so
+    // the masthead reads as a card dealt then revealed. (No effect when arriving via
+    // the cover portal — that morph carries the cover and these are ignored.)
+    dealEntry(headerSleeve, viaPortal, { coverFrom: 0.62, zoom: 1.5, sync: true, flip: true });
   }
   if ("onpagereveal" in window) {
     window.addEventListener("pagereveal", function (e) { viaPortal = !!e.viewTransition; });
@@ -1430,6 +1465,9 @@ window.puhig.portal = (function () {
   // Each section cover (A 100, A 200, …) deals once, the first time it scrolls into
   // view — so sections below the fold spit out as the reader reaches them rather
   // than animating unseen on load. (A section in view at load fires straight away.)
+  // Every cover enters face-down and turns over (flip), matching the masthead; the
+  // section covers keep their quieter pop otherwise (defaults, no sync).
+  var sectionOpts = { flip: true };
   var sectionSleeves = Array.prototype.slice
     .call(document.querySelectorAll("main section .card-frame--cover"))
     .map(sleeveOf)
@@ -1447,14 +1485,14 @@ window.puhig.portal = (function () {
         entries.forEach(function (en) {
           if (!en.isIntersecting) return;
           io.unobserve(en.target);
-          dealEntry(en.target, false);
+          dealEntry(en.target, false, sectionOpts);
         });
       }, { threshold: 0.35 });
       sectionSleeves.forEach(function (s) { io.observe(s); });
     } else {
       // No IO: deal them all on load (still once each).
       requestAnimationFrame(function () {
-        sectionSleeves.forEach(function (s) { dealEntry(s, false); });
+        sectionSleeves.forEach(function (s) { dealEntry(s, false, sectionOpts); });
       });
     }
   });
