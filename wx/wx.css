@@ -264,13 +264,14 @@ html[data-theme="dark"] {
 /* ── Row-1 masthead placement ────────────────────────────────────────
    The deck opens with a masthead row whose numbers track their column:
    WX 000 cover (col 1), WX 001 About (col 2) and WX 002 Location picker
-   (col 3) — all static. On a selection a fourth card, WX 003 forecast, is
-   created to their right (col 4). The dealt alert cards (#wx-results) begin a
-   fresh row below (their first card keeps its .panel-row-start col-1 pin). The
-   three static cards hold once three 264px columns fit (≥840px = body padding +
-   3×264 + 2×12); the forecast's fourth column needs ≥1116px (+ 264 + 12) —
-   below that it flows to the next row. Scoped to .container.panel, which on
-   /wx is the WX grid alone. */
+   (col 3) — all static. On a selection two more cards are created to their
+   right: WX 003 forecast (col 4) and WX 004 station (col 5). The dealt alert
+   cards (#wx-results) begin a fresh row below (their first card keeps its
+   .panel-row-start col-1 pin). The three static cards hold once three 264px
+   columns fit (≥840px = body padding + 3×264 + 2×12); the forecast's fourth
+   column needs ≥1116px (+ 264 + 12) and the station's fifth ≥1392px (+ 264 +
+   12) — below each threshold that card flows to the next row. Scoped to
+   .container.panel, which on /wx is the WX grid alone. */
 @media (min-width: 840px) {
   .card-sleeve[data-wx-slot="cover"] {
     grid-area: 1 / 1;
@@ -290,5 +291,13 @@ html[data-theme="dark"] {
 @media (min-width: 1116px) {
   .card-sleeve[data-wx-slot="forecast"] {
     grid-area: 1 / 4;
+  }
+}
+
+/* The station is a fifth masthead card; place it in col 5 once a fifth
+   264px column fits. */
+@media (min-width: 1392px) {
+  .card-sleeve[data-wx-slot="station"] {
+    grid-area: 1 / 5;
   }
 }

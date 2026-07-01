@@ -108,6 +108,15 @@
     return null;
   }
 
+  // The postal abbreviation for a state's display name (e.g. "Iowa" → "IA") —
+  // the area code shown on the alert card footers.
+  function abbrByName(name) {
+    for (var i = 0; i < STATES.length; i++) {
+      if (STATES[i].name === name) return STATES[i].abbr;
+    }
+    return "";
+  }
+
   function fmtTime(iso) {
     if (!iso) return "";
     var d = new Date(iso);
@@ -155,26 +164,35 @@
   // swapped in place — never dealt — through noteBody / forecastBody below. The
   // dealt cards (alerts, the clear-skies note) wrap a body in a sleeve instead.
   var FC_NUM = "WX 003"; // the forecast card's collector number / its column
+  var STA_NUM = "WX 004"; // the station card's collector number / its column (5)
 
-  // A footer: a card-number on the left over a metadata line, plus optional extras
-  // that match the static masthead cards' footers — opts.setAbbr renders a set
-  // abbreviation (the data source, e.g. "NWS") before the language/meta value, and
-  // opts.author renders an author on the right. Omit opts for the bare data-card
-  // footer (number + a single meta value).
+  // Every card is designed by Atelier Kashinoga for now, so the author defaults
+  // to it and pairs with the language in every footer's bottom-right.
+  var DESIGNER = "Atelier Kashinoga";
+
+  // A footer, mirroring the static masthead cards' four-section layout — number
+  // top-left, set abbreviation bottom-left, an optional version top-right, and
+  // the language + author bottom-right. opts.setAbbr renders a set abbreviation
+  // (the data source, e.g. "NWS") in the bottom-left; opts.author overrides the
+  // default designer, paired with the language via .card-credit (dot-separated).
   function footer(number, meta, opts) {
     opts = opts || {};
-    var setAbbr = opts.setAbbr
-      ? '<span class="card-set-abbreviation">' + esc(opts.setAbbr) + "</span>"
-      : "";
-    var right = opts.author
-      ? '<div class="card-footer-right"><span class="card-author">' + esc(opts.author) + "</span></div>"
-      : "";
+    var author = opts.author || DESIGNER;
+    var left =
+      '<span class="card-number">' + esc(number) + "</span>" +
+      (opts.setAbbr
+        ? '<div class="card-metadata"><span class="card-set-abbreviation">' +
+            esc(opts.setAbbr) + "</span></div>"
+        : "");
+    var lang = '<span class="card-language">' + esc(meta) + "</span>";
+    var right =
+      '<div class="card-credit">' + lang +
+        '<span class="card-author">' + esc(author) + "</span></div>";
     return (
-      '<div class="card-footer"><div class="card-footer-left">' +
-        '<span class="card-number">' + esc(number) + "</span>" +
-        '<div class="card-metadata">' + setAbbr +
-          '<span class="card-language">' + esc(meta) + "</span></div>" +
-      "</div>" + right + "</div>"
+      '<div class="card-footer">' +
+        '<div class="card-footer-left">' + left + "</div>" +
+        '<div class="card-footer-right">' + right + "</div>" +
+      "</div>"
     );
   }
 
@@ -239,7 +257,34 @@
         "<p>" + esc(trunc(period.detailedForecast, 130)) + "</p>" +
         (at ? '<p class="card-quote">Forecasted at ' + esc(at) + "</p>" : "") +
       "</div>" +
-      footer(FC_NUM, "EN")
+      footer(FC_NUM, "EN", { setAbbr: "NWS" })
+    );
+  }
+
+  // The station card (WX 004, col 5): the forecast's source, on its own masthead
+  // card beside the forecast. Its identifier (e.g. "KDSM") heads the card and the
+  // friendly name sits in the box. When no station resolved, a calm fallback names
+  // the bare data source (NWS) in the app's empty/error voice.
+  function stationBody(station) {
+    if (!station || !station.id) {
+      return (
+        title("Station", "var(--teal)") +
+        typeRow("Source — NWS", "ph-broadcast") +
+        '<div class="card-text-box">' +
+          '<p class="wx-note-title">Nearest station unavailable.</p>' +
+          "<p>Source: the U.S. National Weather Service.</p>" +
+        "</div>" +
+        footer(STA_NUM, "EN", { setAbbr: "NWS" })
+      );
+    }
+    return (
+      title(station.id, "var(--teal)") +
+      typeRow("Station — Observation", "ph-broadcast") +
+      '<div class="card-text-box">' +
+        '<p class="wx-note-title">' + esc(station.name || station.id) + "</p>" +
+        '<p class="card-quote">Nearest observation station</p>' +
+      "</div>" +
+      footer(STA_NUM, "EN", { setAbbr: "NWS" })
     );
   }
 
@@ -271,20 +316,13 @@
   // element (its room reserved via availH1); continuation cards drop it (availHn).
   var paginateBody = window.puhig.paginate.paginate;
 
-  // The alert footer names the forecast's source: the nearest observation station
-  // as "id · name" (e.g. "KORD · Chicago-O'Hare International Airport"), falling
-  // back to the bare data source (NWS) when no station resolved.
-  function stationLabel(station) {
-    if (!station || !station.id) return "NWS";
-    return station.name ? station.id + " · " + station.name : station.id;
-  }
-
   // Build one alert card. `pageCount > 1` shows a "(p/N)" tally in the title so a
   // reader sees a split alert continues; `bodyHtml` is this page's body paragraphs
   // (a slice of the headline, plus the effect window on the page it lands). `index`
   // is the alert's index in currentAlerts (shared across pages) — every page's Copy
-  // yields the whole alert. `station` names the source in the footer.
-  function alertPageCard(p, index, bodyHtml, pageIdx, pageCount, rowStart, station) {
+  // yields the whole alert. `areaCode` is the state's postal code (e.g. "IA"), the
+  // footer number; the source (NWS) is now its own masthead card (stationBody).
+  function alertPageCard(p, index, bodyHtml, pageIdx, pageCount, rowStart, areaCode) {
     var tally = pageCount > 1 ? " (" + (pageIdx + 1) + "/" + pageCount + ")" : "";
     // The 📍 location strip heads only the first card; continuation cards (2/N onward)
     // drop it — the area is already established — so their prose fills the whole body.
@@ -308,7 +346,7 @@
           '<button class="btn btn--outline btn--sm" data-copy="' + index + '"><i class="ph ph-copy"></i>Copy</button>' +
         "</div>" +
       "</div>" +
-      footer(stationLabel(station), "EN"),
+      footer(areaCode || "NWS", "EN", { setAbbr: "NWS" }),
       rowStart
     );
   }
@@ -403,8 +441,8 @@
   var TTL_ALERTS = { floor: 0, ceil: 120, fallback: 60 };
 
   // The nearest observation station names the forecast's source — its identifier
-  // (e.g. "KORD") and friendly name — on the alert card footers. The station list
-  // is ordered nearest-first, so features[0] is the closest.
+  // (e.g. "KORD") and friendly name — on its own masthead card (stationBody). The
+  // station list is ordered nearest-first, so features[0] is the closest.
   function nearestStation(data) {
     var f = (data && data.features) || [];
     var p = f[0] && f[0].properties;
@@ -448,31 +486,34 @@
     resultsEl.innerHTML = html;
   }
 
-  // The forecast card (WX 003) lives in its own host to the right (col 4),
-  // created on selection and updated in place — no deal animation. The sleeve is
-  // built once (so puhig.js's flip-init survives) and only its card-frame body
-  // swaps; clearForecast removes the card entirely (the idle masthead).
-  var forecastHost = document.getElementById("wx-forecast");
-  function forecastFrame() {
-    if (!forecastHost) return null;
-    var f = forecastHost.querySelector("#wx-forecast-body");
-    if (!f) {
-      forecastHost.innerHTML =
-        '<div class="panel-frame card-sleeve" data-row="wx" data-wx-slot="forecast">' +
-          '<div class="panel-content card"><div class="card-frame" id="wx-forecast-body" aria-live="polite"></div></div>' +
-          '<div class="card-back"><i class="ph ph-planet"></i></div>' +
-        "</div>";
-      f = forecastHost.querySelector("#wx-forecast-body");
+  // A masthead card that lives in its own host to the right (the forecast in col 4,
+  // the station in col 5), created on selection and updated in place — no deal
+  // animation. The sleeve is built once (so puhig.js's flip-init survives) and only
+  // its card-frame body swaps; clear() removes the card entirely (the idle masthead).
+  function cardHost(hostId, slot) {
+    var host = document.getElementById(hostId);
+    var bodyId = hostId + "-body";
+    function frame() {
+      if (!host) return null;
+      var f = host.querySelector("#" + bodyId);
+      if (!f) {
+        host.innerHTML =
+          '<div class="panel-frame card-sleeve" data-row="wx" data-wx-slot="' + slot + '">' +
+            '<div class="panel-content card"><div class="card-frame" id="' + bodyId + '" aria-live="polite"></div></div>' +
+            '<div class="card-back"><i class="ph ph-planet"></i></div>' +
+          "</div>";
+        f = host.querySelector("#" + bodyId);
+      }
+      return f;
     }
-    return f;
+    return {
+      host: host,
+      set: function (body) { var f = frame(); if (f) f.innerHTML = body; },
+      clear: function () { if (host) host.innerHTML = ""; }
+    };
   }
-  function setForecast(body) {
-    var f = forecastFrame();
-    if (f) f.innerHTML = body;
-  }
-  function clearForecast() {
-    if (forecastHost) forecastHost.innerHTML = "";
-  }
+  var forecastCard = cardHost("wx-forecast", "forecast");
+  var stationCard = cardHost("wx-station", "station");
 
   // Deal animation: the WX cover is a portal. On a selection it cycles open in
   // one continuous beat:
@@ -522,11 +563,14 @@
     });
   }
 
-  // Every card that rides the portal: the forecast card (WX 003, col 4) leads,
-  // then the alert cards (row 2). Both are born from / gathered into the cover.
+  // Every card that rides the portal, in reading order: the forecast card (WX 003,
+  // col 4) leads, then the station card (WX 004, col 5), then the alert cards
+  // (row 2). All are born from / gathered into the cover.
   function dealableCards() {
     var list = [];
-    if (forecastHost) list = list.concat(Array.prototype.slice.call(forecastHost.querySelectorAll(":scope > .card-sleeve")));
+    [forecastCard.host, stationCard.host].forEach(function (host) {
+      if (host) list = list.concat(Array.prototype.slice.call(host.querySelectorAll(":scope > .card-sleeve")));
+    });
     return list.concat(Array.prototype.slice.call(resultsEl.querySelectorAll(":scope > .card-sleeve")));
   }
 
@@ -582,6 +626,10 @@
     if (reduceMotionMQ.matches) return;
     var cover = coverParts();
     if (!cover.sleeve) return;
+    // Clear any pre-paint hide (direct load pins the cover invisible until now so it
+    // never flashes at rest before this entry). The coverBreath below fades it in
+    // from opacity:0; via the portal the cover was never hidden, so this is a no-op.
+    cover.sleeve.style.opacity = "";
     var mast = mastCards();
     if (!mast.length) return;
 
@@ -761,10 +809,11 @@
     });
   }
 
-  // The idle masthead: the forecast card and the alerts region are cleared. Used
-  // on load and the placeholder re-select.
+  // The idle masthead: the forecast + station cards and the alerts region are
+  // cleared. Used on load and the placeholder re-select.
   function renderEmpty() {
-    clearForecast();
+    forecastCard.clear();
+    stationCard.clear();
     render("");
   }
 
@@ -776,23 +825,28 @@
     lastShown = { stateName: stateName, forecast: forecast, alerts: alerts };
 
     if (forecast && forecast.period) {
-      setForecast(forecastBody(forecast.place, forecast.period, forecast.generatedAt));
+      forecastCard.set(forecastBody(forecast.place, forecast.period, forecast.generatedAt));
     } else if (!forecast && !alerts) {
       // Both feeds failed: the forecast card carries the error (and deals in too).
-      setForecast(noteBody(
+      forecastCard.set(noteBody(
         "ph-cloud-slash",
         "The signal didn't reach us.",
         "The National Weather Service couldn't be read just now. Try again in a moment.",
-        FC_NUM
+        FC_NUM,
+        { setAbbr: "NWS" }
       ));
     } else {
       // Alerts came through but no forecast — note it on the card.
-      setForecast(noteBody("ph-cloud-slash", "Forecast unavailable.", "No current forecast for " + stateName + ".", FC_NUM));
+      forecastCard.set(noteBody("ph-cloud-slash", "Forecast unavailable.", "No current forecast for " + stateName + ".", FC_NUM, { setAbbr: "NWS" }));
     }
+
+    // The forecast's source, on its own masthead card beside it (col 5): the
+    // nearest observation station, or a calm fallback naming NWS when none resolved.
+    stationCard.set(stationBody((forecast && forecast.station) || null));
 
     // Cap the alert deal at the stepper's reveal limit.
     var cards = [];
-    var station = (forecast && forecast.station) || null; // names the source on alert footers
+    var areaCode = abbrByName(stateName); // the alert footers' area code (e.g. "IA")
     if (alerts && alerts.length) {
       currentAlerts = alerts;
       // A live alert's headline can overrun one fixed-height card, so long alerts
@@ -803,7 +857,7 @@
       var probe = [];
       for (var i = 0; i < alerts.length && probe.length < revealLimit; i++) {
         var pp0 = alerts[i].properties || {};
-        probe.push(alertPageCard(pp0, i, paginateBody(alertBodyBeats(pp0))[0], 0, 1, probe.length === 0, station));
+        probe.push(alertPageCard(pp0, i, paginateBody(alertBodyBeats(pp0))[0], 0, 1, probe.length === 0, areaCode));
       }
       render(probe.join(""));
       var probeCards = resultsEl.querySelectorAll(".card-sleeve");
@@ -829,7 +883,7 @@
           }
           var pages = paginateBody(alertBodyBeats(pp), availH1, availHn, frameW);
           for (var pi = 0; pi < pages.length && cards.length < revealLimit; pi++) {
-            cards.push(alertPageCard(pp, a, pages[pi], pi, pages.length, cards.length === 0, station));
+            cards.push(alertPageCard(pp, a, pages[pi], pi, pages.length, cards.length === 0, areaCode));
           }
         }
       } else {
@@ -1174,7 +1228,7 @@
     }
     function devRender() {
       raf = 0;
-      setForecast(forecastBody("Dev Preview", devPeriod(), new Date().toISOString()));
+      forecastCard.set(forecastBody("Dev Preview", devPeriod(), new Date().toISOString()));
     }
     function devTick() {
       var p = devPeriod();
@@ -1203,15 +1257,26 @@
   try { devOn = new URLSearchParams(location.search).has("dev") || location.hash.slice(1) === "dev"; } catch (e) {}
   if (devOn) setupDevCards();
 
+  // The portal handoff: puhig stashes an exit origin in the shared store's session
+  // backend as it leaves the deck, so an arrival here reads as a portal morph.
+  // Read (don't consume) it now to decide the pre-paint hide; the load fallback
+  // below consumes it.
+  var portalStore = window.puhig.store.area("portal", true);
+  var arrivingViaPortal = portalStore.get("exitOrigin") != null;
+
   // Pre-deal hide: the masthead siblings start invisible (opacity only — their
   // slots stay laid out so the deal reads true rects) until the entry spits them
   // from the cover's centre. Without this they sit at rest in the first paint —
   // and, arriving through the portal, in the view-transition snapshot — then jerk
-  // back to the cover to deal. The cover itself is never hidden: on a direct load
-  // its pop fades it in; through the portal it is the morph target. Skipped under
-  // reduced motion, where no deal runs to reveal them.
+  // back to the cover to deal. On a direct load the cover is hidden too, so it
+  // shows blank until its entry breathes it in — never a flash of the resting
+  // cover before the animation; entryDeal clears the hide as it reveals it. Through
+  // the portal the cover is the morph target, so it stays visible (never hidden).
+  // Skipped under reduced motion, where no deal runs to reveal them.
   if (!reduceMotionMQ.matches) {
     mastCards().forEach(function (c) { c.style.opacity = "0"; });
+    var coverSleeve = coverParts().sleeve;
+    if (coverSleeve && !arrivingViaPortal) coverSleeve.style.opacity = "0";
   }
 
   // Page-load entry: cover pops in, then the masthead spits from its centre. Once.
@@ -1223,7 +1288,6 @@
   // in the shared store's session backend as it leaves the deck, consuming it so a
   // later direct reload reads as a direct load (cover pops) rather than a portal
   // arrival (cover held).
-  var portalStore = window.puhig.store.area("portal", true);
   if ("onpagereveal" in window) {
     window.addEventListener("pagereveal", function (e) { playEntry(!!e.viewTransition); });
   }

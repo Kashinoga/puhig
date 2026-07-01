@@ -737,15 +737,48 @@ section {
   display: flex;
   flex-direction: column;
   gap: 0;
+  /* Reserve both rows (top + bottom) so each corner is a stable section. 2.6em
+     == two 1.3 line-heights, matching a filled column's height so full footers
+     are unchanged. */
+  min-height: 2.6em;
 }
 
 .card-footer-right {
   align-items: flex-end;
 }
 
-.card-metadata {
+/* Bottom-row sections sink to the bottom so a corner whose top-row sibling is
+   absent — a credit or a lone language with no version above it (WX 002, the
+   dealt WX 003 / alert cards) — still anchors to the bottom row rather than
+   centring. The number/version at the top sit at flex-start naturally. */
+.card-metadata,
+.card-credit,
+.card-footer-right > .card-language {
+  margin-top: auto;
+}
+
+/* The cover's rarity emblem is a single mark spanning the footer — keep it
+   centred rather than letting it fall to a row. */
+.card-footer--cover .card-rarity {
+  margin-block: auto;
+}
+
+.card-metadata,
+.card-credit {
   display: flex;
   gap: clamp(4px, 1.6cqi, 6px);
+}
+
+/* Bottom-right credit: app language and author, dot-separated, language first.
+   The dot rides between the two spans and inherits the footer's dim colour. A
+   tighter gap than the metadata's binds "EN · Author" into one close unit. */
+.card-credit {
+  gap: clamp(2px, 0.8cqi, 3px);
+}
+
+.card-credit .card-author::before {
+  content: "·";
+  margin-inline-end: clamp(2px, 0.8cqi, 3px);
 }
 
 .card-frame {

@@ -76,12 +76,14 @@
                     <span class="card-number">WX 001</span>
                     <div class="card-metadata">
                       <span class="card-set-abbreviation">NWS</span>
-                      <span class="card-language">EN</span>
                     </div>
                   </div>
                   <div class="card-footer-right">
                     <span class="card-version">v0.2</span>
-                    <span class="card-author">Atelier Kashinoga</span>
+                    <div class="card-credit">
+                      <span class="card-language">EN</span>
+                      <span class="card-author">Atelier Kashinoga</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -119,11 +121,13 @@
                     <span class="card-number">WX 002</span>
                     <div class="card-metadata">
                       <span class="card-set-abbreviation">NWS</span>
-                      <span class="card-language">EN</span>
                     </div>
                   </div>
                   <div class="card-footer-right">
-                    <span class="card-author">Atelier Kashinoga</span>
+                    <div class="card-credit">
+                      <span class="card-language">EN</span>
+                      <span class="card-author">Atelier Kashinoga</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -132,9 +136,11 @@
               <i class="ph ph-planet"></i>
             </div>
           </div>
-          <!-- The forecast card (WX 003) is created here on selection — a fourth
-               masthead card to the right; empty (idle) on load. -->
+          <!-- The forecast card (WX 003) and the station card (WX 004) are created
+               here on selection — the fourth and fifth masthead cards to the right;
+               both empty (idle) on load. -->
           <section id="wx-forecast" data-row="wx"></section>
+          <section id="wx-station" data-row="wx"></section>
           <section id="wx-results" data-row="wx" aria-live="polite"></section>
         </section>
       </main>
