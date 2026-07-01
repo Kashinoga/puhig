@@ -277,15 +277,16 @@
     var at = fmtTime(generatedAt);
     return (
       title(place, "var(--teal)") +
-      typeRow("Forecast, " + period.name, "ph-cloud-sun") +
       // The temperature + short forecast sit over the card's mosaic art, laid into a
       // figure above the tiles. The palette tracks the weather (forecastPalette). The
+      // type row sits below the mosaic (title → art → type, like the About card); the
       // detailed forecast stays below in the text box.
       cardArt(forecastPalette(period),
         '<div class="wx-temp"><span class="wx-temp-value">' + esc(period.temperature) + "</span>" +
           '<span class="wx-temp-unit">°' + esc(period.temperatureUnit) + "</span></div>" +
         '<p class="wx-short">' + esc(period.shortForecast) + "</p>"
       ) +
+      typeRow("Forecast, " + period.name, "ph-cloud-sun") +
       '<div class="card-text-box">' +
         "<p>" + esc(trunc(period.detailedForecast, 130)) + "</p>" +
         (at ? '<p class="card-quote">Forecasted at ' + esc(at) + "</p>" : "") +
@@ -312,13 +313,14 @@
     }
     return (
       title(station.id, "var(--teal)") +
-      typeRow("Station, Observation", "ph-target") +
       // The friendly name rides the mosaic art as its figure label (like the forecast's
-      // short line); the box below carries the dim aside. The mosaic is tinted by the
+      // short line); the type row sits below the mosaic (title → art → type, like the
+      // About card) and the box below carries the dim aside. The mosaic is tinted by the
       // time of day (dawn / noon / dusk / night), so the station reads as the sky now.
       cardArt(timePalette(),
         '<p class="wx-figure-label">' + esc(station.name || station.id) + "</p>"
       ) +
+      typeRow("Station, Observation", "ph-target") +
       '<div class="card-text-box">' +
         '<p class="card-quote">Nearest observation station</p>' +
       "</div>" +
