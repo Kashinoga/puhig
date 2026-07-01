@@ -657,9 +657,10 @@ section {
   font-size: clamp(11px, 4.4cqi, 18px);
   line-height: 1.4;
   overflow: hidden;
-  /* Block padding keeps its own vertical rhythm; inline matches the shared
-     text inset so body text aligns with the title/type/footer text. */
-  padding-block: clamp(8px, 3.2cqi, 13px);
+  /* An even inset on all four edges: block padding matches the inline gutter
+     (var(--card-pad-x)) so body text sits the same distance from every edge and
+     aligns with the title/type/footer text. */
+  padding-block: var(--card-pad-x);
   padding-inline: var(--card-pad-x);
   position: relative;
 }
@@ -698,11 +699,11 @@ section {
 
 /* Corner stat — a control parked at the lower-right of the text box, echoing
    an MTG card's power/toughness box. .card-text-box is position:relative, so
-   this anchors to its lower-right inset (the shared text guide on the right,
-   the box's block padding below), clear of the body text flowing above it.
+   this anchors to its lower-right inset (var(--card-pad-x) on both edges, matching
+   the box's even padding), clear of the body text flowing above it.
    Used for the WX alert Copy action. */
 .card-stat {
-  bottom: clamp(8px, 3.2cqi, 13px);
+  bottom: var(--card-pad-x);
   position: absolute;
   right: var(--card-pad-x);
 }
@@ -838,6 +839,11 @@ section {
 
 [data-row="dropdowns"] .card-rarity[data-rarity] {
   color: var(--purple);
+}
+
+/* Sliders own the brand orange — the same accent their range fill + thumb use. */
+[data-row="sliders"] .card-rarity[data-rarity] {
+  color: var(--orange);
 }
 
 [data-row="apps"] .card-rarity[data-rarity] {
@@ -1541,6 +1547,29 @@ h1 {
   font-size: clamp(9px, 3.6cqi, 13px);
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/* ── Sliders (A 800) ────────────────────────────────────────────────
+   A native <input type="range"> tinted to the section's orange identity via
+   accent-color — the fill + thumb follow the accent, and the platform keeps
+   all keyboard, pointer, and accessibility behaviour for free (the pure-leaning
+   choice, like .select). Sits full-width in a .select-field stack beneath a
+   .field-label; WX's dev scrubber (.wx-dev-range) is the same control re-hued
+   to that app's teal. */
+.range {
+  accent-color: var(--orange);
+  cursor: pointer;
+  width: 100%;
+}
+
+.range:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 4px;
+}
+
+.range:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 /* Below ~564px viewport only one 264px card column fits (two need

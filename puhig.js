@@ -1318,6 +1318,120 @@ window.puhig.portal = (function () {
   };
 }());
 
+// ── Card-body pagination toolkit (window.puhig.paginate) ────────────────────
+// Split a run of text "beats" across as many fixed-height cards as they need,
+// measuring real fit at the live card width so the body text (cqi-sized to the
+// .card-frame) wraps exactly as it will in a rendered card. A long beat is cut at
+// a word boundary with an ellipsis on both sides of the break so it reads as
+// continuing prose; the first card may reserve extra room (availH1 < availHn) for a
+// lead element (e.g. a header strip) that continuation cards drop. Pure text + DOM
+// measurement — no app structure — so any deck card whose prose can overflow one
+// fixed height paginates this way. Built for the WX alert cards, which consume it
+// via window.puhig.paginate; lives here so the HIG's own cards (e.g. a long Motion
+// note) can reuse it. Returns an array of body-HTML strings, one per card.
+window.puhig = window.puhig || {};
+window.puhig.paginate = (function () {
+  // Matches the deck apps' own HTML escape so paginated prose renders identically.
+  function esc(text) {
+    return String(text == null ? "" : text)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+  function bodyPara(text, cls) {
+    return "<p" + (cls ? ' class="' + cls + '"' : "") + ">" + esc(text) + "</p>";
+  }
+
+  // Offscreen measurer: a .card-frame at the live card width holds a .card-text-box,
+  // so the cqi-sized body text (sized off .card-frame) wraps exactly as in a real
+  // card. Reused across calls; returns the text box to fill + measure.
+  var measureFrame = null, measureBox = null;
+  function measurer(frameW) {
+    if (!measureFrame) {
+      measureFrame = document.createElement("div");
+      measureFrame.className = "card-frame";
+      measureFrame.style.cssText = "position:absolute;left:-9999px;top:0;visibility:hidden;";
+      measureFrame.innerHTML = '<div class="card-text-box"></div>';
+      document.body.appendChild(measureFrame);
+      measureBox = measureFrame.querySelector(".card-text-box");
+    }
+    measureFrame.style.width = frameW + "px";
+    measureBox.innerHTML = "";
+    return measureBox;
+  }
+
+  // The most cards one body may span before its tail is truncated with an ellipsis —
+  // a guard against a pathologically long run dealing a dozen cards.
+  var DEFAULT_MAX_PAGES = 4;
+
+  // beats: [{ text, cls }]. availH1 = body height on the first card (room left above
+  // for a lead element); availHn = height on continuation cards; frameW = the live
+  // card frame width; maxPages caps the deal (default 4). Falls back to one page when
+  // unmeasured, and always makes progress (≥ 1 word/page).
+  function paginate(beats, availH1, availHn, frameW, maxPages) {
+    if (maxPages == null) maxPages = DEFAULT_MAX_PAGES;
+    var join = function (list) { return list.map(function (x) { return bodyPara(x.text, x.cls); }).join(""); };
+    if (!beats.length) return [""];
+    if (!availH1 || !frameW) return [join(beats)];
+    if (!availHn) availHn = availH1;
+
+    var box = measurer(frameW);
+    var curAvail = availH1; // page 1 leaves room for the lead element; page 2+ don't
+    function fits(list) {
+      box.innerHTML = join(list);
+      var ch = box.children;
+      // First paragraph's top to the last's bottom — the body's rendered height,
+      // inter-paragraph margins included.
+      return !ch.length || ch[ch.length - 1].getBoundingClientRect().bottom - ch[0].getBoundingClientRect().top <= curAvail;
+    }
+
+    // A beat cut across cards is marked with an ellipsis on both sides of the break —
+    // the earlier card's slice ends with "…", the next card's slice opens with "…" —
+    // so a split reads as continuing prose. `lead` = mid-beat continuation (start > 0).
+    var ELL = "…";
+    function slice(words, start, end, lead) {
+      return (lead ? ELL + " " : "") + words.slice(start, end).join(" ") + (end < words.length ? " " + ELL : "");
+    }
+
+    var pages = [], page = [], truncated = false;
+    for (var b = 0; b < beats.length && !truncated; b++) {
+      var words = beats[b].text.split(/\s+/), cls = beats[b].cls, start = 0;
+      while (start < words.length) {
+        var lead = start > 0;
+        // Largest word-prefix of this beat that still fits — measured as it will
+        // render, ellipses included, so their width is never overrun.
+        var lo = start + 1, hi = words.length, end = 0;
+        while (lo <= hi) {
+          var mid = (lo + hi) >> 1;
+          if (fits(page.concat([{ text: slice(words, start, mid, lead), cls: cls }]))) { end = mid; lo = mid + 1; }
+          else hi = mid - 1;
+        }
+        if (end === 0) {
+          // Nothing more fits here. Close the page and retry on a fresh one (a
+          // continuation card, which drops the lead element and gets availHn); if even
+          // one word won't fit an empty page, force it so we always make progress.
+          if (page.length) {
+            pages.push(page); page = []; curAvail = availHn;
+            if (pages.length >= maxPages) { truncated = true; break; }
+            continue;
+          }
+          end = start + 1;
+        }
+        page.push({ text: slice(words, start, end, lead), cls: cls });
+        start = end;
+      }
+    }
+    if (page.length) pages.push(page);
+    if (truncated && pages.length) {
+      // Dropped tail: make sure the last slice signals more content with a trailing "…".
+      var last = pages[pages.length - 1], para = last[last.length - 1];
+      if (!/…$/.test(para.text)) para.text += " " + ELL;
+    }
+    return (pages.length ? pages : [[]]).map(join);
+  }
+
+  return { paginate: paginate, measurer: measurer, bodyPara: bodyPara };
+}());
+
 // Cover-portal entry deal — the same cover-portal the WX deck plays, applied to
 // every cover card on the page. A cover pops in (a quick scale-up carrying a touch
 // of growth inertia), then its sibling cards are born tiny at the cover's centre

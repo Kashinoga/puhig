@@ -179,12 +179,14 @@
   }
 
   // A note body carries the app's calm empty / loading / clear / error voice.
-  // opts (optional) flows to footer — a caller can pass the set abbreviation +
-  // author to match the static masthead siblings.
+  // opts (optional): opts.label overrides the type-row label (default "Reading",
+  // e.g. "No Alerts" for the clear-skies card); the rest flows to footer — a
+  // caller can pass the set abbreviation + author to match the masthead siblings.
   function noteBody(icon, heading, body, number, opts) {
+    opts = opts || {};
     return (
       title("Weather", "var(--teal)") +
-      typeRow("Reading", icon) +
+      typeRow(opts.label || "Reading", icon) +
       '<div class="card-text-box">' +
         '<p class="wx-note-title">' + esc(heading) + "</p>" +
         (body ? "<p>" + esc(body) + "</p>" : "") +
@@ -215,7 +217,8 @@
 
   function forecastBody(place, period, generatedAt) {
     // When NWS generated the forecast (properties.generatedAt), formatted like the
-    // alert cards' times and labelled — parallel to the alerts' "until <time>".
+    // alert cards' times. It rides the bottom of the description box as a dim italic
+    // card-quote — the deck's aside voice — rather than the footer meta.
     var at = fmtTime(generatedAt);
     return (
       title(place, "var(--teal)") +
@@ -234,20 +237,17 @@
       "</div>" +
       '<div class="card-text-box">' +
         "<p>" + esc(trunc(period.detailedForecast, 130)) + "</p>" +
+        (at ? '<p class="card-quote">Forecasted at ' + esc(at) + "</p>" : "") +
       "</div>" +
-      footer(FC_NUM, at ? "Forecasted at " + at : "")
+      footer(FC_NUM, "EN")
     );
   }
 
   // A dealt note sleeve (the "clear skies" / no-alerts card), numbered as a data
   // note (NWS) since it sits in the alerts region, not the masthead.
-  function noteCard(icon, heading, body, rowStart) {
-    return sleeve(noteBody(icon, heading, body, "NWS"), rowStart);
+  function noteCard(icon, heading, body, rowStart, label) {
+    return sleeve(noteBody(icon, heading, body, "NWS", { label: label }), rowStart);
   }
-
-  // The most cards one alert's body may span before the tail is truncated with an
-  // ellipsis — a guard against a pathologically long alert dealing a dozen cards.
-  var MAX_ALERT_PAGES = 4;
 
   // The alert's body beats, below the 📍 strip: the effect window as dim meta (the
   // duration that used to sit in the footer), then the headline. Each renders as a
@@ -263,85 +263,28 @@
     return beats;
   }
 
-  function bodyPara(text, cls) {
-    return "<p" + (cls ? ' class="' + cls + '"' : "") + ">" + esc(text) + "</p>";
-  }
+  // Card-body pagination is a framework toolkit now (window.puhig.paginate, from
+  // puhig.js, loaded first) so any deck card can split long prose across card-sized
+  // pages — not just WX. WX supplies the alert beats (alertBodyBeats) and the card
+  // shell (alertPageCard); the toolkit measures real fit at the live card width and
+  // returns one body-HTML string per card. The 📍 strip is the first card's lead
+  // element (its room reserved via availH1); continuation cards drop it (availHn).
+  var paginateBody = window.puhig.paginate.paginate;
 
-  // Split the alert's body beats across card-sized pages. Measures real fit at the
-  // live card width via `measurer` (text is cqi-sized to the .card-frame), packing
-  // paragraphs — splitting a long one at a word boundary — so each page's body fits.
-  // The first card leaves room for the 📍 strip (`availH1`); continuation cards drop
-  // it and get the full body (`availHn`). Returns an array of body-HTML strings, one
-  // per card. Layout-agnostic: any fixed-height card can paginate its prose this way.
-  // Falls back to one page when unmeasured, and always makes progress (≥ 1 word/page).
-  function paginateBody(beats, availH1, availHn, frameW) {
-    var join = function (list) { return list.map(function (x) { return bodyPara(x.text, x.cls); }).join(""); };
-    if (!beats.length) return [""];
-    if (!availH1 || !frameW) return [join(beats)];
-    if (!availHn) availHn = availH1;
-
-    var box = measurer(frameW);
-    var curAvail = availH1; // page 1 leaves room for the 📍 strip; page 2+ don't
-    function fits(list) {
-      box.innerHTML = join(list);
-      var ch = box.children;
-      // First paragraph's top to the last's bottom — the body's rendered height,
-      // inter-paragraph margins included.
-      return !ch.length || ch[ch.length - 1].getBoundingClientRect().bottom - ch[0].getBoundingClientRect().top <= curAvail;
-    }
-
-    // A beat cut across cards is marked with an ellipsis on both sides of the break —
-    // the earlier card's slice ends with "…", the next card's slice opens with "…" —
-    // so a split reads as continuing prose. `lead` = mid-beat continuation (start > 0),
-    // `tail` = more of this beat follows on the next card (end < the beat's length).
-    var ELL = "…";
-    function slice(words, start, end, lead) {
-      return (lead ? ELL + " " : "") + words.slice(start, end).join(" ") + (end < words.length ? " " + ELL : "");
-    }
-
-    var pages = [], page = [], truncated = false;
-    for (var b = 0; b < beats.length && !truncated; b++) {
-      var words = beats[b].text.split(/\s+/), cls = beats[b].cls, start = 0;
-      while (start < words.length) {
-        var lead = start > 0;
-        // Largest word-prefix of this beat that still fits — measured as it will
-        // render, ellipses included, so their width is never overrun.
-        var lo = start + 1, hi = words.length, end = 0;
-        while (lo <= hi) {
-          var mid = (lo + hi) >> 1;
-          if (fits(page.concat([{ text: slice(words, start, mid, lead), cls: cls }]))) { end = mid; lo = mid + 1; }
-          else hi = mid - 1;
-        }
-        if (end === 0) {
-          // Nothing more fits here. Close the page and retry on a fresh one (which,
-          // being a continuation card, drops the 📍 strip and gets availHn); if even
-          // one word won't fit an empty page, force it so we always make progress.
-          if (page.length) {
-            pages.push(page); page = []; curAvail = availHn;
-            if (pages.length >= MAX_ALERT_PAGES) { truncated = true; break; }
-            continue;
-          }
-          end = start + 1;
-        }
-        page.push({ text: slice(words, start, end, lead), cls: cls });
-        start = end;
-      }
-    }
-    if (page.length) pages.push(page);
-    if (truncated && pages.length) {
-      // Dropped tail: make sure the last slice signals more content with a trailing "…".
-      var last = pages[pages.length - 1], para = last[last.length - 1];
-      if (!/…$/.test(para.text)) para.text += " " + ELL;
-    }
-    return (pages.length ? pages : [[]]).map(join);
+  // The alert footer names the forecast's source: the nearest observation station
+  // as "id · name" (e.g. "KORD · Chicago-O'Hare International Airport"), falling
+  // back to the bare data source (NWS) when no station resolved.
+  function stationLabel(station) {
+    if (!station || !station.id) return "NWS";
+    return station.name ? station.id + " · " + station.name : station.id;
   }
 
   // Build one alert card. `pageCount > 1` shows a "(p/N)" tally in the title so a
   // reader sees a split alert continues; `bodyHtml` is this page's body paragraphs
   // (a slice of the headline, plus the effect window on the page it lands). `index`
   // is the alert's index in currentAlerts (shared across pages) — every page's Copy
-  // yields the whole alert.
-  function alertPageCard(p, index, bodyHtml, pageIdx, pageCount, rowStart) {
+  // yields the whole alert. `station` names the source in the footer.
+  function alertPageCard(p, index, bodyHtml, pageIdx, pageCount, rowStart, station) {
     var tally = pageCount > 1 ? " (" + (pageIdx + 1) + "/" + pageCount + ")" : "";
     // The 📍 location strip heads only the first card; continuation cards (2/N onward)
     // drop it — the area is already established — so their prose fills the whole body.
@@ -365,27 +308,9 @@
           '<button class="btn btn--outline btn--sm" data-copy="' + index + '"><i class="ph ph-copy"></i>Copy</button>' +
         "</div>" +
       "</div>" +
-      footer("NWS", "EN"),
+      footer(stationLabel(station), "EN"),
       rowStart
     );
-  }
-
-  // Offscreen measurer for pagination: a .card-frame at the live card width holds a
-  // card text box, so the cqi-sized body text (sized off .card-frame) wraps exactly
-  // as in a real card. Reused across calls; returns the text box to fill + measure.
-  var measureFrame = null, measureBox = null;
-  function measurer(frameW) {
-    if (!measureFrame) {
-      measureFrame = document.createElement("div");
-      measureFrame.className = "card-frame";
-      measureFrame.style.cssText = "position:absolute;left:-9999px;top:0;visibility:hidden;";
-      measureFrame.innerHTML = '<div class="card-text-box"></div>';
-      document.body.appendChild(measureFrame);
-      measureBox = measureFrame.querySelector(".card-text-box");
-    }
-    measureFrame.style.width = frameW + "px";
-    measureBox.innerHTML = "";
-    return measureBox;
   }
 
   // ---- data ----------------------------------------------------------------
@@ -397,18 +322,33 @@
     });
   }
 
+  // The nearest observation station names the forecast's source — its identifier
+  // (e.g. "KORD") and friendly name — on the alert card footers. The station list
+  // is ordered nearest-first, so features[0] is the closest.
+  function nearestStation(data) {
+    var f = (data && data.features) || [];
+    var p = f[0] && f[0].properties;
+    return p ? { id: p.stationIdentifier || "", name: p.name || "" } : null;
+  }
+
   // Forecast is a two-hop lookup: a point resolves to its gridpoint, which
-  // carries the forecast URL and a friendly relative-location name.
+  // carries the forecast URL and a friendly relative-location name. The same
+  // point also lists observation stations, so a third hop — run in parallel with
+  // the forecast, off the same point — names the nearest one. Best-effort: a
+  // station failure resolves to null and never blocks the forecast.
   function loadForecast(state) {
     return getJSON(API + "/points/" + state.lat + "," + state.lon).then(function (pt) {
       var props = pt.properties || {};
       var rel = props.relativeLocation && props.relativeLocation.properties;
       var place = rel ? rel.city + ", " + rel.state : "Near " + state.capital;
-      return getJSON(props.forecast).then(function (fc) {
-        var fcProps = fc.properties || {};
+      var stationP = props.observationStations
+        ? getJSON(props.observationStations).then(nearestStation).catch(function () { return null; })
+        : Promise.resolve(null);
+      return Promise.all([getJSON(props.forecast), stationP]).then(function (res) {
+        var fcProps = res[0].properties || {};
         var periods = fcProps.periods || [];
         // generatedAt is when NWS produced the forecast — the "forecasted at" time.
-        return { place: place, period: periods[0] || null, generatedAt: fcProps.generatedAt || "" };
+        return { place: place, period: periods[0] || null, generatedAt: fcProps.generatedAt || "", station: res[1] };
       });
     });
   }
@@ -739,6 +679,7 @@
 
     // Cap the alert deal at the stepper's reveal limit.
     var cards = [];
+    var station = (forecast && forecast.station) || null; // names the source on alert footers
     if (alerts && alerts.length) {
       currentAlerts = alerts;
       // A live alert's headline can overrun one fixed-height card, so long alerts
@@ -749,7 +690,7 @@
       var probe = [];
       for (var i = 0; i < alerts.length && probe.length < revealLimit; i++) {
         var pp0 = alerts[i].properties || {};
-        probe.push(alertPageCard(pp0, i, paginateBody(alertBodyBeats(pp0))[0], 0, 1, probe.length === 0));
+        probe.push(alertPageCard(pp0, i, paginateBody(alertBodyBeats(pp0))[0], 0, 1, probe.length === 0, station));
       }
       render(probe.join(""));
       var probeCards = resultsEl.querySelectorAll(".card-sleeve");
@@ -775,14 +716,14 @@
           }
           var pages = paginateBody(alertBodyBeats(pp), availH1, availHn, frameW);
           for (var pi = 0; pi < pages.length && cards.length < revealLimit; pi++) {
-            cards.push(alertPageCard(pp, a, pages[pi], pi, pages.length, cards.length === 0));
+            cards.push(alertPageCard(pp, a, pages[pi], pi, pages.length, cards.length === 0, station));
           }
         }
       } else {
         cards = probe; // no card to measure — deal the unpaginated probe
       }
     } else if (alerts) {
-      cards.push(noteCard("ph-sun", "Clear skies.", "No active alerts for " + stateName + ".", true));
+      cards.push(noteCard("ph-sun", "Clear skies.", "No active alerts for " + stateName + ".", true, "No Alerts"));
     }
 
     render(cards.join(""));
@@ -831,6 +772,7 @@
     forecast: {
       place: "Des Moines, IA",
       generatedAt: "2026-06-29T11:35:00-05:00",
+      station: { id: "KDSM", name: "Des Moines International Airport" },
       period: {
         name: "This Afternoon",
         temperature: 84,

@@ -12,22 +12,26 @@
    black — so entering WX recolours the page grid and the portal transition
    visibly changes the mosaic colour to match the app (its cards are already
    teal). buildGrid bakes --mosaic-grid into the SVG stroke at build time, and
-   wx.css loads before that build, so WX draws teal grid lines. Alpha (line
-   weight) matches the base per appearance so the grid reads the same density,
-   only re-hued. Mirrors the base light / system-dark / forced-dark structure
-   in puhig.css; loaded after it, so these win by source order. */
+   wx.css loads before that build, so WX draws teal grid lines. In light the
+   alpha (line weight) matches the base so the grid reads the same density,
+   only re-hued. Dark can't alpha-match: the base grid is black (L 0%), which
+   barely lifts the near-black page, but a re-hued teal has to be light (L ~58%)
+   to keep its hue — at the base 30% alpha that light line glows on the dark
+   mosaic. So dark dims both lightness and alpha to land at a comparable line
+   brightness. Mirrors the base light / system-dark / forced-dark structure in
+   puhig.css; loaded after it, so these win by source order. */
 :root {
   --mosaic-grid: oklch(55% 0.12 195 / 5%);
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --mosaic-grid: oklch(70% 0.13 195 / 30%);
+    --mosaic-grid: oklch(58% 0.11 195 / 15%);
   }
 }
 
 html[data-theme="dark"] {
-  --mosaic-grid: oklch(70% 0.13 195 / 30%);
+  --mosaic-grid: oklch(58% 0.11 195 / 15%);
 }
 
 /* ── Weather mosaic palettes ─────────────────────────────────────────
@@ -226,9 +230,12 @@ html[data-theme="dark"] {
   margin-block-end: clamp(8px, 3.2cqi, 14px);
 }
 
-/* The note title leads an empty / loading / clear / error card. */
+/* The note title leads an empty / loading / clear / error card; space it off the
+   body line below so the heading + prose read as two beats (e.g. the No Alerts
+   card's "Clear skies." over its detail). */
 .wx-note-title {
   font-weight: 500;
+  margin-block-end: clamp(6px, 2.4cqi, 10px);
 }
 
 /* Reveal-count stepper: −/＋ around a live count, set beside the Cached
