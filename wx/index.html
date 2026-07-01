@@ -56,7 +56,7 @@
             <div class="panel-content card">
               <div class="card-frame">
                 <div class="card-title">
-                  <span class="card-name">Weather</span>
+                  <span class="card-name">About</span>
                   <div class="card-cost">
                     <span class="card-pip" style="background: var(--teal)"></span>
                   </div>
@@ -65,7 +65,7 @@
                   <div class="mosaic-overlay card-mosaic"></div>
                 </div>
                 <div class="card-type">
-                  <span class="card-type-label">Application — Weather</span>
+                  <span class="card-type-label">WX - App</span>
                   <i class="card-rarity ph ph-cloud-sun" data-rarity="stable"></i>
                 </div>
                 <div class="card-text-box">
@@ -90,17 +90,6 @@
               <i class="ph ph-planet"></i>
             </div>
           </div>
-          <div class="panel-frame card-sleeve" data-row="wx" data-wx-slot="note">
-            <div class="panel-content card">
-              <!-- The idle note (WX 002, col 3): wx.js sets its body once on load
-                   ("The sky, unread.") and keeps it — it never shows the forecast.
-                   The live forecast is its own card to the right (see #wx-forecast). -->
-              <div class="card-frame" id="wx-note"></div>
-            </div>
-            <div class="card-back">
-              <i class="ph ph-planet"></i>
-            </div>
-          </div>
           <div class="panel-frame card-sleeve" data-row="wx" data-wx-slot="location">
             <div class="panel-content card">
               <div class="card-frame">
@@ -111,11 +100,10 @@
                   </div>
                 </div>
                 <div class="card-type">
-                  <span class="card-type-label">Application — Weather</span>
+                  <span class="card-type-label">WX</span>
                   <i class="card-rarity ph ph-map-pin" data-rarity="stable"></i>
                 </div>
                 <div class="card-text-box">
-                  <p>Pick a state to read its sky.</p>
                   <div class="select-field">
                     <span class="field-label">State</span>
                     <div class="select">
@@ -125,11 +113,10 @@
                       <i class="select-chevron ph ph-caret-down"></i>
                     </div>
                   </div>
-                  <p class="card-quote">The framework, in use.</p>
                 </div>
                 <div class="card-footer">
                   <div class="card-footer-left">
-                    <span class="card-number">WX 003</span>
+                    <span class="card-number">WX 002</span>
                     <div class="card-metadata">
                       <span class="card-set-abbreviation">NWS</span>
                       <span class="card-language">EN</span>
@@ -145,7 +132,7 @@
               <i class="ph ph-planet"></i>
             </div>
           </div>
-          <!-- The forecast card (WX 004) is created here on selection — a fifth
+          <!-- The forecast card (WX 003) is created here on selection — a fourth
                masthead card to the right; empty (idle) on load. -->
           <section id="wx-forecast" data-row="wx"></section>
           <section id="wx-results" data-row="wx" aria-live="polite"></section>

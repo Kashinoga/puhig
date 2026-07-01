@@ -151,10 +151,10 @@
     );
   }
 
-  // The forecast lives in a fixed masthead card (WX 003, col 3): its body is
+  // The forecast lives in a fixed masthead card (WX 003, col 4): its body is
   // swapped in place — never dealt — through noteBody / forecastBody below. The
   // dealt cards (alerts, the clear-skies note) wrap a body in a sleeve instead.
-  var FC_NUM = "WX 004"; // the forecast card's collector number / its column
+  var FC_NUM = "WX 003"; // the forecast card's collector number / its column
 
   // A footer: a card-number on the left over a metadata line, plus optional extras
   // that match the static masthead cards' footers — opts.setAbbr renders a set
@@ -179,8 +179,8 @@
   }
 
   // A note body carries the app's calm empty / loading / clear / error voice.
-  // opts (optional) flows to footer — e.g. the masthead idle note passes the set
-  // abbreviation + author to match its static siblings.
+  // opts (optional) flows to footer — a caller can pass the set abbreviation +
+  // author to match the static masthead siblings.
   function noteBody(icon, heading, body, number, opts) {
     return (
       title("Weather", "var(--teal)") +
@@ -245,30 +245,147 @@
     return sleeve(noteBody(icon, heading, body, "NWS"), rowStart);
   }
 
-  function alertCard(feature, index, rowStart) {
-    var p = feature.properties || {};
+  // The most cards one alert's body may span before the tail is truncated with an
+  // ellipsis — a guard against a pathologically long alert dealing a dozen cards.
+  var MAX_ALERT_PAGES = 4;
+
+  // The alert's body beats, below the 📍 strip: the effect window as dim meta (the
+  // duration that used to sit in the footer), then the headline. Each renders as a
+  // paragraph; the short window stays whole on the first card, the headline splits
+  // across cards after it.
+  function alertBodyBeats(p) {
+    var beats = [];
+    var eff = fmtTime(p.effective), exp = fmtTime(p.expires);
+    var when = eff && exp ? eff + " → " + exp : exp ? "Until " + exp : eff ? "From " + eff : "";
+    if (when) beats.push({ text: when, cls: "wx-alert-when" });
     var headline = headlineOf(p);
+    if (headline) beats.push({ text: headline, cls: "" });
+    return beats;
+  }
+
+  function bodyPara(text, cls) {
+    return "<p" + (cls ? ' class="' + cls + '"' : "") + ">" + esc(text) + "</p>";
+  }
+
+  // Split the alert's body beats across card-sized pages. Measures real fit at the
+  // live card width via `measurer` (text is cqi-sized to the .card-frame), packing
+  // paragraphs — splitting a long one at a word boundary — so each page's body fits.
+  // The first card leaves room for the 📍 strip (`availH1`); continuation cards drop
+  // it and get the full body (`availHn`). Returns an array of body-HTML strings, one
+  // per card. Layout-agnostic: any fixed-height card can paginate its prose this way.
+  // Falls back to one page when unmeasured, and always makes progress (≥ 1 word/page).
+  function paginateBody(beats, availH1, availHn, frameW) {
+    var join = function (list) { return list.map(function (x) { return bodyPara(x.text, x.cls); }).join(""); };
+    if (!beats.length) return [""];
+    if (!availH1 || !frameW) return [join(beats)];
+    if (!availHn) availHn = availH1;
+
+    var box = measurer(frameW);
+    var curAvail = availH1; // page 1 leaves room for the 📍 strip; page 2+ don't
+    function fits(list) {
+      box.innerHTML = join(list);
+      var ch = box.children;
+      // First paragraph's top to the last's bottom — the body's rendered height,
+      // inter-paragraph margins included.
+      return !ch.length || ch[ch.length - 1].getBoundingClientRect().bottom - ch[0].getBoundingClientRect().top <= curAvail;
+    }
+
+    // A beat cut across cards is marked with an ellipsis on both sides of the break —
+    // the earlier card's slice ends with "…", the next card's slice opens with "…" —
+    // so a split reads as continuing prose. `lead` = mid-beat continuation (start > 0),
+    // `tail` = more of this beat follows on the next card (end < the beat's length).
+    var ELL = "…";
+    function slice(words, start, end, lead) {
+      return (lead ? ELL + " " : "") + words.slice(start, end).join(" ") + (end < words.length ? " " + ELL : "");
+    }
+
+    var pages = [], page = [], truncated = false;
+    for (var b = 0; b < beats.length && !truncated; b++) {
+      var words = beats[b].text.split(/\s+/), cls = beats[b].cls, start = 0;
+      while (start < words.length) {
+        var lead = start > 0;
+        // Largest word-prefix of this beat that still fits — measured as it will
+        // render, ellipses included, so their width is never overrun.
+        var lo = start + 1, hi = words.length, end = 0;
+        while (lo <= hi) {
+          var mid = (lo + hi) >> 1;
+          if (fits(page.concat([{ text: slice(words, start, mid, lead), cls: cls }]))) { end = mid; lo = mid + 1; }
+          else hi = mid - 1;
+        }
+        if (end === 0) {
+          // Nothing more fits here. Close the page and retry on a fresh one (which,
+          // being a continuation card, drops the 📍 strip and gets availHn); if even
+          // one word won't fit an empty page, force it so we always make progress.
+          if (page.length) {
+            pages.push(page); page = []; curAvail = availHn;
+            if (pages.length >= MAX_ALERT_PAGES) { truncated = true; break; }
+            continue;
+          }
+          end = start + 1;
+        }
+        page.push({ text: slice(words, start, end, lead), cls: cls });
+        start = end;
+      }
+    }
+    if (page.length) pages.push(page);
+    if (truncated && pages.length) {
+      // Dropped tail: make sure the last slice signals more content with a trailing "…".
+      var last = pages[pages.length - 1], para = last[last.length - 1];
+      if (!/…$/.test(para.text)) para.text += " " + ELL;
+    }
+    return (pages.length ? pages : [[]]).map(join);
+  }
+
+  // Build one alert card. `pageCount > 1` shows a "(p/N)" tally in the title so a
+  // reader sees a split alert continues; `bodyHtml` is this page's body paragraphs
+  // (a slice of the headline, plus the effect window on the page it lands). `index`
+  // is the alert's index in currentAlerts (shared across pages) — every page's Copy
+  // yields the whole alert.
+  function alertPageCard(p, index, bodyHtml, pageIdx, pageCount, rowStart) {
+    var tally = pageCount > 1 ? " (" + (pageIdx + 1) + "/" + pageCount + ")" : "";
+    // The 📍 location strip heads only the first card; continuation cards (2/N onward)
+    // drop it — the area is already established — so their prose fills the whole body.
+    // The area line sits over a green mosaic sized to the text: a left-aligned static
+    // strip (data-mosaic-static — no press/drift/stagger) whose host takes its height
+    // from the 📍 line, so fitMosaics cuts tiles to the text's height. A full mosaic
+    // (no data-mosaic-type="ca") — every cell a solid tile, so at only a few rows tall
+    // no CA dead cells bare the dark mosaic-bg.
+    var area = pageIdx > 0 ? "" :
+      '<div class="wx-area-art" data-target="16" data-mosaic-align="left" data-mosaic-palette="green" data-mosaic-static>' +
+        '<div class="mosaic-overlay"></div>' +
+        '<p class="wx-area">📍 ' + esc(trunc(p.areaDesc || "", 80)) + "</p>" +
+      "</div>";
     return sleeve(
-      title(p.event || "Alert", "var(--orange)") +
+      title((p.event || "Alert") + tally, "var(--orange)") +
       typeRow("Alert — " + (p.severity || "Unknown"), "ph-warning") +
       '<div class="card-text-box">' +
-        // The area line sits over a green mosaic sized to the text: a left-aligned
-        // static strip (data-mosaic-static — no press/drift/stagger) whose host takes
-        // its height from the 📍 line, so fitMosaics cuts tiles to the text's height.
-        // A full mosaic (no data-mosaic-type="ca") — every cell is a solid tile, so at
-        // only a few rows tall there are no CA dead cells baring the dark mosaic-bg.
-        '<div class="wx-area-art" data-target="16" data-mosaic-align="left" data-mosaic-palette="green" data-mosaic-static>' +
-          '<div class="mosaic-overlay"></div>' +
-          '<p class="wx-area">📍 ' + esc(trunc(p.areaDesc || "", 80)) + "</p>" +
-        "</div>" +
-        (headline ? "<p>" + esc(trunc(headline, 120)) + "</p>" : "") +
+        area +
+        bodyHtml +
         '<div class="card-stat">' +
           '<button class="btn btn--outline btn--sm" data-copy="' + index + '"><i class="ph ph-copy"></i>Copy</button>' +
         "</div>" +
       "</div>" +
-      footer(fmtTime(p.effective), "until " + fmtTime(p.expires)),
+      footer("NWS", "EN"),
       rowStart
     );
+  }
+
+  // Offscreen measurer for pagination: a .card-frame at the live card width holds a
+  // card text box, so the cqi-sized body text (sized off .card-frame) wraps exactly
+  // as in a real card. Reused across calls; returns the text box to fill + measure.
+  var measureFrame = null, measureBox = null;
+  function measurer(frameW) {
+    if (!measureFrame) {
+      measureFrame = document.createElement("div");
+      measureFrame.className = "card-frame";
+      measureFrame.style.cssText = "position:absolute;left:-9999px;top:0;visibility:hidden;";
+      measureFrame.innerHTML = '<div class="card-text-box"></div>';
+      document.body.appendChild(measureFrame);
+      measureBox = measureFrame.querySelector(".card-text-box");
+    }
+    measureFrame.style.width = frameW + "px";
+    measureBox.innerHTML = "";
+    return measureBox;
   }
 
   // ---- data ----------------------------------------------------------------
@@ -303,25 +420,15 @@
   }
 
   // ---- render --------------------------------------------------------------
-  // The masthead carries two JS-managed cards: the idle note (WX 002, col 3 —
-  // set once on load and kept) and, on selection, a forecast card (WX 004) built
-  // in its own host to the right (col 5). Alerts share the results region (row 2
-  // onward); their first card starts that row.
+  // The masthead carries one JS-managed card: on selection, a forecast card
+  // (WX 003) built in its own host to the right (col 4). Alerts share the results
+  // region (row 2 onward); their first card starts that row.
 
   function render(html) {
     resultsEl.innerHTML = html;
   }
 
-  var NOTE_NUM = "WX 002"; // the kept idle-note card's column number
-
-  // The idle note (WX 002, col 3): its body is set once on load (and on the
-  // placeholder re-select) and then left as-is — it never shows the forecast.
-  var noteEl = document.getElementById("wx-note");
-  function setNote(body) {
-    if (noteEl) noteEl.innerHTML = body;
-  }
-
-  // The forecast card (WX 004) lives in its own host to the right (col 5),
+  // The forecast card (WX 003) lives in its own host to the right (col 4),
   // created on selection and updated in place — no deal animation. The sleeve is
   // built once (so puhig.js's flip-init survives) and only its card-frame body
   // swaps; clearForecast removes the card entirely (the idle masthead).
@@ -352,7 +459,7 @@
   // (1) The cover's face recedes a touch (a 2D scale on its front, .panel-content)
   //     while the mosaic behind it zooms in — a vortex opening. (The face scale
   //     keeps the no-op rotateY(0) that enrols it in the flip's 3D context.)
-  // (2) The dealt cards — the forecast card (WX 004, col 5) leading, then the
+  // (2) The dealt cards — the forecast card (WX 003, col 4) leading, then the
   //     alert cards (row 2) — are born at the mosaic's centre, tiny (scale 0.16)
   //     and faded, then fly out to their grid slots one at a time, growing to
   //     full size and opacity, staggered.
@@ -381,7 +488,7 @@
     };
   }
 
-  // The masthead: the cover's sibling sleeves (About, the idle note, Location) on
+  // The masthead: the cover's sibling sleeves (About, Location) on
   // the cover's own row — not the nested forecast/results sections. These are what
   // the load entry spits out from the cover's centre. Dev cards (data-wx-slot
   // "dev-*") also live in this row but are static scaffolding — excluded so the
@@ -395,7 +502,7 @@
     });
   }
 
-  // Every card that rides the portal: the forecast card (WX 004, col 5) leads,
+  // Every card that rides the portal: the forecast card (WX 003, col 4) leads,
   // then the alert cards (row 2). Both are born from / gathered into the cover.
   function dealableCards() {
     var list = [];
@@ -444,7 +551,7 @@
 
   // One-time page-load entry. The cover card pops in (a quick scale-up carrying
   // the same growth inertia as a deal), then the static masthead cards — About
-  // (001), the idle note (002), Location (003) — are spat out from the cover's
+  // (001), Location (002) — are spat out from the cover's
   // centre, born tiny and flying to their slots. This is the masthead's only
   // animation; selections animate the forecast + alerts, never these. Skipped
   // under reduced motion. When we arrive through the cross-document cover portal
@@ -461,8 +568,15 @@
     var base = cover.sleeve.getBoundingClientRect();
     var rects = mast.map(function (c) { return c.getBoundingClientRect(); });
 
+    // On a direct load the cover enters face-down and turns over before the masthead
+    // spits (matching every HIG cover). A lead of flipLead + flipDur is reserved ahead
+    // of the emit so the born-flipped grow-in and the turn each read as their own beat,
+    // then the vortex opens on the revealed front. Via the cross-document portal the
+    // morph IS the front's entry, so no flip and no lead.
+    var flipLead = 360, flipDur = 480;
+    var lead = viaPortal ? 0 : flipLead + flipDur;
     var t = portal.dealTiming(mast.length, {
-      emitDelay: 300, emitStep: 90, emitDur: 460, settleDur: 160, closeDur: 300
+      emitDelay: 300 + lead, emitStep: 90, emitDur: 460, settleDur: 160, closeDur: 300
     });
 
     // Direct load: breathe the cover in, then open the portal (mosaic zoom) as the
@@ -482,6 +596,23 @@
         null, cover.mosaic, t.total, peakOff, holdOff, 1, 1.5,
         0.88, 140 / t.total // breath in before the exhale spits the masthead out
       ));
+      // Turn the cover over: born face-down (rotateY 180, its .card-back showing), held
+      // through flipLead while it grows in, then rotated to the front over flipDur with a
+      // slight rotateX lift at the half-turn. Targets the .flip-inner puhig.js's initFlip
+      // wrapped the sleeve in, so it composes with the breath on the flat sleeve.
+      // fill:backwards holds the face-down pose across the lead without leaving an inline
+      // transform behind — on finish it reverts to the inner's resting front.
+      var inner = cover.sleeve.querySelector(":scope > .flip-inner");
+      if (inner) {
+        entryAnims.push(inner.animate(
+          [
+            { transform: "perspective(600px) rotateY(180deg) rotateX(0deg)" },
+            { transform: "perspective(600px) rotateY(90deg) rotateX(6deg)", offset: 0.5 },
+            { transform: "perspective(600px) rotateY(0deg) rotateX(0deg)" }
+          ],
+          { duration: flipDur, delay: flipLead, easing: portal.EASE, fill: "backwards" }
+        ));
+      }
     }
 
     // Spit the masthead siblings out from the cover's centre, clearing their pre-deal
@@ -578,18 +709,9 @@
     });
   }
 
-  // The idle masthead: the kept note (col 3) shows its empty voice, the forecast
-  // card and the alerts region are cleared. Used on load and the placeholder
-  // re-select. The note is set here every time but its content never varies — it
-  // stays as it is on load. (FC_NUM is unused here; the note carries NOTE_NUM.)
+  // The idle masthead: the forecast card and the alerts region are cleared. Used
+  // on load and the placeholder re-select.
   function renderEmpty() {
-    setNote(noteBody(
-      "ph-compass",
-      "The sky, unread.",
-      "Choose a state to draw its current forecast and any active weather alerts.",
-      NOTE_NUM,
-      { setAbbr: "NWS", author: "Atelier Kashinoga" } // match the static masthead siblings (WX 001 / WX 003)
-    ));
     clearForecast();
     render("");
   }
@@ -619,15 +741,52 @@
     var cards = [];
     if (alerts && alerts.length) {
       currentAlerts = alerts;
-      for (var i = 0; i < alerts.length && cards.length < revealLimit; i++) {
-        cards.push(alertCard(alerts[i], i, cards.length === 0));
+      // A live alert's headline can overrun one fixed-height card, so long alerts
+      // split across several (paginateBody). Fit is measured at the live card size —
+      // the body text is cqi-sized to the .card-frame — so probe-render the alerts
+      // (full headline), then read each card's frame width and the space its body
+      // paragraph gets (the 📍 strip's height varies with the area text, per alert).
+      var probe = [];
+      for (var i = 0; i < alerts.length && probe.length < revealLimit; i++) {
+        var pp0 = alerts[i].properties || {};
+        probe.push(alertPageCard(pp0, i, paginateBody(alertBodyBeats(pp0))[0], 0, 1, probe.length === 0));
+      }
+      render(probe.join(""));
+      var probeCards = resultsEl.querySelectorAll(".card-sleeve");
+      var frame = resultsEl.querySelector(".card-frame");
+      var frameW = frame ? frame.getBoundingClientRect().width : 0; // border-box, matches the measurer
+      if (frameW) {
+        for (var a = 0; a < probe.length && cards.length < revealLimit; a++) {
+          var pp = alerts[a].properties || {};
+          // Two body heights: the first card's body runs from just below the 📍 strip
+          // to the Copy corner (availH1); a continuation card drops the strip, so its
+          // body runs from the text box's top instead (availHn, taller). The 📍 strip's
+          // height varies with the area text, so both are read per alert.
+          var tb = probeCards[a].querySelector(".card-text-box");
+          var bodyP = tb.querySelector(":scope > p");
+          var copyBtn = probeCards[a].querySelector(".card-stat");
+          var availH1 = 0, availHn = 0;
+          if (tb && bodyP && copyBtn) {
+            var cs = getComputedStyle(tb), tbRect = tb.getBoundingClientRect();
+            var tbTop = tbRect.top + parseFloat(cs.paddingTop) + parseFloat(cs.borderTopWidth);
+            var copyTop = copyBtn.getBoundingClientRect().top;
+            availH1 = copyTop - bodyP.getBoundingClientRect().top - 4;
+            availHn = copyTop - tbTop - 4;
+          }
+          var pages = paginateBody(alertBodyBeats(pp), availH1, availHn, frameW);
+          for (var pi = 0; pi < pages.length && cards.length < revealLimit; pi++) {
+            cards.push(alertPageCard(pp, a, pages[pi], pi, pages.length, cards.length === 0));
+          }
+        }
+      } else {
+        cards = probe; // no card to measure — deal the unpaginated probe
       }
     } else if (alerts) {
       cards.push(noteCard("ph-sun", "Clear skies.", "No active alerts for " + stateName + ".", true));
     }
 
     render(cards.join(""));
-    dealIn(); // the forecast card (col 5) + any alerts (row 2) deal in from the portal
+    dealIn(); // the forecast card (col 4) + any alerts (row 2) deal in from the portal
   }
 
   function onSelect() {
@@ -716,14 +875,38 @@
     ]
   };
 
-  function loadCached() {
+  // A fixture whose lead alert carries an over-long headline that overruns one card,
+  // so the dev Pagination card can preview the multi-card split (paginateBody). The
+  // short second alert shows the single-card case alongside it.
+  var CACHED_LONG = {
+    forecast: CACHED_IOWA.forecast,
+    alerts: [
+      { properties: {
+        event: "Winter Storm Warning", severity: "Severe",
+        areaDesc: "Polk, IA; Story, IA; Boone, IA; Dallas, IA; Jasper, IA; Marshall, IA",
+        parameters: { NWSheadline: ["WINTER STORM WARNING REMAINS IN EFFECT FROM 6 PM THIS EVENING TO NOON CST SATURDAY FOR HEAVY SNOW AND BLOWING SNOW ACROSS CENTRAL IOWA, WITH TOTAL SNOW ACCUMULATIONS OF 8 TO 12 INCHES AND WINDS GUSTING AS HIGH AS 45 MPH EXPECTED TO PRODUCE NEAR-ZERO VISIBILITY AND WIDESPREAD DRIFTING ON AREA ROADS THROUGH THE WEEKEND"] },
+        effective: "2026-06-29T18:00:00-05:00", expires: "2026-06-30T12:00:00-05:00"
+      } },
+      { properties: {
+        event: "Wind Advisory", severity: "Moderate",
+        areaDesc: "Polk, IA; Warren, IA",
+        parameters: { NWSheadline: ["WIND ADVISORY IN EFFECT UNTIL 9 PM CDT"] },
+        effective: "2026-06-29T14:00:00-05:00", expires: "2026-06-29T21:00:00-05:00"
+      } }
+    ]
+  };
+
+  // Deal a frozen fixture (no live fetch): reflect Iowa in the picker, cancel any
+  // in-flight fetch, gather the old cards, then show the fixture's forecast + alerts.
+  function dealFixture(fixture) {
     selectEl.value = "IA";       // reflect the fixture in the dropdown
     var token = ++requestId;     // cancel any in-flight live fetch
     currentAlerts = [];
     clearThen(function () {      // gather old alerts, then show the fixture
-      if (token === requestId) showResults("Iowa", CACHED_IOWA.forecast, CACHED_IOWA.alerts);
+      if (token === requestId) showResults("Iowa", fixture.forecast, fixture.alerts);
     });
   }
+  function loadCached() { dealFixture(CACHED_IOWA); }
 
   // Copy buttons share one delegated listener over the results region.
   resultsEl.addEventListener("click", function (e) {
@@ -847,6 +1030,20 @@
       footer("WX DEV", "DECK")
     );
 
+    // Pagination card — deal a fixture whose lead alert overruns one card, to preview
+    // the multi-card split (a long headline continues on the next card, titled p/N).
+    devCardEl("dev-pagination",
+      title("Pagination", "var(--orange)") +
+      typeRow("Developer — Card Split", "ph-cards-three") +
+      '<div class="card-text-box">' +
+        "<p>Deal an over-long alert to preview the split: a headline that overruns one card continues on the next, titled (1/2, 2/2).</p>" +
+        '<div class="btn-group">' +
+          '<button class="btn btn--ghost btn--sm" id="wx-paginated"><i class="ph ph-cards-three"></i>Long alert</button>' +
+        "</div>" +
+      "</div>" +
+      footer("WX DEV", "PAGINATION")
+    );
+
     // Wire the Weather card: condition + temperature drive the forecast palette.
     var condEl = document.getElementById("wx-dev-cond");
     var tempEl = document.getElementById("wx-dev-temp");
@@ -879,6 +1076,8 @@
     // stepper elements now that they exist, then sync their initial state.
     var cachedBtn = document.getElementById("wx-cached");
     if (cachedBtn) cachedBtn.addEventListener("click", loadCached);
+    var pagBtn = document.getElementById("wx-paginated");
+    if (pagBtn) pagBtn.addEventListener("click", function () { dealFixture(CACHED_LONG); });
     countEl = document.getElementById("wx-reveal-count");
     lessBtn = document.getElementById("wx-reveal-less");
     moreBtn = document.getElementById("wx-reveal-more");

@@ -95,15 +95,17 @@ html[data-theme="dark"] {
   --snow-7: oklch(55% 0.025 225);
 
   /* Green — verdant land, the alert location strip (hue ~145). Not weather-driven:
-     a fixed accent behind the 📍 area line. Lifted a few steps brighter than the
-     weather ramps' spread so the scrimmed strip reads as a lively green, not dark. */
-  --green-1: oklch(34% 0.10 148);
-  --green-2: oklch(80% 0.16 145);
-  --green-3: oklch(54% 0.15 147);
-  --green-4: oklch(91% 0.08 143);
-  --green-5: oklch(67% 0.17 146);
-  --green-6: oklch(85% 0.12 144);
-  --green-7: oklch(46% 0.13 149);
+     a fixed accent behind the 📍 area line. Kept in the darker half of the lightness
+     range (28–55%) so the white caption reads clearly over every tile — the earlier
+     ramp climbed to near-white (91%) and swallowed the text. Contrast comes from
+     these darker tiles plus the strip's scrim and the caption's text-shadow. */
+  --green-1: oklch(30% 0.09 148);
+  --green-2: oklch(48% 0.15 145);
+  --green-3: oklch(38% 0.13 147);
+  --green-4: oklch(55% 0.14 143);
+  --green-5: oklch(43% 0.15 146);
+  --green-6: oklch(51% 0.13 144);
+  --green-7: oklch(34% 0.11 149);
 }
 
 /* Forecast headline number. */
@@ -191,11 +193,11 @@ html[data-theme="dark"] {
   width: 100%;
 }
 
-/* Scrim between the tiles and the caption: darkens the strip just enough to seat
-   the white text (over the lightest tiles in the ramp) while keeping the green
-   bright — light touch so the strip doesn't read as near-black. */
+/* Scrim between the tiles and the caption: darkens the strip so the white text
+   holds over the lightest tiles in the (now darker) ramp, without reading as
+   near-black. */
 .wx-area-art::after {
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.28);
   content: "";
   inset: 0;
   pointer-events: none;
@@ -213,6 +215,15 @@ html[data-theme="dark"] {
   position: relative;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.5);
   z-index: 2;
+}
+
+/* The effect window in an alert's body (moved out of the footer): the alert's
+   duration reads as quiet meta above the headline, set off from it by the space
+   below (the global reset zeroes paragraph margins, so this space is explicit). */
+.wx-alert-when {
+  color: var(--dim);
+  letter-spacing: 0.02em;
+  margin-block-end: clamp(8px, 3.2cqi, 14px);
 }
 
 /* The note title leads an empty / loading / clear / error card. */
@@ -245,15 +256,15 @@ html[data-theme="dark"] {
 
 /* ── Row-1 masthead placement ────────────────────────────────────────
    The deck opens with a masthead row whose numbers track their column:
-   WX 000 cover (col 1), WX 001 App Description (col 2), WX 002 idle note
-   (col 3) and WX 003 Location picker (col 4) — all static. On a selection a
-   fifth card, WX 004 forecast, is created to their right (col 5). The dealt
-   alert cards (#wx-results) begin a fresh row below (their first card keeps
-   its .panel-row-start col-1 pin). The four static cards hold once four
-   264px columns fit (≥1116px = body padding + 4×264 + 3×12); the forecast's
-   fifth column needs ≥1392px (+ 264 + 12) — below that it flows to the next
-   row. Scoped to .container.panel, which on /wx is the WX grid alone. */
-@media (min-width: 1116px) {
+   WX 000 cover (col 1), WX 001 About (col 2) and WX 002 Location picker
+   (col 3) — all static. On a selection a fourth card, WX 003 forecast, is
+   created to their right (col 4). The dealt alert cards (#wx-results) begin a
+   fresh row below (their first card keeps its .panel-row-start col-1 pin). The
+   three static cards hold once three 264px columns fit (≥840px = body padding +
+   3×264 + 2×12); the forecast's fourth column needs ≥1116px (+ 264 + 12) —
+   below that it flows to the next row. Scoped to .container.panel, which on
+   /wx is the WX grid alone. */
+@media (min-width: 840px) {
   .card-sleeve[data-wx-slot="cover"] {
     grid-area: 1 / 1;
   }
@@ -262,19 +273,15 @@ html[data-theme="dark"] {
     grid-area: 1 / 2;
   }
 
-  .card-sleeve[data-wx-slot="note"] {
-    grid-area: 1 / 3;
-  }
-
   .card-sleeve[data-wx-slot="location"] {
-    grid-area: 1 / 4;
+    grid-area: 1 / 3;
   }
 }
 
-/* The forecast is a fifth masthead card; place it in col 5 once a fifth
+/* The forecast is a fourth masthead card; place it in col 4 once a fourth
    264px column fits. */
-@media (min-width: 1392px) {
+@media (min-width: 1116px) {
   .card-sleeve[data-wx-slot="forecast"] {
-    grid-area: 1 / 5;
+    grid-area: 1 / 4;
   }
 }
