@@ -146,17 +146,42 @@
     );
   }
 
+  // `color` is a single pip colour or an array of them (rendered left→right), so a
+  // card can carry a multi-cost — e.g. the alert cards' teal (WX app) + orange
+  // (alert) pair — the same way the static masthead cards stack card-pip spans.
   function title(name, color) {
+    var pips = (Array.isArray(color) ? color : [color])
+      .map(function (c) {
+        return '<span class="card-pip" style="background: ' + c + '"></span>';
+      })
+      .join("");
     return (
       '<div class="card-title"><span class="card-name">' + esc(name) + "</span>" +
-        '<div class="card-cost"><span class="card-pip" style="background: ' + color + '"></span></div></div>'
+        '<div class="card-cost">' + pips + "</div></div>"
     );
   }
 
+  // Every weather card's type line reads "WX — <label>", pinning the app (WX) as
+  // the type the way a masthead card's set does; callers pass just the label's
+  // category + detail (comma-separated, e.g. "Forecast, This Afternoon").
   function typeRow(label, icon) {
     return (
-      '<div class="card-type"><span class="card-type-label">' + esc(label) + "</span>" +
-        '<i class="card-rarity ph ' + icon + '" data-rarity="stable"></i></div>'
+      '<div class="card-type"><span class="card-type-label">WX — ' + esc(label) + "</span>" +
+        '<i class="card-rarity ph-fill ' + icon + '" data-rarity="stable"></i></div>'
+    );
+  }
+
+  // A card's mosaic art with a caption laid over it (the cover-title treatment):
+  // a static CA mosaic in `palette` with `figure` (the caption HTML) anchored
+  // bottom-right in a .wx-figure. data-mosaic-static: built once by fitMosaics,
+  // no entry stagger. Shared by the forecast (temperature + short) and the station
+  // (its name).
+  function cardArt(palette, figure) {
+    return (
+      '<div class="card-art" data-mosaic-type="ca" data-target="24" data-mosaic-align="left" data-mosaic-palette="' + palette + '" data-mosaic-static>' +
+        '<div class="mosaic-overlay card-mosaic"></div>' +
+        '<div class="wx-figure">' + figure + "</div>" +
+      "</div>"
     );
   }
 
@@ -233,6 +258,18 @@
     return "cool";              // cold
   }
 
+  // The sky's colour at a given hour — a four-way time-of-day cycle (dawn / noon /
+  // dusk / night) that tints a mosaic by when it's viewed. Used by the station card
+  // so the "where" reads as the sky right now. Defaults to the viewer's local hour;
+  // the names resolve to --<name>-1..7 in wx.css.
+  function timePalette(hour) {
+    var h = hour == null ? new Date().getHours() : hour;
+    if (h < 5 || h >= 20) return "night";
+    if (h < 8) return "dawn";
+    if (h < 17) return "noon";
+    return "dusk";
+  }
+
   function forecastBody(place, period, generatedAt) {
     // When NWS generated the forecast (properties.generatedAt), formatted like the
     // alert cards' times. It rides the bottom of the description box as a dim italic
@@ -240,19 +277,15 @@
     var at = fmtTime(generatedAt);
     return (
       title(place, "var(--teal)") +
-      typeRow("Forecast — " + period.name, "ph-cloud-sun") +
+      typeRow("Forecast, " + period.name, "ph-cloud-sun") +
       // The temperature + short forecast sit over the card's mosaic art, laid into a
-      // figure above the tiles. The palette tracks the weather (forecastPalette).
-      // data-mosaic-static: built once by fitMosaics, no entry stagger. The detailed
-      // forecast stays below in the text box.
-      '<div class="card-art" data-mosaic-type="ca" data-target="24" data-mosaic-align="left" data-mosaic-palette="' + forecastPalette(period) + '" data-mosaic-static>' +
-        '<div class="mosaic-overlay card-mosaic"></div>' +
-        '<div class="wx-forecast-figure">' +
-          '<div class="wx-temp"><span class="wx-temp-value">' + esc(period.temperature) + "</span>" +
-            '<span class="wx-temp-unit">°' + esc(period.temperatureUnit) + "</span></div>" +
-          '<p class="wx-short">' + esc(period.shortForecast) + "</p>" +
-        "</div>" +
-      "</div>" +
+      // figure above the tiles. The palette tracks the weather (forecastPalette). The
+      // detailed forecast stays below in the text box.
+      cardArt(forecastPalette(period),
+        '<div class="wx-temp"><span class="wx-temp-value">' + esc(period.temperature) + "</span>" +
+          '<span class="wx-temp-unit">°' + esc(period.temperatureUnit) + "</span></div>" +
+        '<p class="wx-short">' + esc(period.shortForecast) + "</p>"
+      ) +
       '<div class="card-text-box">' +
         "<p>" + esc(trunc(period.detailedForecast, 130)) + "</p>" +
         (at ? '<p class="card-quote">Forecasted at ' + esc(at) + "</p>" : "") +
@@ -269,7 +302,7 @@
     if (!station || !station.id) {
       return (
         title("Station", "var(--teal)") +
-        typeRow("Source — NWS", "ph-broadcast") +
+        typeRow("Source, NWS", "ph-target") +
         '<div class="card-text-box">' +
           '<p class="wx-note-title">Nearest station unavailable.</p>' +
           "<p>Source: the U.S. National Weather Service.</p>" +
@@ -279,9 +312,14 @@
     }
     return (
       title(station.id, "var(--teal)") +
-      typeRow("Station — Observation", "ph-broadcast") +
+      typeRow("Station, Observation", "ph-target") +
+      // The friendly name rides the mosaic art as its figure label (like the forecast's
+      // short line); the box below carries the dim aside. The mosaic is tinted by the
+      // time of day (dawn / noon / dusk / night), so the station reads as the sky now.
+      cardArt(timePalette(),
+        '<p class="wx-figure-label">' + esc(station.name || station.id) + "</p>"
+      ) +
       '<div class="card-text-box">' +
-        '<p class="wx-note-title">' + esc(station.name || station.id) + "</p>" +
         '<p class="card-quote">Nearest observation station</p>' +
       "</div>" +
       footer(STA_NUM, "EN", { setAbbr: "NWS" })
@@ -322,6 +360,15 @@
   // is the alert's index in currentAlerts (shared across pages) — every page's Copy
   // yields the whole alert. `areaCode` is the state's postal code (e.g. "IA"), the
   // footer number; the source (NWS) is now its own masthead card (stationBody).
+  // A collector number for one alert: the state's area code + a 3-digit sequence
+  // (its 1-based index in currentAlerts), e.g. "IA 001". Every page of a split
+  // alert shares it — the number keys the alert, not the card. Falls back to the
+  // bare source (NWS) when no state resolved.
+  function alertNumber(areaCode, index) {
+    if (!areaCode) return "NWS";
+    return areaCode + " " + ("00" + (index + 1)).slice(-3);
+  }
+
   function alertPageCard(p, index, bodyHtml, pageIdx, pageCount, rowStart, areaCode) {
     var tally = pageCount > 1 ? " (" + (pageIdx + 1) + "/" + pageCount + ")" : "";
     // The 📍 location strip heads only the first card; continuation cards (2/N onward)
@@ -334,11 +381,11 @@
     var area = pageIdx > 0 ? "" :
       '<div class="wx-area-art" data-target="16" data-mosaic-align="left" data-mosaic-palette="green" data-mosaic-static>' +
         '<div class="mosaic-overlay"></div>' +
-        '<p class="wx-area">📍 ' + esc(trunc(p.areaDesc || "", 80)) + "</p>" +
+        '<p class="wx-area"><i class="ph-fill ph-map-pin wx-area-pin"></i>' + esc(trunc(p.areaDesc || "", 80)) + "</p>" +
       "</div>";
     return sleeve(
-      title((p.event || "Alert") + tally, "var(--orange)") +
-      typeRow("Alert — " + (p.severity || "Unknown"), "ph-warning") +
+      title((p.event || "Alert") + tally, ["var(--teal)", "var(--orange)"]) +
+      typeRow("Alert, " + (p.severity || "Unknown"), "ph-warning") +
       '<div class="card-text-box">' +
         area +
         bodyHtml +
@@ -346,7 +393,7 @@
           '<button class="btn btn--outline btn--sm" data-copy="' + index + '"><i class="ph ph-copy"></i>Copy</button>' +
         "</div>" +
       "</div>" +
-      footer(areaCode || "NWS", "EN", { setAbbr: "NWS" }),
+      footer(alertNumber(areaCode, index), "EN", { setAbbr: "NWS" }),
       rowStart
     );
   }
@@ -1167,7 +1214,7 @@
     }).join("");
     devCardEl("dev-weather",
       title("Weather", "var(--orange)") +
-      typeRow("Developer — Palette Preview", "ph-cloud-sun") +
+      typeRow("Developer, Palette Preview", "ph-cloud-sun") +
       '<div class="card-text-box">' +
         '<div class="select-field"><span class="field-label">Condition</span>' +
           '<div class="select"><select id="wx-dev-cond" aria-label="Condition">' + opts + "</select>" +
@@ -1183,7 +1230,7 @@
     // Deck card — fixture + reveal stepper.
     devCardEl("dev-deck",
       title("Deck", "var(--orange)") +
-      typeRow("Developer — Deal & Reveal", "ph-flask") +
+      typeRow("Developer, Deal & Reveal", "ph-flask") +
       '<div class="card-text-box">' +
         "<p>Deal the cached Iowa fixture, and set how many result cards are revealed.</p>" +
         '<div class="btn-group">' +
@@ -1202,7 +1249,7 @@
     // the multi-card split (a long headline continues on the next card, titled p/N).
     devCardEl("dev-pagination",
       title("Pagination", "var(--orange)") +
-      typeRow("Developer — Card Split", "ph-cards-three") +
+      typeRow("Developer, Card Split", "ph-cards-three") +
       '<div class="card-text-box">' +
         "<p>Deal an over-long alert to preview the split: a headline that overruns one card continues on the next, titled (1/2, 2/2).</p>" +
         '<div class="btn-group">' +

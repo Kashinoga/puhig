@@ -98,18 +98,61 @@ html[data-theme="dark"] {
   --snow-6: oklch(88% 0.025 225);
   --snow-7: oklch(55% 0.025 225);
 
-  /* Green — verdant land, the alert location strip (hue ~145). Not weather-driven:
-     a fixed accent behind the 📍 area line. Kept in the darker half of the lightness
-     range (28–55%) so the white caption reads clearly over every tile — the earlier
-     ramp climbed to near-white (91%) and swallowed the text. Contrast comes from
-     these darker tiles plus the strip's scrim and the caption's text-shadow. */
-  --green-1: oklch(30% 0.09 148);
-  --green-2: oklch(48% 0.15 145);
-  --green-3: oklch(38% 0.13 147);
-  --green-4: oklch(55% 0.14 143);
-  --green-5: oklch(43% 0.15 146);
-  --green-6: oklch(51% 0.13 144);
-  --green-7: oklch(34% 0.11 149);
+  /* Green — verdant land (hue ~140–148): the Location card's mosaic and the alert
+     location strip. A full light→deep spread like the weather ramps (33–88% L) so
+     the standalone Location mosaic reads as bright, varied green; the top step is
+     held to 88% (not the ramps' near-white 90%+) so the alert strip's white caption
+     still reads over the palest tiles — helped there by a stronger scrim (wx-area-art
+     ::after) and the caption's text-shadow. */
+  --green-1: oklch(33% 0.10 148);
+  --green-2: oklch(78% 0.16 142);
+  --green-3: oklch(55% 0.16 145);
+  --green-4: oklch(88% 0.11 138);
+  --green-5: oklch(68% 0.17 143);
+  --green-6: oklch(82% 0.13 140);
+  --green-7: oklch(45% 0.14 147);
+
+  /* Time-of-day sky ramps (timePalette in wx.js): the station card's mosaic is
+     tinted by the viewer's local hour — dawn / noon / dusk / night — so the "where"
+     card reads as the sky right now, distinct from the forecast's weather palette.
+     Same seven-step shape as above, re-hued around the daylight cycle. */
+
+  /* Dawn — sunrise: mauve pre-dawn deepening to peach and pale gold (hue ~30–350). */
+  --dawn-1: oklch(30% 0.06 340);
+  --dawn-2: oklch(84% 0.08 45);
+  --dawn-3: oklch(58% 0.12 25);
+  --dawn-4: oklch(93% 0.04 55);
+  --dawn-5: oklch(72% 0.11 33);
+  --dawn-6: oklch(86% 0.07 48);
+  --dawn-7: oklch(46% 0.09 350);
+
+  /* Noon — clear midday sky: bright, slightly cyan blue (hue ~233–240). */
+  --noon-1: oklch(30% 0.07 240);
+  --noon-2: oklch(85% 0.09 234);
+  --noon-3: oklch(56% 0.12 238);
+  --noon-4: oklch(95% 0.04 230);
+  --noon-5: oklch(71% 0.12 236);
+  --noon-6: oklch(89% 0.06 232);
+  --noon-7: oklch(45% 0.11 240);
+
+  /* Dusk — sunset: saturated orange and coral through magenta to violet (hue ~15–350). */
+  --dusk-1: oklch(26% 0.10 350);
+  --dusk-2: oklch(75% 0.14 48);
+  --dusk-3: oklch(49% 0.15 28);
+  --dusk-4: oklch(87% 0.08 55);
+  --dusk-5: oklch(61% 0.16 18);
+  --dusk-6: oklch(71% 0.13 352);
+  --dusk-7: oklch(39% 0.12 322);
+
+  /* Night — deep indigo, held darker than the others (moonlit accents, not full L)
+     so it reads as night and the white figure text keeps its contrast (hue ~270). */
+  --night-1: oklch(18% 0.06 270);
+  --night-2: oklch(61% 0.09 276);
+  --night-3: oklch(34% 0.08 270);
+  --night-4: oklch(73% 0.07 278);
+  --night-5: oklch(46% 0.09 272);
+  --night-6: oklch(65% 0.08 276);
+  --night-7: oklch(26% 0.07 268);
 }
 
 /* Forecast headline number. */
@@ -138,12 +181,13 @@ html[data-theme="dark"] {
   font-weight: 500;
 }
 
-/* The forecast figure: temperature + short forecast laid over the card's mosaic
-   art (like a cover's title), anchored bottom-right. z-index 2 lifts it above the
-   tiles (the appended .mosaic-tiles-svg + the z-index 1 gloss overlay); a bottom
-   scrim + white text + shadow keep it legible over any teal tile run, matching the
-   cover's treatment. pointer-events:none so taps still ripple the mosaic beneath. */
-.wx-forecast-figure {
+/* A card figure: content laid over the card's mosaic art (like a cover's title),
+   anchored bottom-right — the forecast's temperature + short line, the station's
+   name. z-index 2 lifts it above the tiles (the appended .mosaic-tiles-svg + the
+   z-index 1 gloss overlay); a bottom scrim + white text + shadow keep it legible
+   over any teal tile run, matching the cover's treatment. pointer-events:none so
+   taps still ripple the mosaic beneath. */
+.wx-figure {
   align-items: flex-end;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent 55%);
   color: var(--mosaic-white);
@@ -161,9 +205,17 @@ html[data-theme="dark"] {
 
 /* The unit reads as secondary over the art, but --dim is too low-contrast on the
    mosaic — soften the white instead. */
-.wx-forecast-figure .wx-temp-unit {
+.wx-figure .wx-temp-unit {
   color: inherit;
   opacity: 0.8;
+}
+
+/* The station figure's caption: the station's friendly name over its mosaic, sized
+   like the forecast's short line but a touch larger since it stands alone. */
+.wx-figure-label {
+  font-size: clamp(15px, 6.4cqi, 22px);
+  font-weight: 500;
+  line-height: 1.15;
 }
 
 /* Dev card (opt-in via ?dev): the temperature scrubber. Native range, tinted to
@@ -198,10 +250,10 @@ html[data-theme="dark"] {
 }
 
 /* Scrim between the tiles and the caption: darkens the strip so the white text
-   holds over the lightest tiles in the (now darker) ramp, without reading as
-   near-black. */
+   holds over the lightest tiles in the (now brighter) green ramp, without reading
+   as near-black. Tuned up from the darker ramp's 0.28 to hold over the palest tiles. */
 .wx-area-art::after {
-  background: rgba(0, 0, 0, 0.28);
+  background: rgba(0, 0, 0, 0.42);
   content: "";
   inset: 0;
   pointer-events: none;
@@ -219,6 +271,13 @@ html[data-theme="dark"] {
   position: relative;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.5);
   z-index: 2;
+}
+
+/* The location pin leading the area line (replaces the 📍 emoji): a Phosphor mark
+   sized to the caption, nudged to sit on the text baseline with a small gap after. */
+.wx-area-pin {
+  margin-inline-end: clamp(3px, 1.2cqi, 5px);
+  vertical-align: -0.1em;
 }
 
 /* The effect window in an alert's body (moved out of the footer): the alert's
