@@ -252,7 +252,15 @@
       title(p.event || "Alert", "var(--orange)") +
       typeRow("Alert — " + (p.severity || "Unknown"), "ph-warning") +
       '<div class="card-text-box">' +
-        '<p class="wx-area">📍 ' + esc(trunc(p.areaDesc || "", 80)) + "</p>" +
+        // The area line sits over a green mosaic sized to the text: a left-aligned
+        // static strip (data-mosaic-static — no press/drift/stagger) whose host takes
+        // its height from the 📍 line, so fitMosaics cuts tiles to the text's height.
+        // A full mosaic (no data-mosaic-type="ca") — every cell is a solid tile, so at
+        // only a few rows tall there are no CA dead cells baring the dark mosaic-bg.
+        '<div class="wx-area-art" data-target="16" data-mosaic-align="left" data-mosaic-palette="green" data-mosaic-static>' +
+          '<div class="mosaic-overlay"></div>' +
+          '<p class="wx-area">📍 ' + esc(trunc(p.areaDesc || "", 80)) + "</p>" +
+        "</div>" +
         (headline ? "<p>" + esc(trunc(headline, 120)) + "</p>" : "") +
         '<div class="card-stat">' +
           '<button class="btn btn--outline btn--sm" data-copy="' + index + '"><i class="ph ph-copy"></i>Copy</button>' +

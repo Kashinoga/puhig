@@ -93,6 +93,17 @@ html[data-theme="dark"] {
   --snow-5: oklch(80% 0.03 225);
   --snow-6: oklch(88% 0.025 225);
   --snow-7: oklch(55% 0.025 225);
+
+  /* Green — verdant land, the alert location strip (hue ~145). Not weather-driven:
+     a fixed accent behind the 📍 area line. Lifted a few steps brighter than the
+     weather ramps' spread so the scrimmed strip reads as a lively green, not dark. */
+  --green-1: oklch(34% 0.10 148);
+  --green-2: oklch(80% 0.16 145);
+  --green-3: oklch(54% 0.15 147);
+  --green-4: oklch(91% 0.08 143);
+  --green-5: oklch(67% 0.17 146);
+  --green-6: oklch(85% 0.12 144);
+  --green-7: oklch(46% 0.13 149);
 }
 
 /* Forecast headline number. */
@@ -157,13 +168,51 @@ html[data-theme="dark"] {
   width: 100%;
 }
 
-/* Alert location line (📍 area description) — a muted caption under the
-   alert headline. Sizes off the card like the rest; --dim matches the
-   other secondary text (e.g. .wx-temp-unit). */
+/* Alert location line (📍 area description) laid over a green mosaic sized to the
+   text. The host takes the caption's top margin and its height from the 📍 line,
+   so fitMosaics cuts the green strip to exactly the text's height; rounded + clipped
+   so the tiles read as a contained accent under the alert headline. The tile SVG
+   carries a viewBox (see createMosaicSVG), so its tiles scale to fill the fractional
+   host height exactly — no bottom seam — and the mosaic-bg is just a fallback. */
+.wx-area-art {
+  background-color: var(--mosaic-bg);
+  border-radius: clamp(4px, 1.6cqi, 7px);
+  margin-block: clamp(4px, 1.6cqi, 8px) clamp(8px, 3.2cqi, 14px);
+  overflow: hidden;
+  position: relative;
+}
+
+/* The tile SVG is built to the integer clientWidth/clientHeight, a hair under the
+   fractional host; stretch its box to fill the host so the viewBox (the exact tile
+   extent) scales the tiles across the whole strip — no seam on any edge, at any
+   width. Framework mosaics set the svg box explicitly, so this is WX-only. */
+.wx-area-art .mosaic-tiles-svg {
+  height: 100%;
+  width: 100%;
+}
+
+/* Scrim between the tiles and the caption: darkens the strip just enough to seat
+   the white text (over the lightest tiles in the ramp) while keeping the green
+   bright — light touch so the strip doesn't read as near-black. */
+.wx-area-art::after {
+  background: rgba(0, 0, 0, 0.18);
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 1;
+}
+
+/* The caption itself, over the mosaic: white + shadow for legibility, padded off
+   the strip edges, lifted above the tiles and scrim. */
 .wx-area {
-  color: var(--dim);
+  color: var(--mosaic-white);
   font-size: clamp(12px, 5.2cqi, 15px);
-  margin-block-start: clamp(4px, 1.6cqi, 8px);
+  margin: 0;
+  padding: clamp(5px, 2cqi, 8px) clamp(7px, 2.8cqi, 11px);
+  position: relative;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 6px rgba(0, 0, 0, 0.5);
+  z-index: 2;
 }
 
 /* The note title leads an empty / loading / clear / error card. */

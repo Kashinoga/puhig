@@ -80,18 +80,25 @@ function buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke) {
   g.setAttribute("stroke", gridStroke || "rgba(0,0,0,0.15)");
   g.setAttribute("stroke-width", "1");
   g.setAttribute("fill", "none");
+  // Span the lines to the whole-tile extent (cols*tw × rows*th), which is what the
+  // svg's viewBox maps (see createMosaicSVG), not the raw W×H. They differ only where
+  // the box doesn't divide into whole tiles — e.g. the full-bleed #mosaic-bg, whose
+  // rows = round(H/tw) can land ~half a tile short of H; drawing lines to H there
+  // (while the viewBox is rows*th) would scale the grid down and bare a strip at the
+  // bottom. Drawing to rows*th keeps the grid flush with the viewBox, so it fills.
+  var gridW = cols * tw, gridH = rows * th;
   for (var c = 1; c < cols; c++) {
     var lx = (c * tw).toFixed(2);
     var ln = document.createElementNS(ns, "line");
     ln.setAttribute("x1", lx); ln.setAttribute("y1", "0");
-    ln.setAttribute("x2", lx); ln.setAttribute("y2", H);
+    ln.setAttribute("x2", lx); ln.setAttribute("y2", gridH);
     g.appendChild(ln);
   }
   for (var r = 1; r < rows; r++) {
     var ly = (r * th).toFixed(2);
     var ln2 = document.createElementNS(ns, "line");
     ln2.setAttribute("x1", "0"); ln2.setAttribute("y1", ly);
-    ln2.setAttribute("x2", W);  ln2.setAttribute("y2", ly);
+    ln2.setAttribute("x2", gridW);  ln2.setAttribute("y2", ly);
     g.appendChild(ln2);
   }
   svg.appendChild(g);
@@ -188,6 +195,15 @@ function createMosaicSVG(W, H, cols, rows, tw, th, gridStroke, mc) {
   svg.setAttribute("class", "mosaic-tiles-svg");
   svg.setAttribute("width", W);
   svg.setAttribute("height", H);
+  // The viewBox is the ACTUAL tile extent (cols*tw × rows*th), not the nominal W×H,
+  // so the tiles always scale to fill the svg's box exactly. For every mosaic whose
+  // grid already spans W×H this is 1:1 (a no-op). It matters where the whole-tile
+  // grid doesn't divide the box evenly — e.g. the WX area strip, sized to fractional
+  // text: rows = round(H/tw) can land short (2 rows × 16px = 32 in a 35px host), which
+  // would bare a bottom strip of mosaic-bg; scaling the 32 of tiles up to the 35 box
+  // fills it. preserveAspectRatio "none" lets the axes stretch independently.
+  svg.setAttribute("viewBox", "0 0 " + (cols * tw) + " " + (rows * th));
+  svg.setAttribute("preserveAspectRatio", "none");
   svg.setAttribute("aria-hidden", "true"); // decorative art — no info for AT
   svg.setAttribute("focusable", "false");
   buildGrid(ns, svg, W, H, cols, rows, tw, th, gridStroke);
