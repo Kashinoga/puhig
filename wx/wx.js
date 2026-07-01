@@ -585,8 +585,15 @@
     var mast = mastCards();
     if (!mast.length) return;
 
+    // When we arrive on a remembered state, its forecast + alert cards were already
+    // rendered pre-hidden (restoreState, below) before this entry ran — fold them
+    // into the same spit so they're born from the cover alongside the masthead, in
+    // reading order (row 1 left→right: About, Location, forecast; then row 2: alerts)
+    // rather than dealing separately a beat early. On a normal load there are none.
+    var spit = mast.concat(dealableCards());
+
     var base = cover.sleeve.getBoundingClientRect();
-    var rects = mast.map(function (c) { return c.getBoundingClientRect(); });
+    var rects = spit.map(function (c) { return c.getBoundingClientRect(); });
 
     // On a direct load the cover enters face-down and turns over before the masthead
     // spits (matching every HIG cover). A lead of flipLead + flipDur is reserved ahead
@@ -595,7 +602,7 @@
     // morph IS the front's entry, so no flip and no lead.
     var flipLead = 360, flipDur = 480;
     var lead = viaPortal ? 0 : flipLead + flipDur;
-    var t = portal.dealTiming(mast.length, {
+    var t = portal.dealTiming(spit.length, {
       emitDelay: 300 + lead, emitStep: 90, emitDur: 460, settleDur: 160, closeDur: 300
     });
 
@@ -635,9 +642,10 @@
       }
     }
 
-    // Spit the masthead siblings out from the cover's centre, clearing their pre-deal
-    // hide (they were set opacity:0 before paint) as the deal reveals them.
-    entryAnims = entryAnims.concat(portal.dealCards(mast, base, rects, t, { clearHide: true }));
+    // Spit the masthead siblings (and any restored result cards) out from the cover's
+    // centre, clearing their pre-deal hide (they were set opacity:0 before paint) as
+    // the deal reveals them.
+    entryAnims = entryAnims.concat(portal.dealCards(spit, base, rects, t, { clearHide: true }));
   }
 
   // Play the entry exactly once. Prefer pagereveal — it fires before the first
@@ -645,11 +653,35 @@
   // us in, and applying the born-at-centre poses there hides the masthead from the
   // portal's snapshot so it deals in cleanly afterwards. Fall back to an immediate
   // run for browsers without cross-document View Transitions (no portal there).
+  //
+  // Restore coordination: when we arrive on a remembered state we want its cards
+  // spat WITH the masthead, in reading order — which needs them rendered (and
+  // pre-hidden) before entryDeal reads its spit list. Whether the (usually cached)
+  // restore resolves before the entry's pagereveal/load fires is a race we must not
+  // depend on — losing it dealt the results early / separately. So while a restore
+  // is still pending (awaitingRestore && !restoreReady) the entry doesn't play; it
+  // parks its viaPortal in pendingEntry, and whichever of restoreState (data ready)
+  // or the backstop timeout resolves first flushes it. A normal load (no saved
+  // state) never sets awaitingRestore, so it plays immediately as before.
   var entryPlayed = false;
+  var awaitingRestore = false; // a saved state is being restored before the entry
+  var restoreReady = false;    // the restore has rendered its (pre-hidden) cards
+  var pendingEntry = null;     // a parked entry waiting on the restore: { viaPortal }
+
   function playEntry(viaPortal) {
     if (entryPlayed) return;
+    if (awaitingRestore && !restoreReady) { pendingEntry = { viaPortal: viaPortal }; return; }
     entryPlayed = true;
     entryDeal(viaPortal);
+  }
+
+  // Play a parked entry (restore is ready, or the backstop gave up waiting).
+  function flushPendingEntry() {
+    if (entryPlayed || !pendingEntry) return;
+    var vp = pendingEntry.viaPortal;
+    pendingEntry = null;
+    entryPlayed = true;
+    entryDeal(vp);
   }
 
   // Fly-out: the reverse of the deal. Before a re-read (a new state, a cached
@@ -736,10 +768,11 @@
     render("");
   }
 
-  // Set the forecast card's body and render the alerts (+ a clear-skies note when
-  // there are none), then deal the forecast card and alerts in together from the
-  // portal. Shared by the live fetch and the cached test fixture.
-  function showResults(stateName, forecast, alerts) {
+  // Build the forecast card's body and the alert cards (+ a clear-skies note when
+  // there are none) into the DOM — but do NOT animate. Returns nothing; the caller
+  // decides how the cards enter (a fresh deal, or riding the page-load entry spit).
+  // Shared by the live fetch, the cached fixture, and the remembered-state restore.
+  function renderResults(stateName, forecast, alerts) {
     lastShown = { stateName: stateName, forecast: forecast, alerts: alerts };
 
     if (forecast && forecast.period) {
@@ -807,7 +840,13 @@
     }
 
     render(cards.join(""));
-    dealIn(); // the forecast card (col 4) + any alerts (row 2) deal in from the portal
+  }
+
+  // Render the reading, then deal the forecast card (col 4) + any alerts (row 2)
+  // in from the portal. The normal path for a live pick and the cached fixture.
+  function showResults(stateName, forecast, alerts) {
+    renderResults(stateName, forecast, alerts);
+    dealIn();
   }
 
   function onSelect() {
@@ -847,6 +886,34 @@
       fetched = out;
       fetchDone = true;
       maybeShow();
+    });
+  }
+
+  // Reopen on a remembered state at page load. Unlike onSelect this doesn't gather
+  // (nothing is shown yet) and doesn't deal on its own — it renders the reading and
+  // hands off to the entry so the forecast + alerts are spat out of the cover
+  // alongside the masthead, in one reading-order beat. The entry parks itself while
+  // this is pending (see playEntry), so the outcome doesn't depend on whether the
+  // fetch beats pagereveal/load:
+  //   • entry not yet played → pre-hide the result cards and flush the parked entry;
+  //     entryDeal folds them into its spit (see dealableCards there).
+  //   • entry already played (the backstop released it, or a genuinely slow restore
+  //     that timed out) → deal them in on their own, like a live pick's late arrival.
+  // Under reduced motion nothing animates — render at rest and just release the entry.
+  function restoreState(state) {
+    var token = ++requestId;
+    currentAlerts = [];
+    Promise.all([
+      loadForecast(state).catch(function () { return null; }),
+      loadAlerts(state).catch(function () { return null; })
+    ]).then(function (out) {
+      if (token !== requestId) return; // a live pick has superseded the restore
+      renderResults(state.name, out[0], out[1]);
+      restoreReady = true;
+      if (reduceMotionMQ.matches) { flushPendingEntry(); return; }
+      if (entryPlayed) { dealIn(); return; }
+      dealableCards().forEach(function (c) { c.style.opacity = "0"; });
+      flushPendingEntry(); // the entry was waiting on us — play it now, results included
     });
   }
 
@@ -989,15 +1056,24 @@
   renderEmpty();
 
   // Reopen on the last-selected state, if one was remembered: reflect it in the
-  // picker and run the normal selection path, so its forecast + alerts deal in
-  // from the portal exactly as a fresh pick would. The data is served from the
-  // response cache when still fresh — a returning visit is usually zero-network.
-  // The forecast card lives in its own #wx-forecast host (not a masthead sibling),
-  // so this never disturbs the masthead's one-time entry deal.
+  // picker and kick off restoreState, which renders the reading and hands off to the
+  // page-load entry so its forecast + alerts are spat out of the cover together with
+  // the masthead, in one reading-order beat (see restoreState / playEntry / entryDeal).
+  // awaitingRestore parks the entry until the restore is ready, so the reveal order
+  // doesn't depend on whether the (usually cached, near-instant) fetch beats the
+  // pagereveal/load event. A backstop releases the masthead if the restore is slow —
+  // so a cache-miss network fetch can't leave the page blank; its results then deal
+  // in on their own when they land.
   var savedState = stateByAbbr(wxStore.get("state") || "");
   if (savedState) {
+    awaitingRestore = true;
     selectEl.value = savedState.abbr;
-    onSelect();
+    restoreState(savedState);
+    setTimeout(function () {
+      if (restoreReady) return;   // restore already drove (or will drive) the entry
+      awaitingRestore = false;    // stop gating: a later playEntry runs immediately
+      flushPendingEntry();        // release a parked entry now (masthead only)
+    }, 900);
   }
 
   // ── Dev cards (opt-in via ?dev) ───────────────────────────────────────────
