@@ -1564,7 +1564,10 @@ h1 {
 @media (max-width: 480px) {
   body {
     padding-top: calc(12px + env(safe-area-inset-top));
-    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    /* Reserve the bottom band here too so the fixed .scroll-controls (24px offset +
+       52px tall on mobile = 76px) clear the content with a ~24px gap when scrolled
+       to the end — the mobile counterpart of the base rule's 108px band. */
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
     padding-inline: 12px;
   }
 
@@ -1773,8 +1776,8 @@ html[data-theme="dark"] .mosaic-overlay {
    wins the cascade — equal specificity, later source order. */
 @media (max-width: 480px) {
   .scroll-controls {
-    bottom: calc(6px + env(safe-area-inset-bottom));
-    left: calc(6px + env(safe-area-inset-left));
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    left: calc(24px + env(safe-area-inset-left));
   }
 }
 
