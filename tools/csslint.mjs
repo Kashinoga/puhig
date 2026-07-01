@@ -109,7 +109,9 @@ async function main() {
     colorScheme: theme === 'dark' ? 'dark' : 'light',
   });
   if (theme === 'light' || theme === 'dark') {
-    await context.addInitScript((t) => localStorage.setItem('puhig-theme', t), theme);
+    // Appearance rides window.puhig.store's "hig" area (puhig/<VERSION>/hig/theme);
+    // mirror the store VERSION here if it ever bumps.
+    await context.addInitScript((t) => localStorage.setItem('puhig/1/hig/theme', t), theme);
   }
   const page = await context.newPage();
   const client = await context.newCDPSession(page);

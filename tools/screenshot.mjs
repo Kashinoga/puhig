@@ -70,14 +70,17 @@ function parseArgs(argv) {
 }
 
 // --- map a theme/state set to the localStorage the app reads on load -------
-// Mirrors puhig.js: puhig-theme (light|dark, removed for system),
-// puhig-ui-theme, puhig-bg. Setting these before scripts run makes the page
-// boot straight into the target state — no click simulation, no test-file hack.
+// Mirrors puhig.js's window.puhig.store: appearance prefs live in the "hig" area
+// under puhig/<VERSION>/hig/{theme,uiTheme,bg} (theme light|dark, omitted for
+// system). Setting these before scripts run makes the page boot straight into the
+// target state — no click simulation, no test-file hack. HIG is the current store
+// VERSION; bump both together if the store schema version changes.
+const HIG = 'puhig/1/hig/';
 function storageFor({ theme, uiTheme, bg }) {
   const store = {};
-  if (theme === 'light' || theme === 'dark') store['puhig-theme'] = theme;
-  if (uiTheme) store['puhig-ui-theme'] = uiTheme;
-  if (bg) store['puhig-bg'] = bg;
+  if (theme === 'light' || theme === 'dark') store[HIG + 'theme'] = theme;
+  if (uiTheme) store[HIG + 'uiTheme'] = uiTheme;
+  if (bg) store[HIG + 'bg'] = bg;
   return store;
 }
 
