@@ -11,7 +11,9 @@
     "contrast": "node tools/contrast.mjs",
     "sheet": "node tools/contactsheet.mjs",
     "components": "node tools/components.mjs",
-    "smoke": "node tools/smoke.mjs"
+    "smoke": "node tools/smoke.mjs",
+    "index": "node tools/index.mjs",
+    "check": "npm run index -- --check && npm run csslint && npm run tokens && npm run contrast && npm run components && npm run smoke"
   },
   "devDependencies": {
     "playwright": "^1.61.1"
