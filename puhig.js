@@ -1,3 +1,108 @@
+// ── Browser-storage toolkit (window.puhig.store) ────────────────────────────
+// One home for everything the framework and its apps persist in the browser —
+// HIG appearance prefs, WX's response cache and last state, the portal handoff —
+// so keys don't collide and a single VERSION bump can rewrite the whole schema.
+//
+// Layout: every value lives under `puhig/<VERSION>/<area>/<key>`. `area(ns)`
+// returns a scoped accessor for one app or concern (e.g. "hig", "wx"); pass
+// session:true to route it to sessionStorage (per-tab, transient) instead of
+// localStorage. On load we prune any key from an older VERSION (and the app's
+// original pre-store flat keys), so during development bumping VERSION is a clean
+// wipe — no migration to write. Every op is wrapped so private-mode / quota /
+// disabled-storage failures degrade to in-memory defaults rather than throwing.
+window.puhig = window.puhig || {};
+window.puhig.store = (function () {
+  var PREFIX = "puhig";
+  var VERSION = 1;                       // bump to invalidate the whole store
+  var ROOT = PREFIX + "/" + VERSION + "/";
+  // Pre-store keys the app wrote before this toolkit existed — pruned once so the
+  // versioned layout is the single source of truth.
+  var LEGACY = ["puhig-theme", "puhig-ui-theme", "puhig-bg", "wx-cache-v1"];
+
+  function backend(session) {
+    try { return session ? window.sessionStorage : window.localStorage; }
+    catch (e) { return null; } // storage disabled (some privacy modes throw on access)
+  }
+
+  // Drop stale keys: legacy flat keys, and any puhig/<other-version>/ entry.
+  (function prune() {
+    var ls = backend(false);
+    if (!ls) return;
+    try {
+      var kill = [];
+      for (var i = 0; i < ls.length; i++) {
+        var k = ls.key(i);
+        if (!k) continue;
+        var stale = LEGACY.indexOf(k) !== -1 ||
+          (k.indexOf(PREFIX + "/") === 0 && k.indexOf(ROOT) !== 0);
+        if (stale) kill.push(k);
+      }
+      for (var j = 0; j < kill.length; j++) ls.removeItem(kill[j]);
+    } catch (e) { /* best-effort */ }
+  })();
+
+  function rawGet(store, path) {
+    try { return store ? store.getItem(ROOT + path) : null; } catch (e) { return null; }
+  }
+  function rawSet(store, path, val) {
+    try { if (store) store.setItem(ROOT + path, val); } catch (e) { /* quota / disabled */ }
+  }
+  function rawDel(store, path) {
+    try { if (store) store.removeItem(ROOT + path); } catch (e) {}
+  }
+
+  // A scoped accessor for one area (app/concern). Keys are namespaced under it so
+  // two apps can both store a "state" without colliding.
+  function area(ns, session) {
+    var store = backend(session);
+    var base = ns + "/";
+    return {
+      // get(key[, fallback]) — the stored string, or fallback (default null).
+      get: function (key, fallback) {
+        var v = rawGet(store, base + key);
+        return v == null ? (fallback === undefined ? null : fallback) : v;
+      },
+      // set(key, val[, def]) — store val as a string. If def is given and val
+      // equals it, the key is removed instead, so absence means the default
+      // (mirrors the appearance prefs, keeps the store minimal).
+      set: function (key, val, def) {
+        if (def !== undefined && val === def) rawDel(store, base + key);
+        else rawSet(store, base + key, String(val));
+      },
+      del: function (key) { rawDel(store, base + key); },
+      // JSON variants for structured values (e.g. the WX response cache).
+      getJSON: function (key, fallback) {
+        var v = rawGet(store, base + key);
+        if (v == null) return fallback === undefined ? null : fallback;
+        try { return JSON.parse(v); }
+        catch (e) { return fallback === undefined ? null : fallback; }
+      },
+      setJSON: function (key, val) {
+        try { rawSet(store, base + key, JSON.stringify(val)); } catch (e) {}
+      }
+    };
+  }
+
+  return {
+    version: VERSION,
+    area: area,
+    // Dev: wipe the entire puhig store (every version, both backends).
+    clearAll: function () {
+      [backend(false), backend(true)].forEach(function (store) {
+        if (!store) return;
+        try {
+          var kill = [];
+          for (var i = 0; i < store.length; i++) {
+            var k = store.key(i);
+            if (k && k.indexOf(PREFIX + "/") === 0) kill.push(k);
+          }
+          for (var j = 0; j < kill.length; j++) store.removeItem(kill[j]);
+        } catch (e) {}
+      });
+    }
+  };
+})();
+
 // Module-pattern IIFE: keeps every declaration below off `window` so the page
 // script leaks no globals. Body is intentionally left un-indented so this
 // retrofit stays a 2-line diff rather than re-touching all ~1000 lines.
@@ -677,9 +782,11 @@ if (window.ResizeObserver) {
 }
 
 (function () {
-  var STORAGE_KEY = 'puhig-theme';
-  var UI_THEME_KEY = 'puhig-ui-theme';
-  var BG_KEY = 'puhig-bg';
+  // Appearance prefs persist under the "hig" area of the shared store. Each key
+  // stores nothing when it holds its default (system/simulacra/grid), so absence
+  // reads back as the default — see store.set's `def` argument.
+  var prefs = window.puhig.store.area('hig');
+  var THEME = 'theme', UI_THEME = 'uiTheme', BG = 'bg';
   var html = document.documentElement;
   var appearanceOpts = Array.from(document.querySelectorAll('.theme-option[data-group="appearance"]'));
   var uiThemeOpts = Array.from(document.querySelectorAll('.theme-option[data-group="ui-theme"]'));
@@ -734,17 +841,14 @@ if (window.ResizeObserver) {
     }
   }
 
-  var saved = localStorage.getItem(STORAGE_KEY) || 'system';
-  applyTheme(saved, false);
-  var savedUITheme = localStorage.getItem(UI_THEME_KEY) || 'simulacra';
-  applyUITheme(savedUITheme);
-  var savedBG = localStorage.getItem(BG_KEY) || 'grid';
-  applyBG(savedBG, false);
+  applyTheme(prefs.get(THEME, 'system'), false);
+  applyUITheme(prefs.get(UI_THEME, 'simulacra'));
+  applyBG(prefs.get(BG, 'grid'), false);
 
   appearanceOpts.forEach(function (o) {
     o.addEventListener('click', function () {
       var val = o.dataset.value;
-      val === 'system' ? localStorage.removeItem(STORAGE_KEY) : localStorage.setItem(STORAGE_KEY, val);
+      prefs.set(THEME, val, 'system');
       applyTheme(val, true);
     });
   });
@@ -752,7 +856,7 @@ if (window.ResizeObserver) {
   uiThemeOpts.forEach(function (o) {
     o.addEventListener('click', function () {
       var val = o.dataset.value;
-      val === 'simulacra' ? localStorage.removeItem(UI_THEME_KEY) : localStorage.setItem(UI_THEME_KEY, val);
+      prefs.set(UI_THEME, val, 'simulacra');
       applyUITheme(val);
     });
   });
@@ -760,7 +864,7 @@ if (window.ResizeObserver) {
   bgOpts.forEach(function (o) {
     o.addEventListener('click', function () {
       var val = o.dataset.value;
-      val === 'grid' ? localStorage.removeItem(BG_KEY) : localStorage.setItem(BG_KEY, val);
+      prefs.set(BG, val, 'grid');
       applyBG(val, true);
     });
   });
@@ -1161,16 +1265,19 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
     var y = ((r.top + r.height / 2) / window.innerHeight) * 100;
     return x.toFixed(2) + '% ' + y.toFixed(2) + '%';
   }
+  // The origin handoff rides the shared store's session backend (per-tab), so it
+  // lives under the same versioned namespace as everything else.
+  var portalStore = window.puhig.store.area('portal', true);
   window.addEventListener('pageswap', function (e) {
     if (!e.viewTransition) return;
     var o = coverOrigin();
-    if (o) sessionStorage.setItem('vt-exit-origin', o);
-    else sessionStorage.removeItem('vt-exit-origin');
+    if (o) portalStore.set('exitOrigin', o);
+    else portalStore.del('exitOrigin');
   });
   window.addEventListener('pagereveal', function (e) {
     if (!e.viewTransition) return;
     var root = document.documentElement;
-    var exit = sessionStorage.getItem('vt-exit-origin');
+    var exit = portalStore.get('exitOrigin');
     var enter = coverOrigin();
     if (exit) root.style.setProperty('--vt-exit-origin', exit);
     if (enter) root.style.setProperty('--vt-enter-origin', enter);

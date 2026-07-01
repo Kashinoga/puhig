@@ -315,12 +315,92 @@
 
   // ---- data ----------------------------------------------------------------
 
-  function getJSON(url) {
+  // A tiny persistent response cache over NWS. It exists to be a good API
+  // citizen: the point → gridpoint mapping and its station list are keyed by a
+  // state's fixed capital coordinates and never change, yet a naive app re-fetches
+  // them on every selection. NWS answers each response with a Cache-Control
+  // lifetime (points ~21h, a forecast ~22min); we honour that — serving a cached
+  // body while it is still fresh instead of hitting the network — with a long
+  // floor on the two static hops (they outlive any single max-age) and a short
+  // ceiling on the volatile ones (alerts). A stale entry is kept as a fallback so
+  // a transient NWS failure shows the last good reading rather than the error card.
+  // The cache — a { url: entry } map — persists under the shared store's "wx" area
+  // (window.puhig.store, from puhig.js), so it shares the framework's versioned
+  // namespace with WX's saved state and the HIG prefs rather than owning a loose key.
+  var wxStore = window.puhig.store.area("wx");
+
+  function cacheAll() {
+    var all = wxStore.getJSON("cache", {});
+    return all && typeof all === "object" ? all : {};
+  }
+  function cacheGet(url) {
+    var e = cacheAll()[url];
+    return e && typeof e === "object" ? e : null;
+  }
+  function cacheSet(url, entry) {
+    var all = cacheAll();
+    all[url] = entry;
+    wxStore.setJSON("cache", all);
+  }
+
+  // The freshness window for a response, in ms: NWS's own Cache-Control max-age
+  // (falling back to Expires, then `fallback` seconds), clamped to [floor, ceil]
+  // so the static hops persist past a single max-age and the volatile ones can't
+  // be pinned stale by a long server lifetime.
+  function freshMs(res, opts) {
+    var sec = null;
+    var cc = res.headers.get("cache-control") || "";
+    var m = /max-age\s*=\s*(\d+)/i.exec(cc);
+    if (m) sec = parseInt(m[1], 10);
+    if (sec == null) {
+      var exp = Date.parse(res.headers.get("expires") || "");
+      if (!isNaN(exp)) sec = Math.max(0, (exp - Date.now()) / 1000);
+    }
+    if (sec == null) sec = opts.fallback;
+    sec = Math.max(opts.floor, Math.min(opts.ceil, sec));
+    return sec * 1000;
+  }
+
+  // Fetch JSON through the cache. Within an entry's freshness window it resolves
+  // from localStorage with no network call at all; past it, it re-fetches and
+  // re-stamps. `opts` (floor/ceil/fallback seconds) tunes the window per feed;
+  // omit for the default short window. On a network/HTTP error a still-present
+  // (even expired) cached body is served rather than rejecting.
+  function getJSON(url, opts) {
+    opts = opts || { floor: 0, ceil: 300, fallback: 60 };
+    var hit = cacheGet(url);
+    if (hit && hit.exp > Date.now()) return Promise.resolve(hit.data);
     return fetch(url, { headers: { Accept: "application/geo+json" } }).then(function (r) {
-      if (!r.ok) throw new Error("NWS responded " + r.status);
-      return r.json();
+      if (!r.ok) {
+        if (hit) return hit.data; // serve stale rather than fail
+        throw new Error("NWS responded " + r.status);
+      }
+      return r.json().then(function (data) {
+        var props = (data && data.properties) || {};
+        cacheSet(url, {
+          data: data,
+          exp: Date.now() + freshMs(r, opts),
+          // updateTime (== Last-Modified) is the true content version — it moves
+          // only when NWS re-issues the forecast, unlike generatedAt which changes
+          // every response. Stored so a future conditional-fetch layer can gate on it.
+          updateTime: props.updateTime || ""
+        });
+        return data;
+      });
+    }).catch(function (err) {
+      if (hit) return hit.data;
+      throw err;
     });
   }
+
+  // Per-feed cache windows. Static hops (points, stations) key off a state's
+  // fixed coordinates and never change, so they floor at a week; the forecast
+  // tracks NWS's ~hourly re-issue (honour max-age, ~5min–1h); alerts stay near-
+  // live (≤2min) so a real warning surfaces quickly.
+  var WEEK = 7 * 24 * 3600;
+  var TTL_STATIC = { floor: WEEK, ceil: 30 * WEEK, fallback: WEEK };
+  var TTL_FORECAST = { floor: 300, ceil: 3600, fallback: 1200 };
+  var TTL_ALERTS = { floor: 0, ceil: 120, fallback: 60 };
 
   // The nearest observation station names the forecast's source — its identifier
   // (e.g. "KORD") and friendly name — on the alert card footers. The station list
@@ -337,14 +417,14 @@
   // the forecast, off the same point — names the nearest one. Best-effort: a
   // station failure resolves to null and never blocks the forecast.
   function loadForecast(state) {
-    return getJSON(API + "/points/" + state.lat + "," + state.lon).then(function (pt) {
+    return getJSON(API + "/points/" + state.lat + "," + state.lon, TTL_STATIC).then(function (pt) {
       var props = pt.properties || {};
       var rel = props.relativeLocation && props.relativeLocation.properties;
       var place = rel ? rel.city + ", " + rel.state : "Near " + state.capital;
       var stationP = props.observationStations
-        ? getJSON(props.observationStations).then(nearestStation).catch(function () { return null; })
+        ? getJSON(props.observationStations, TTL_STATIC).then(nearestStation).catch(function () { return null; })
         : Promise.resolve(null);
-      return Promise.all([getJSON(props.forecast), stationP]).then(function (res) {
+      return Promise.all([getJSON(props.forecast, TTL_FORECAST), stationP]).then(function (res) {
         var fcProps = res[0].properties || {};
         var periods = fcProps.periods || [];
         // generatedAt is when NWS produced the forecast — the "forecasted at" time.
@@ -354,7 +434,7 @@
   }
 
   function loadAlerts(state) {
-    return getJSON(API + "/alerts/active/area/" + state.abbr).then(function (data) {
+    return getJSON(API + "/alerts/active/area/" + state.abbr, TTL_ALERTS).then(function (data) {
       return (data && data.features) || [];
     });
   }
@@ -732,6 +812,10 @@
 
   function onSelect() {
     var state = stateByAbbr(selectEl.value);
+    // Remember the choice so the next visit reopens on it; the placeholder clears
+    // it. Saved under the shared store's "wx" area (alongside the response cache).
+    if (state) wxStore.set("state", state.abbr);
+    else wxStore.del("state");
     if (!state) { clearThen(renderEmpty); return; }
 
     var token = ++requestId;
@@ -904,6 +988,18 @@
   // render it straight away; the alerts region starts empty.
   renderEmpty();
 
+  // Reopen on the last-selected state, if one was remembered: reflect it in the
+  // picker and run the normal selection path, so its forecast + alerts deal in
+  // from the portal exactly as a fresh pick would. The data is served from the
+  // response cache when still fresh — a returning visit is usually zero-network.
+  // The forecast card lives in its own #wx-forecast host (not a masthead sibling),
+  // so this never disturbs the masthead's one-time entry deal.
+  var savedState = stateByAbbr(wxStore.get("state") || "");
+  if (savedState) {
+    selectEl.value = savedState.abbr;
+    onSelect();
+  }
+
   // ── Dev cards (opt-in via ?dev) ───────────────────────────────────────────
   // All developer affordances, off the product cards and onto their own dev row:
   //   • Weather — a condition picker + temperature slider drive forecastBody in
@@ -1048,14 +1144,16 @@
   // cross-document portal arrival, though, doesn't reliably deliver pagereveal to
   // the new page, so we also arm a load fallback; whichever lands first plays the
   // entry. The fallback reads the portal arrival from the exit origin puhig stashes
-  // in sessionStorage as it leaves the deck, consuming it so a later direct reload
-  // reads as a direct load (cover pops) rather than a portal arrival (cover held).
+  // in the shared store's session backend as it leaves the deck, consuming it so a
+  // later direct reload reads as a direct load (cover pops) rather than a portal
+  // arrival (cover held).
+  var portalStore = window.puhig.store.area("portal", true);
   if ("onpagereveal" in window) {
     window.addEventListener("pagereveal", function (e) { playEntry(!!e.viewTransition); });
   }
   window.addEventListener("load", function () {
-    var viaPortal = sessionStorage.getItem("vt-exit-origin") != null;
-    sessionStorage.removeItem("vt-exit-origin");
+    var viaPortal = portalStore.get("exitOrigin") != null;
+    portalStore.del("exitOrigin");
     playEntry(viaPortal);
   });
 })();
