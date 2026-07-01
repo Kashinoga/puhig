@@ -792,6 +792,15 @@ if (window.ResizeObserver) {
   var uiThemeOpts = Array.from(document.querySelectorAll('.theme-option[data-group="ui-theme"]'));
   var bgOpts = Array.from(document.querySelectorAll('.theme-option[data-group="bg"]'));
 
+  // A compact appearance cycle for the floating controls (sub-apps that carry no
+  // settings flyout, e.g. WX): one button steps system → light → dark → system,
+  // its glyph reflecting the current preference. Absent on pages without the
+  // button (the main deck uses its settings card), so every hook null-guards it.
+  var apToggle = document.getElementById('appearance-toggle');
+  var apIcon = apToggle && apToggle.querySelector('i');
+  var APPEARANCE_CYCLE = ['system', 'light', 'dark'];
+  var APPEARANCE_ICONS = { system: 'ph-circle-half', light: 'ph-sun', dark: 'ph-moon' };
+
   // Resolve a preference to the appearance that actually paints, so 'system'
   // collapses to the OS setting. Switching between two prefs that resolve to the
   // same appearance (e.g. dark -> system while the OS is dark) uses identical
@@ -813,6 +822,8 @@ if (window.ResizeObserver) {
     appearanceOpts.forEach(function (o) {
       o.setAttribute('aria-pressed', String(o.dataset.value === pref));
     });
+    if (apIcon) apIcon.className = 'ph-light ' + (APPEARANCE_ICONS[pref] || APPEARANCE_ICONS.system);
+    if (apToggle) apToggle.setAttribute('aria-label', 'Appearance: ' + pref);
     var resolved = resolveAppearance(pref);
     var changed = resolved !== lastAppearance;
     lastAppearance = resolved;
@@ -852,6 +863,16 @@ if (window.ResizeObserver) {
       applyTheme(val, true);
     });
   });
+
+  // The floating appearance toggle steps to the next mode in the cycle (the press
+  // bounce is added separately by setupScrollBtn, so this only handles the switch).
+  if (apToggle) {
+    apToggle.addEventListener('click', function () {
+      var next = APPEARANCE_CYCLE[(APPEARANCE_CYCLE.indexOf(currentPref) + 1) % APPEARANCE_CYCLE.length];
+      prefs.set(THEME, next, 'system');
+      applyTheme(next, true);
+    });
+  }
 
   uiThemeOpts.forEach(function (o) {
     o.addEventListener('click', function () {
@@ -1244,6 +1265,9 @@ document.querySelectorAll('i[class*="ph"], .mosaic-overlay, #mosaic-bg, .card-pi
   });
   // Back-to-deck control (WX and other sub-apps); navigation via its href.
   setupScrollBtn(document.getElementById('scroll-back-btn'));
+  // Appearance toggle (sub-apps): the theme cycle is wired above, so this adds only
+  // the shared press bounce.
+  setupScrollBtn(document.getElementById('appearance-toggle'));
 }());
 
 // App-to-app portal transition. The cover card is a named view-transition; the
